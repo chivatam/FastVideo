@@ -24,6 +24,9 @@ class AttentionBackendEnum(enum.Enum):
     SLA_ATTN = enum.auto()
     SAGE_SLA_ATTN = enum.auto()
     NABLA_ATTN = enum.auto()
+    ROUTING_PROBE_ATTN = enum.auto()
+    PRECISION_SPARSE_ATTN = enum.auto()
+    SPARSEFP4_EXEC_ATTN = enum.auto()
     NO_ATTENTION = enum.auto()
 
 

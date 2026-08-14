@@ -239,6 +239,15 @@ class CudaPlatformBase(Platform):
                 logger.error("Failed to import SageSLA Attention backend: %s", str(e))
                 raise ImportError("SageSLA Attention backend requires spas_sage_attn. "
                                   "Install with: uv pip install git+https://github.com/thu-ml/SpargeAttn.git") from e
+        elif selected_backend == AttentionBackendEnum.ROUTING_PROBE_ATTN:
+            logger.info("Using SparseFP4 routing-probe backend (dense BF16 compute + routing metrics).")
+            return "fastvideo.attention.backends.routing_probe_attn.RoutingProbeAttentionBackend"
+        elif selected_backend == AttentionBackendEnum.PRECISION_SPARSE_ATTN:
+            logger.info("Using SparseFP4 precision-sparse backend (dense BF16 compute + A-F error decomposition).")
+            return "fastvideo.attention.backends.precision_sparse_attn.PrecisionSparseAttentionBackend"
+        elif selected_backend == AttentionBackendEnum.SPARSEFP4_EXEC_ATTN:
+            logger.info("Using SparseFP4 Phase 5 execution backend (the arm's attention is what the model consumes).")
+            return "fastvideo.attention.backends.sparsefp4_exec_attn.SparseFP4ExecAttentionBackend"
         elif selected_backend == AttentionBackendEnum.TORCH_SDPA:
             logger.info("Using Torch SDPA backend.")
             return "fastvideo.attention.backends.sdpa.SDPABackend"
