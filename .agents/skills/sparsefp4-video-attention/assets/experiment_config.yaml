@@ -1,0 +1,382 @@
+# SparseFP4 Video Attention — default experiment matrix.
+#
+# Consumed by the Phase-1/2 measurement harness. Authority on definitions is
+# references/EXPERIMENT_SPEC.md; this file only sets values.
+#
+# Conventions:
+#   * `sparsity` is the FRACTION SKIPPED. retained_fraction = 1 - sparsity.
+#   * `default` (string) means "use the framework/model default, do not override".
+#     The harness must resolve every `default` at runtime and write the resolved
+#     value into artifacts/sparsefp4/configs/<run_id>.resolved.yaml.
+#   * `null` means "not applicable / unset".
+#   * Do NOT run the full Cartesian product. Use `phases` as a staged ladder.
+
+schema_version: 1
+
+# ---------------------------------------------------------------------------
+# Model and generation settings
+# ---------------------------------------------------------------------------
+model:
+  id: Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+
+  # Pin this at runtime to the exact HF revision actually loaded. `null` here
+  # means "not yet pinned"; the harness must fail if it is still null when a
+  # measured run starts, because an unpinned checkpoint makes results
+  # unreproducible.
+  revision: null
+
+  # Fixed by the SKILL's baseline definition.
+  height: 480
+  width: 832
+  num_frames: 81
+
+  # `default` = preserve the framework's normal inference defaults, which for
+  # this model already match the SKILL baseline, so nothing is overridden.
+  # Resolved (see EXPERIMENT_SPEC.md 10.2):
+  #   num_inference_steps 50            fastvideo/pipelines/basic/wan/presets.py:60
+  #   guidance_scale      3.0           fastvideo/pipelines/basic/wan/presets.py:59
+  #   scheduler           FlowUniPCMultistepScheduler(shift=flow_shift=3.0)
+  #                                     fastvideo/pipelines/basic/wan/wan_pipeline.py:11,28
+  #                                     fastvideo/configs/pipelines/wan.py:41
+  #   n_layers 30 / n_heads 12 / head_dim 128 / hidden 1536
+  #                                     fastvideo/tests/golden_gate/test_wan_t2v.py:20,29-32
+  #   self-attention seq_len 32760 at 480x832x81 (latent 21x60x104, patch (1,2,2)
+  #                   -> 21x30x52)      tests/local_tests/test_nvfp4_fa4.py:47
+  #                   39936 over 624 tiles once VSA re-tiles/pads (spec 2.3)
+  # WARNING: the arch-config defaults at fastvideo/configs/models/dits/wanvideo.py:66-73
+  # are the 14B model (40 heads / 40 layers). The 1.3B values arrive from the
+  # checkpoint config via update_model_arch (fastvideo/configs/models/base.py:60-69),
+  # so resolve at runtime and never hardcode from the arch config.
+  num_inference_steps: default
+  guidance_scale: default
+  scheduler: default
+
+  # Kept explicit so paired arms provably match (see EXPERIMENT_SPEC.md 9.1).
+  batch_size: 1
+  dtype: bfloat16
+  negative_prompt: default
+
+# ---------------------------------------------------------------------------
+# Sparsity sweep. sparsity = fraction of key blocks SKIPPED.
+# ---------------------------------------------------------------------------
+sparsities:
+  - 0.50   # retained 50%
+  - 0.70   # retained 30%
+  - 0.80   # retained 20%  <- primary operating point
+  - 0.90   # retained 10%  <- primary operating point
+  - 0.95   # retained  5%
+
+# Per-query-block top-k: k = ceil(retained_fraction * n_key_blocks), floored at
+# k_min and capped at n_key_blocks. Identical k across all precision arms.
+topk:
+  k_min: 1
+  tie_break: index_ascending      # stable sort, lowest key-block index wins
+  # Whether the query block's co-located key block is force-retained. Must be
+  # identical across all precision arms. false = the diagnostic scorer alone.
+  # Resolved: VSA / VIDEO_SPARSE_ATTN has NO force-retention rule -- the mask is
+  # pure per-(batch, head, query-tile) top-k over all key tiles, exactly `topk`
+  # True entries per row, nothing added on top of the budget and no exempt tile
+  # (fastvideo-kernel/python/fastvideo_kernel/triton_kernels/fused_compress_topk.py:298-313,
+  #  kernel at :211-277; topk from fastvideo/attention/backends/video_sparse_attn.py:161-167).
+  # So `false` is correct for the VSA-integrated arms too, and jaccard_scored
+  # == jaccard there. VSA's threshold tie-break is also index-ascending
+  # (fused_compress_topk.py:267-275), matching tie_break above.
+  # Not force-retention but adjacent: VSA adds an always-dense pooled
+  # compression branch (ops.py:108-129, weight = Wan's to_gate_compress at
+  # fastvideo/models/dits/wanvideo.py:458-462). Hold it fixed across arms or
+  # pass gate_compress=None (fastvideo/attention/layer.py:210-213, :230-233).
+  force_retain_diagonal: false
+
+# ---------------------------------------------------------------------------
+# Block geometry (query block tokens x key block tokens)
+# ---------------------------------------------------------------------------
+block_geometry:
+  default:
+    block_q: 128
+    block_k: 64
+  ablations:
+    - block_q: 64
+      block_k: 64
+    - block_q: 128
+      block_k: 128
+
+# Ragged final block: keep it and pool over valid tokens only (masked mean).
+# See EXPERIMENT_SPEC.md 3.3 for why pad and drop are both rejected.
+scorer:
+  kind: mean_pool_dot            # research diagnostic scorer
+  pool: mean
+  ragged_final_block: masked_mean
+  compute_dtype: float32         # pool in arm precision, matmul in fp32
+  apply_softmax_scale: true      # 1/sqrt(head_dim); does not change ordering
+  # Use the real sparse method's scoring rule in addition to (never instead of)
+  # the diagnostic scorer once a sparse backend is integrated.
+  # Resolved -- VSA's actual scoring rule (fastvideo-kernel/python/fastvideo_kernel/ops.py:109-120):
+  #   q_c = fused_block_mean(q, q_variable_block_sizes, block_elements)  # ops.py:109
+  #   k_c = fused_block_mean(k, variable_block_sizes,   block_elements)  # ops.py:110
+  #   scores = (q_c @ k_c.transpose(-2,-1)) / dim**0.5                   # ops.py:113
+  #   mask   = fused_topk_mask(scores, topk)                             # ops.py:120
+  #   * pooling = masked ARITHMETIC MEAN over each tile's valid tokens with fp32
+  #     accumulation and a pad-aware divisor
+  #     (triton_kernels/fused_compress_topk.py:190-207); pad slots are zeroed so
+  #     the mean is exact.
+  #   * scaling = 1/sqrt(head_dim) on the block scores, applied AFTER pooling.
+  #   * candidate set = ALL key tiles, no causal mask, no locality restriction;
+  #     selection is per (batch, head, query-tile) top-k, not a threshold and not
+  #     cumulative mass (fused_compress_topk.py:298-313).
+  #   * topk = compute_topk(VSA_sparsity, num_tiles)
+  #     = max(1, min(ceil((1-sparsity)*num_tiles), num_tiles))
+  #     (fastvideo/attention/backends/video_sparse_attn.py:161-167) -- identical
+  #     rounding to `topk.k_min`/cap above.
+  #   * geometry = 3D tile (4,4,4) = 64 tokens, query block == key block
+  #     (video_sparse_attn.py:28, :313; enforced ops.py:96-106). At 480x832x81
+  #     that is 624 tiles. NOTE: block_geometry.default (128x64) is NOT
+  #     expressible in VSA -- see EXPERIMENT_SPEC.md 12.
+  # This coincides with the diagnostic scorer up to the positive constant
+  # 1/sqrt(d) and the pad-aware divisor, so top-k selections agree. Importable
+  # directly: fused_block_mean / fused_topk_mask from
+  # fastvideo_kernel.triton_kernels.fused_compress_topk (ops.py:9).
+  also_run_backend_native_scorer: false
+
+# ---------------------------------------------------------------------------
+# Precision axes — independent by design (SKILL 3.2)
+# ---------------------------------------------------------------------------
+router_precisions:
+  - bf16        # also the reference; bf16-vs-bf16 is the required null control
+  - fp8_e4m3
+  - nvfp4
+
+attention_precisions:
+  - bf16
+  - fp8
+  - nvfp4
+
+reference_precision: bf16
+
+quantization:
+  # Prefer the framework's real quantizer whenever it can be applied to Q/K at
+  # the pre-backend capture point; fall back to the simulated quantizer for
+  # routing diagnostics only, and label those rows simulated.
+  prefer_native_quantizer: true
+  allow_simulated_fallback: true
+  # Resolved native quantizer (EXPERIMENT_SPEC.md 4.4):
+  #   fastvideo.attention.backends.flash_attn._nvfp4_quantize_for_fa4
+  #     flash_attn.py:138-141 (custom op at :114-120, real body at :58-104)
+  #   Takes ANY (batch, seqlen, nheads, headdim) fp16/bf16 tensor -- not tied to a
+  #   linear layer; flash_attn.py:340-341 calls it on post-RoPE query/key, and
+  #   attn_qat_infer.py:146-162 memoizes the same pair the framework itself uses.
+  #   Returns (fp4 packed torch.float4_e2m1fn_x2, uint8 sf in FA4 MMA layout);
+  #   caller slices [:, :orig_seqlen] before FA4 (flash_attn.py:346-347).
+  # CAVEAT: there is NO dequantizer for that packed/swizzled layout anywhere in
+  # fastvideo/, and the FA4 kernel is fused, so post-quant Q/K VALUES cannot be
+  # read back. A router arm consuming dequantized Q/K is therefore
+  # native_or_simulated = "simulated"; use the repo's own Triton round-trip
+  # reference (fastvideo-kernel/python/fastvideo_kernel/triton_kernels/nvfp4_utils.py:12-133
+  # quantize + :136-239 dequantize, MXFP_BLOCK_SIZE = 16 at :9) with the optional
+  # global scale (:44-49) DISABLED so it matches the FA4 encoding.
+  # Do NOT use fastvideo/layers/fp4linear.py:53-79 -- linear-layer-only.
+  native_quantizer_entrypoint: fastvideo.attention.backends.flash_attn:_nvfp4_quantize_for_fa4
+
+  nvfp4:
+    element_format: e2m1         # 1 sign, 2 exp, 1 mantissa; max magnitude 6.0
+    element_max: 6.0
+    # Resolved from the FA4 path: sf_vec_size = 16 (flash_attn.py:70), taken over
+    # the flattened (nheads*headdim) row (flash_attn.py:78-82). head_dim 128 is a
+    # multiple of 16, so no group straddles a head boundary and this is identical
+    # to per-16 along the head-dim axis (8 groups per head, flash_attn.py:93).
+    microscale_block: 16         # per-16-element scale along the head-dim axis
+    microscale_axis: -1
+    # Confirmed e4m3, NOT e8m0: attn_qat_infer.py:57-62 and the receipt
+    # "qk_mode=nvfp4(per-16-e4m3-sf) pv_mode=bf16" at attn_qat_infer.py:123-140.
+    scale_dtype: fp8_e4m3        # e8m0 if the real implementation uses it
+    scale_max: 448.0
+    # Confirmed absent: the FA4 quantizer hard-wires the global scale to 1.0
+    # (torch.ones(1), flash_attn.py:81-82), so there is no per-tensor amax
+    # rescale. Keep false; see EXPERIMENT_SPEC.md 4.2 and 12.
+    global_fp32_scale: false
+    rounding: rne                # round-to-nearest-even at both encode steps
+    clamp: saturate              # never wrap, never emit inf/NaN
+    zero_group_scale: min_positive
+    # Native NVFP4 covers Q/K only -- V and PV stay BF16 (flash_attn.py:352,
+    # flash_attn_cute.py:377; artifacts/sparsefp4/PHASE0.md 6.1). Label
+    # "NVFP4 Q/K + BF16 PV", never "fully FP4 attention".
+
+  fp8_e4m3:
+    element_max: 448.0
+    scale_granularity: per_head  # per_tensor | per_head | per_token
+    rounding: rne
+    clamp: saturate
+
+# ---------------------------------------------------------------------------
+# Staged execution ladder (SKILL "Default experiment matrix").
+# Advance to stage N+1 only after stage N is written AND analyzed.
+# ---------------------------------------------------------------------------
+phases:
+  - stage: 1
+    name: mask_stability_single_prompt
+    purpose: Does routing instability exist at all, and how is it structured (H1/H2).
+    num_prompts: 1
+    num_seeds: 1
+    layers: all
+    heads: all
+    timesteps: all
+    sparsities: [0.80, 0.90]
+    block_geometry: default
+    router_precisions: [bf16, fp8_e4m3, nvfp4]
+    attention_precisions: []        # no attention compute in mask-stability
+    require_null_control: true      # bf16-vs-bf16 must yield jaccard == 1.0
+
+  - stage: 2
+    name: mask_stability_sparsity_sweep
+    purpose: Is the structure stable across content and across sparsity.
+    num_prompts: 10
+    num_seeds: 1
+    layers: all
+    heads: all
+    timesteps: all
+    sparsities: [0.50, 0.70, 0.80, 0.90, 0.95]
+    block_geometry: default
+    router_precisions: [bf16, fp8_e4m3, nvfp4]
+    attention_precisions: []
+    ablations: block_geometry       # run 64x64 and 128x128 on a subset
+
+  - stage: 3
+    name: error_decomposition
+    purpose: Separate quantization / sparsification / wrong-mask error; test H3.
+    configurations: [A, B, C, D, E, F]
+    # Chosen from stage 1/2 results: an (layer, timestep) cell is "affected" if
+    # its median bf16<->nvfp4 jaccard over heads is < 0.90.
+    regions:
+      affected_min_count: 3
+      unaffected_min_count: 3
+      affected_jaccard_threshold: 0.90
+    num_prompts: 10
+    num_seeds: 1
+    sparsities: [0.80, 0.90]
+    block_geometry: default
+    router_precisions: [bf16, fp8_e4m3, nvfp4]
+    attention_precisions: [bf16, nvfp4]
+    metrics: [rel_l2, cosine, max_abs, post_residual_rel_l2]
+    post_residual_optional: true
+
+  - stage: 4
+    name: end_to_end_video
+    purpose: Does the numerical result show up in generated video.
+    num_prompts: 10
+    num_seeds: 1
+    confirm_seeds: 3                # optional confirmation on a subset
+    configs: end_to_end             # see `end_to_end` below
+    quality_metrics: [vbench_temporal_dimensions, vbench_aggregate]
+    keep_samples: true
+
+  - stage: 5
+    name: native_sparse_nvfp4_kernel
+    purpose: H4 stretch goal. Must not block the paper.
+    enabled: false
+    correctness_gate_before_benchmark: true
+
+# ---------------------------------------------------------------------------
+# End-to-end configurations (SKILL 3.3). `selected` sparsity is resolved from
+# stage 1/2 (default 0.90 unless the data says otherwise) and must be identical
+# across every SPARSE-* row.
+# ---------------------------------------------------------------------------
+end_to_end:
+  selected_sparsity: 0.90
+  configs:
+    - id: DENSE-BF16
+      sparsity: null
+      attention_precision: bf16
+      router_precision: null
+    - id: DENSE-FP4
+      sparsity: null
+      attention_precision: nvfp4
+      router_precision: null
+    - id: SPARSE-BF16
+      sparsity: selected
+      attention_precision: bf16
+      router_precision: bf16
+    - id: SPARSE-FP4-NAIVE
+      sparsity: selected
+      attention_precision: nvfp4
+      router_precision: nvfp4
+    - id: SPARSE-FP4-ROUTE8
+      sparsity: selected
+      attention_precision: nvfp4
+      router_precision: fp8_e4m3
+    - id: SPARSE-FP4-ROUTE16
+      sparsity: selected
+      attention_precision: nvfp4
+      router_precision: bf16
+
+# ---------------------------------------------------------------------------
+# Prompts and seeds
+# ---------------------------------------------------------------------------
+prompt_set:
+  # 10-prompt DEVELOPMENT set. Not a benchmark set; no benchmark-wide claims.
+  development: .agents/skills/sparsefp4-video-attention/assets/prompts.txt
+  # 50-100 prompt VBench-compatible paper-scale set, only if results justify it.
+  paper_scale: null
+
+seeds:
+  primary: 1234                    # single seed for the activation study
+  confirmation: [1234, 5678, 9012] # optional 3-seed robustness subset
+
+# ---------------------------------------------------------------------------
+# Artifacts
+# ---------------------------------------------------------------------------
+artifact_root: artifacts/sparsefp4
+raw_format: jsonl                  # append-only, crash-tolerant
+run_id_template: "{utc_timestamp}-{git_short_sha}-{phase_tag}"
+never_overwrite_runs: true
+
+storage_caps:
+  raw_bytes_total: 5368709120      # 5 GiB across artifacts/sparsefp4/raw
+  debug_tensor_bytes_total: 2147483648  # 2 GiB, single debug case only
+  allow_tensor_dumps: false        # flip to true only for that one debug case
+  dump_selected_block_indices: false
+
+# ---------------------------------------------------------------------------
+# Benchmark protocol (Phase 5). Applies to latency measurement only.
+# ---------------------------------------------------------------------------
+benchmark:
+  warmup_iters: 3
+  measured_reps: 10
+  cuda_synchronize: true
+  report: [median, iqr]
+  torch_compile: false
+  cuda_graphs: false
+  fixed_shapes: true
+  measure: [attention_kernel_latency, dit_step_latency, e2e_latency, peak_memory]
+  exclude_first_run_compile: true
+
+  # Scientific integrity guard: simulated (fake-quantized) arms are numerical
+  # only and must never appear in a native latency table.
+  native_only_latency_tables: true
+
+# ---------------------------------------------------------------------------
+# Determinism / reproducibility
+# ---------------------------------------------------------------------------
+determinism:
+  seed_python: true
+  seed_numpy: true
+  seed_torch: true
+  torch_deterministic_algorithms: true
+  allow_tf32: false
+  cudnn_benchmark: false
+  record_backend_flags: true
+  # If determinism must be disabled for a kernel, repeat one cell this many
+  # times and report the spread instead of assuming it is negligible.
+  nondeterminism_probe_reps: 3
+
+# ---------------------------------------------------------------------------
+# Reporting thresholds (pre-registered; see EXPERIMENT_SPEC.md 5.5, 8.2, 10.3)
+# ---------------------------------------------------------------------------
+analysis:
+  affected_jaccard_threshold: 0.90
+  h3_relative_reduction_threshold: 0.20
+  min_n_per_cell: 20
+  min_n_per_aggregate: 1000
+  report_dispersion: [median, iqr, p10, p90]
+  figure_sparsities: [0.80, 0.90]
+  emit_figure_value_csv: true
+  fail_on_missing_schema_fields: true
+  count_and_report_skipped_records: true

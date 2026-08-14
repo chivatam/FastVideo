@@ -1,0 +1,61 @@
+# SparseFP4 Video Attention — 10-prompt DEVELOPMENT set (text-to-video).
+#
+# This is the DEVELOPMENT set used for Phase 1/2 activation and error studies
+# and for the Phase 5 smoke-scale end-to-end runs. It is NOT a benchmark set.
+# Per SKILL.md ("Do not claim benchmark-wide superiority from the 10-prompt
+# development set") and integrity rule 10, any result computed on these prompts
+# must be reported as a development-set result, and the report must disclose that
+# the set was used while developing the method.
+#
+# Format: one prompt per line. Lines starting with '#' and blank lines are
+# comments and are skipped. prompt_id is assigned by position over the
+# non-comment lines: p01 .. p10, in the order below. Do not reorder, insert, or
+# delete lines once a run has been recorded — prompt_id is used as a join key in
+# artifacts/sparsefp4/raw/<run_id>/*.jsonl.
+#
+# Provenance: every prompt is reused verbatim from an existing FastVideo asset so
+# that these runs stay comparable to the repo's own examples/tests.
+#   p01, p05  examples/inference/basic/basic.py
+#   p02       fastvideo/tests/ssim/test_wan_t2v_similarity.py (WAN_T2V_TEST_PROMPTS)
+#   p03       examples/inference/basic/basic_dmd.py
+#   p04       examples/inference/basic/basic_turbodiffusion_i2v.py
+#             (also examples/inference/optimizations/text_encoder_quant_example.py)
+#   p06       examples/inference/basic/basic_gamecraft.py
+#   p07, p09, p10  assets/prompts/mixkit_i2v.jsonl (prompt field only; the
+#             companion image_path is ignored — these are used as T2V prompts)
+#   p08       examples/distill/Wan2.1-T2V/Wan-Syn-Data-480P/validation_64.json
+#
+# Content coverage — deliberately spread so that Phase 1/2 routing sensitivity is
+# not confounded with a single content type (an all-static or all-aerial set
+# would make block-sparse routing look artificially stable or unstable):
+#   p01  motion-heavy subject + steady tracking camera
+#   p02  motion-heavy human action, busy background, mid-shot
+#   p03  multi-object + heavy texture/reflection detail, night, rain
+#   p04  near-static close-up subject, shallow depth of field
+#   p05  near-static subject, dense repeated texture (petals)
+#   p06  static scene, rigid geometric structure
+#   p07  camera motion (aerial drone push), static content
+#   p08  static scene, low-motion atmospheric texture (mist, haze)
+#   p09  camera motion (aerial tour) + small independent movers (birds)
+#   p10  multi-object / multi-agent scene with background motion
+#
+# Paper-scale upgrade path: if the results justify it, replace this set with a
+# 50-100 prompt VBench-compatible set (per SKILL.md Phase 5), keeping the same
+# line-per-prompt format and the same pN id scheme so the harness and
+# scripts/analyze_masks.py need no changes; point
+# `prompt_set.paper_scale` in assets/experiment_config.yaml at that file and keep
+# this set as the declared development set. Choose VBench prompts from the
+# dimensions relevant to temporal generation (subject/background consistency,
+# motion smoothness, dynamic degree, aesthetic and imaging quality) so per-prompt
+# scores are directly comparable to published VBench numbers; do not hand-pick
+# prompts after seeing sparse-attention results.
+A majestic lion strides across the golden savanna, its powerful frame glistening under the warm afternoon sun. The tall grass ripples gently in the breeze, enhancing the lion's commanding presence. The tone is vibrant, embodying the raw energy of the wild. Low angle, steady tracking shot, cinematic.
+Will Smith casually eats noodles, his relaxed demeanor contrasting with the energetic background of a bustling street food market. The scene captures a mix of humor and authenticity. Mid-shot framing, vibrant lighting.
+A neon-lit alley in futuristic Tokyo during a heavy rainstorm at night. The puddles reflect glowing signs in kanji, advertising ramen, karaoke, and VR arcades. A woman in a translucent raincoat walks briskly with an LED umbrella. Steam rises from a street food cart, and a cat darts across the screen. Raindrops are visible on the camera lens, creating a cinematic bokeh effect.
+Summer beach vacation style, a white cat wearing sunglasses sits on a surfboard. The fluffy-furred feline gazes directly at the camera with a relaxed expression. Blurred beach scenery forms the background featuring crystal-clear waters, distant green hills, and a blue sky dotted with white clouds. The cat assumes a naturally relaxed posture, as if savoring the sea breeze and warm sunlight. A close-up shot highlights the feline's intricate details and the refreshing atmosphere of the seaside.
+A curious raccoon peers through a vibrant field of yellow sunflowers, its eyes wide with interest. The playful yet serene atmosphere is complemented by soft natural light filtering through the petals. Mid-shot, warm and cheerful tones.
+A majestic ancient temple stands under a clear blue sky, its grandeur highlighted by towering Doric columns and intricate architectural details.
+Aerial view of a rocky mountain in the forest at a sunny day drone flight footage
+A serene landscape video captures a breathtaking panoramic view of a vast valley covered in a gentle mist. The undulating hills are lush with dense greenery, their rich foliage creating a vibrant border on the left side of the frame. The mist weaves through the landscape like a soft, ethereal blanket, lending a dream-like quality to the scene. In the distance, several mountain peaks emerge, their dark outlines contrasting against the pale blue sky. A few faint, wispy clouds drift lazily across the horizon, complementing the tranquil atmosphere. The sunlight filters through the haze, casting a warm glow and highlighting different textures of the flora. The overall mood is calm and contemplative, inviting the viewer to pause and appreciate nature's untouched beauty. The composition emphasizes depth and expansiveness, drawing attention to the harmony between earth and sky. This captivating scene embodies tranquility, offering a perfect backdrop for meditation or relaxation.
+Aerial tour in a meadow surrounded by hills on the horizon, while some birds fly low over a lake.
+A man and a woman playing in a field with grass, during a bright afternoon, while cars pass by in the distance.
