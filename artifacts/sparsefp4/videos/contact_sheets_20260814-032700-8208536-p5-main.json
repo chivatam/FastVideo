@@ -1,0 +1,177 @@
+{
+  "run_id": "20260814-032700-8208536-p5-main",
+  "seed": 1234,
+  "diff_gain": 6.0,
+  "scale": 0.42,
+  "note": "Rows are arms at identical prompt/seed/frame index. SPARSE-FP4-* compute is simulated NVFP4 Q/K + BF16 PV; no latency claim attaches to those rows.",
+  "sheets": [
+    {
+      "prompt_id": "p01",
+      "kind": "frames",
+      "path": "artifacts/sparsefp4/videos/contact_sheet_p01_s1234_frames.png",
+      "arms": [
+        "DENSE-BF16",
+        "DENSE-FP4",
+        "SPARSE-BF16",
+        "SPARSE-FP4-NAIVE",
+        "SPARSE-FP4-ROUTE8",
+        "SPARSE-FP4-ROUTE16"
+      ],
+      "frames": [
+        0,
+        20,
+        40,
+        60,
+        80
+      ],
+      "bytes": 3487121
+    },
+    {
+      "prompt_id": "p01",
+      "kind": "absdiff",
+      "path": "artifacts/sparsefp4/videos/contact_sheet_p01_s1234_absdiff.png",
+      "arms": [
+        "DENSE-BF16",
+        "DENSE-FP4",
+        "SPARSE-BF16",
+        "SPARSE-FP4-NAIVE",
+        "SPARSE-FP4-ROUTE8",
+        "SPARSE-FP4-ROUTE16"
+      ],
+      "frames": [
+        0,
+        20,
+        40,
+        60,
+        80
+      ],
+      "bytes": 4393032
+    },
+    {
+      "prompt_id": "p03",
+      "kind": "frames",
+      "path": "artifacts/sparsefp4/videos/contact_sheet_p03_s1234_frames.png",
+      "arms": [
+        "DENSE-BF16",
+        "DENSE-FP4",
+        "SPARSE-BF16",
+        "SPARSE-FP4-NAIVE",
+        "SPARSE-FP4-ROUTE8",
+        "SPARSE-FP4-ROUTE16"
+      ],
+      "frames": [
+        0,
+        20,
+        40,
+        60,
+        80
+      ],
+      "bytes": 3797817
+    },
+    {
+      "prompt_id": "p03",
+      "kind": "absdiff",
+      "path": "artifacts/sparsefp4/videos/contact_sheet_p03_s1234_absdiff.png",
+      "arms": [
+        "DENSE-BF16",
+        "DENSE-FP4",
+        "SPARSE-BF16",
+        "SPARSE-FP4-NAIVE",
+        "SPARSE-FP4-ROUTE8",
+        "SPARSE-FP4-ROUTE16"
+      ],
+      "frames": [
+        0,
+        20,
+        40,
+        60,
+        80
+      ],
+      "bytes": 4137105
+    },
+    {
+      "prompt_id": "p05",
+      "kind": "frames",
+      "path": "artifacts/sparsefp4/videos/contact_sheet_p05_s1234_frames.png",
+      "arms": [
+        "DENSE-BF16",
+        "DENSE-FP4",
+        "SPARSE-BF16",
+        "SPARSE-FP4-NAIVE",
+        "SPARSE-FP4-ROUTE8",
+        "SPARSE-FP4-ROUTE16"
+      ],
+      "frames": [
+        0,
+        20,
+        40,
+        60,
+        80
+      ],
+      "bytes": 3646089
+    },
+    {
+      "prompt_id": "p05",
+      "kind": "absdiff",
+      "path": "artifacts/sparsefp4/videos/contact_sheet_p05_s1234_absdiff.png",
+      "arms": [
+        "DENSE-BF16",
+        "DENSE-FP4",
+        "SPARSE-BF16",
+        "SPARSE-FP4-NAIVE",
+        "SPARSE-FP4-ROUTE8",
+        "SPARSE-FP4-ROUTE16"
+      ],
+      "frames": [
+        0,
+        20,
+        40,
+        60,
+        80
+      ],
+      "bytes": 4302537
+    },
+    {
+      "prompt_id": "p07",
+      "kind": "frames",
+      "path": "artifacts/sparsefp4/videos/contact_sheet_p07_s1234_frames.png",
+      "arms": [
+        "DENSE-BF16",
+        "DENSE-FP4",
+        "SPARSE-BF16",
+        "SPARSE-FP4-NAIVE",
+        "SPARSE-FP4-ROUTE8",
+        "SPARSE-FP4-ROUTE16"
+      ],
+      "frames": [
+        0,
+        20,
+        40,
+        60,
+        80
+      ],
+      "bytes": 4849157
+    },
+    {
+      "prompt_id": "p07",
+      "kind": "absdiff",
+      "path": "artifacts/sparsefp4/videos/contact_sheet_p07_s1234_absdiff.png",
+      "arms": [
+        "DENSE-BF16",
+        "DENSE-FP4",
+        "SPARSE-BF16",
+        "SPARSE-FP4-NAIVE",
+        "SPARSE-FP4-ROUTE8",
+        "SPARSE-FP4-ROUTE16"
+      ],
+      "frames": [
+        0,
+        20,
+        40,
+        60,
+        80
+      ],
+      "bytes": 4958094
+    }
+  ]
+}

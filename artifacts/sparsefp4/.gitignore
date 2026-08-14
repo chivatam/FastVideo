@@ -1,0 +1,10 @@
+# SparseFP4 study artifacts: keep the findings and the harness, exclude the bulk.
+#
+# Raw records (~215 MB gzipped JSONL), aggregate tables (~41 MB CSV) and run logs
+# (~5.5 MB) stay local. They are regenerable from the harness in configs/ plus the
+# commands recorded in REPORT.md and the PHASE*.md docs.
+# Figures (*.png) and videos (*.mp4) are already excluded by the repo-root .gitignore.
+raw/
+tables/
+logs/
+env/
