@@ -1,5 +1,10 @@
 # PAPER_UPDATE_V2 — framing after the re-audit
 
+> **Superseded by `PAPER_UPDATE_V3.md`.** T2 must cite
+> `tables/c8_performance_v2.md` (unified allocator config), not
+> `tables/c8_performance.md` (contains the pre-allocator-fix P4 720p
+> 250.9 s row; historical/root-cause evidence only).
+
 Supersedes PAPER_UPDATE.md. Direction B per `RESULTS_DECISION_V2.md`.
 
 ## Title direction

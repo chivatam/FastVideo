@@ -1,5 +1,58 @@
 # SparseFP4 Native Composition — STATUS
 
+_Last updated: 2026-08-17 15:10 ET — V3 (paper-validation pass) COMPLETE.
+V2 notes below are historical; V3 receipts supersede where they differ._
+
+## V3 pass (this session) — all deliverables landed
+
+1. **Canonical performance V2** — `tables/c8_performance_v2.md`: all 5 arms
+   x both resolutions rerun in fresh processes under one allocator config
+   (`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`); receipts
+   `raw/performance/perf_v2/`, logs `logs/perf_v2/`. P4 720p = 112.6 s
+   (1.33x); P4G = 106.2 s (1.40x). The stale `tables/c8_performance.md`
+   (P4 720p 250.9 s pre-fix) is historical/root-cause evidence only.
+2. **Unified statistics** (`configs/paired_stats_v2.py`, 10k prompt-level
+   bootstrap, Holm across 7 dims; JSONs in `raw/statistics/`):
+   - P1-P0 (`tables/p1_vs_p0_quality_bootstrap.md`): imaging -0.144,
+     dynamic -0.306, aesthetic -0.055 (sig); background +0.005 (sig).
+   - P4-P4G (`tables/p4_vs_p4g_quality_bootstrap.md`): imaging -0.101,
+     dynamic -0.250 (sig); temporal +0.009, motion +0.016 (sig).
+   - Interaction (P4-P4G)-(P1-P0)
+     (`tables/nvfp4_sparsity_interaction.md`): imaging +0.043 and
+     aesthetic +0.049 POSITIVE (penalty smaller under sparsity), subject
+     -0.014 negative, dynamic no detectable interaction at this n.
+   - P4G-P2 (`tables/p4g_vs_p2_quality_bootstrap.md`): NOT
+     indistinguishable — aesthetic -0.030, motion -0.018, background
+     -0.008, dynamic +0.139 (all sig). "Comparable with trade-offs".
+3. **Literature audit** — `SOTA_RECOVERY_LIT_REVIEW.md` (12 papers,
+   primary-source-only; priority-claim verdict: "native block-sparse NVFP4
+   attention" unclaimed in the verified record, guard wording required).
+4. **DQ-VSA recovery design + smoke** — `TRAINING_RECOVERY_PLAN.md`;
+   new training backend `SPARSEFP4_QAT_VSA256_ATTN`
+   (`fastvideo/attention/backends/sparsefp4_qat_vsa256.py`) and Stage-2
+   velocity-distillation pipeline
+   (`fastvideo/training/wan_dqvsa_distillation_pipeline.py`). 20-step smoke
+   PASSED (`logs/dqvsa_smoke.log`): teacher(BF16 fine)/student(fake-quant
+   NVFP4 fine) asymmetry verified (30/30 impls), gradients finite 20/20,
+   checkpoint saved, trained weights served through the native P4 path
+   (`DQVSA_SERVE_RC=0`). No large training run started.
+5. **Claim cleanup** — `REPORT_V3.md`, `PAPER_UPDATE_V3.md` (binding
+   wording); superseded-notes added to REPORT_V2/PAPER_UPDATE_V2.
+
+## Verdict (V3)
+
+Direction B refined: native SparseFP4 correct and kernel-positive; E2E it
+trails its BF16 twin for fully-attributed integration reasons; NVFP4 QK
+carries a real Holm-significant quality cost (imaging, dynamism) present
+dense and sparse alike, NOT amplified by sparsity on those dimensions.
+Positive systems result: geometry-aligned sparse attention (P4G 1.40x,
+comparable quality with small significant trade-offs vs deployed VSA).
+Recovery path (DQ-VSA) designed, literature-anchored, smoke-tested.
+
+---
+
+# Historical (V2) status below
+
 _Last updated: 2026-08-17 09:25 ET — STUDY COMPLETE (V2). Re-audit (V2) in progress (older incremental notes
 superseded; history in git)._
 

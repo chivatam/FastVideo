@@ -159,6 +159,7 @@ def main() -> int:
         "height": sp.height, "width": sp.width, "num_frames": sp.num_frames,
         "guidance_scale": sp.guidance_scale, "fps": sp.fps,
         "model_id": MODEL_ID,
+        "alloc_conf": os.environ.get("PYTORCH_CUDA_ALLOC_CONF"),
         "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"],
                                               cwd=REPO_ROOT, text=True).strip(),
         "load_s": round(load_s, 2), "first_gen_s": round(gen_s, 2),

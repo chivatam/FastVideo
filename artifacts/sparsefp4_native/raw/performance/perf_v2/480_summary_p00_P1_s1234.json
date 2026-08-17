@@ -1,0 +1,53 @@
+{
+  "run_id": "perf480-v2",
+  "arm": "P1",
+  "tag": "p00_P1_s1234",
+  "prompt_index": 0,
+  "prompt": "A majestic lion strides across the golden savanna, its powerful frame glistening under the warm afternoon sun. The tall grass ripples gently in the breeze, enhancing the lion's commanding presence. The tone is vibrant, embodying the raw energy of the wild. Low angle, steady tracking shot, cinematic.",
+  "backend": "FLASH_ATTN",
+  "fine": null,
+  "nvfp4_env": "1",
+  "sparsity": null,
+  "seed": 1234,
+  "steps": 50,
+  "height": 480,
+  "width": 832,
+  "num_frames": 81,
+  "guidance_scale": 3.0,
+  "fps": 16,
+  "model_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+  "alloc_conf": "expandable_segments:True",
+  "git_commit": "16d7e0a709fdb83767e14fc94a9b54fe11fce1c7",
+  "load_s": 40.0,
+  "first_gen_s": 50.38,
+  "first_dit_s": 47.26078874299128,
+  "first_peak_memory_mb": 8380.77783203125,
+  "perf_reps": [
+    {
+      "rep": 0,
+      "e2e_s": 44.85148062799999,
+      "dit_s": 42.41481540098903,
+      "peak_memory_mb": 8887.54638671875
+    },
+    {
+      "rep": 1,
+      "e2e_s": 44.88200202299049,
+      "dit_s": 42.44994375699025,
+      "peak_memory_mb": 8887.54638671875
+    },
+    {
+      "rep": 2,
+      "e2e_s": 44.847842148999916,
+      "dit_s": 42.425525993996416,
+      "peak_memory_mb": 8887.54638671875
+    }
+  ],
+  "frames_shape": [
+    1,
+    3,
+    81,
+    480,
+    832
+  ],
+  "pixel_mean": 0.3924124836921692
+}

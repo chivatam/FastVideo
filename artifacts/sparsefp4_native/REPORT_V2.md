@@ -1,5 +1,13 @@
 # REPORT_V2 — SparseFP4 Native Composition (post re-audit)
 
+> **Superseded by `REPORT_V3.md`.** In particular, §7's performance table
+> (`tables/c8_performance.md`) mixed pre- and post-allocator-fix runs; the
+> canonical performance table is now `tables/c8_performance_v2.md` (all
+> arms under `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`), and §6's
+> "P4G matches deployed VSA / quality-neutral" and "no-amplification"
+> wording is corrected by the Holm-corrected four-contrast statistics in
+> `tables/p*_bootstrap.md` and `tables/nvfp4_sparsity_interaction.md`.
+
 All numbers trace to receipts under `raw/`, `tables/`, `logs/`; environment
 in `env/`. Model Wan2.1-T2V-1.3B, VSA sparsity 0.90, seed 1234, 50 steps,
 8x B200 (sm_100), CUDA 13.0. Supersedes REPORT.md where they differ.
