@@ -23,20 +23,49 @@ mkdir -p "$LOGDIR"
 CORPUS=/mnt/nvme/scratch/sparsefp4_native/t_corpus
 PROC=/mnt/nvme/scratch/sparsefp4_native/t_corpus_processed_t2v
 
-# ---- preprocess (skip if done) ----
+# ---- preprocess (skip if done): v1_preprocess only supports 1 GPU, so
+# split the manifest into 8 shards, preprocess in parallel, and combine
+# (the parquet dataset walks the tree recursively).
 if [ ! -d "$PROC/combined_parquet_dataset" ]; then
-  torchrun --nproc_per_node=8 --master_port 29660 \
-    fastvideo/pipelines/preprocess/v1_preprocess.py \
-    --model_path "Wan-AI/Wan2.1-T2V-1.3B-Diffusers" \
-    --data_merge_path "$CORPUS/merge.txt" \
-    --preprocess_video_batch_size 8 \
-    --seed 42 --max_height 480 --max_width 832 --num_frames 77 \
-    --dataloader_num_workers 0 \
-    --output_dir "$PROC/" \
-    --train_fps 16 --samples_per_file 8 --flush_frequency 8 \
-    --video_length_tolerance_range 5 --preprocess_task "t2v" \
-    > "$LOGDIR/preprocess.log" 2>&1
-  echo "PREPROCESS_RC=$?"
+  "$FV_PYTHON" - <<'PYEOF'
+import json
+from pathlib import Path
+corpus = Path("/mnt/nvme/scratch/sparsefp4_native/t_corpus")
+entries = json.loads((corpus / "videos2caption.json").read_text())
+n = 8
+for s in range(n):
+    part = entries[s::n]
+    (corpus / f"videos2caption.shard{s}.json").write_text(json.dumps(part, indent=1))
+    (corpus / f"merge.shard{s}.txt").write_text(
+        f"{corpus / 'videos'},{corpus / f'videos2caption.shard{s}.json'}\n")
+    print(f"shard {s}: {len(part)} clips")
+PYEOF
+  for S in 0 1 2 3 4 5 6 7; do
+    ( CUDA_VISIBLE_DEVICES=$S torchrun --nproc_per_node=1 --master_port $((29670 + S)) \
+        fastvideo/pipelines/preprocess/v1_preprocess.py \
+        --model_path "Wan-AI/Wan2.1-T2V-1.3B-Diffusers" \
+        --data_merge_path "$CORPUS/merge.shard$S.txt" \
+        --preprocess_video_batch_size 1 \
+        --seed 42 --max_height 480 --max_width 832 --num_frames 77 \
+        --dataloader_num_workers 0 \
+        --output_dir "$PROC/shard$S/" \
+        --train_fps 16 --samples_per_file 8 --flush_frequency 8 \
+        --video_length_tolerance_range 5 --preprocess_task "t2v" \
+        > "$LOGDIR/preprocess.shard$S.log" 2>&1
+      echo "preprocess shard $S rc=$?" ) &
+  done
+  wait
+  mkdir -p "$PROC/combined_parquet_dataset"
+  for S in 0 1 2 3 4 5 6 7; do
+    SRC="$PROC/shard$S/combined_parquet_dataset/worker_0"
+    if [ -d "$SRC" ]; then
+      for F in "$SRC"/*.parquet; do
+        # hard links (same fs): os.walk does not follow dir symlinks
+        ln -f "$F" "$PROC/combined_parquet_dataset/shard${S}_$(basename "$F")"
+      done
+    fi
+  done
+  echo "PREPROCESS_DONE"
 fi
 [ -d "$PROC/combined_parquet_dataset" ] || { echo "T_MATRIX_PREPROCESS_FAILED"; exit 1; }
 

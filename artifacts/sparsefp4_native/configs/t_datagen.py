@@ -90,14 +90,20 @@ def generate(shard: int, num_shards: int) -> None:
 
 
 def finalize() -> None:
+    """Build the manifest from job list x existing files (restart-safe;
+    the per-shard meta jsonls are progress logs only)."""
     entries, seen = [], set()
-    for f in sorted(CORPUS.glob("meta.shard*.jsonl")):
-        for line in open(f):
-            m = json.loads(line)
-            if m["path"] in seen or not (VIDEOS / m["path"]).is_file():
-                continue
-            seen.add(m["path"])
-            entries.append(m)
+    for i, seed, prompt in job_list():
+        name = f"v{i:04d}_s{seed}.mp4"
+        f = VIDEOS / name
+        if name in seen or not f.is_file():
+            continue
+        seen.add(name)
+        entries.append(dict(path=name,
+                            resolution=dict(width=WIDTH, height=HEIGHT),
+                            size=f.stat().st_size, fps=float(FPS),
+                            duration=FRAMES / FPS, num_frames=FRAMES,
+                            cap=[prompt]))
     (CORPUS / "videos2caption.json").write_text(json.dumps(entries, indent=1))
     (CORPUS / "merge.txt").write_text(f"{VIDEOS},{CORPUS / 'videos2caption.json'}\n")
     print(f"finalized {len(entries)} clips -> {CORPUS / 'videos2caption.json'}")

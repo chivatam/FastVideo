@@ -634,6 +634,12 @@ class TrainingPipeline(LoRAPipeline, ABC):
                                     self.noise_random_generator)
                 self.transformer.train()
                 self.sp_group.barrier()
+            elif (self.training_args.weight_only_checkpointing_steps > 0
+                  and step % self.training_args.weight_only_checkpointing_steps == 0):
+                with self.profiler_controller.region("profiler_region_training_save_checkpoint"):
+                    save_checkpoint(self.transformer, self.global_rank, self.training_args.output_dir, step)
+                self.transformer.train()
+                self.sp_group.barrier()
 
             if self.training_args.log_visualization and step % self.training_args.visualization_steps == 0:
                 self.visualize_intermediate_latents(training_batch, self.training_args, step)
