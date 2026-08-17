@@ -1,15 +1,17 @@
 # SparseFP4 Native Composition — STATUS
 
-_Last updated: 2026-08-17 09:12 ET. Re-audit (V2) in progress (older incremental notes
+_Last updated: 2026-08-17 09:25 ET — STUDY COMPLETE (V2). Re-audit (V2) in progress (older incremental notes
 superseded; history in git)._
 
-## Verdict (final, documented)
+## Verdict (V2, final)
 
-**POSITIVE — systems-qualified** (`RESULTS_DECISION.md`). Native NVFP4 QK x
-block-sparse attention composes on B200 with no numerical interaction
-penalty, deployed-baseline video quality, 9.3x attention-kernel speedup at
-10% retention, and 1.40x E2E at 720p (P4G). QAT recovery restores the
-sparsity-family quality loss to dense level at feasibility scale.
+**Direction B** (`RESULTS_DECISION_V2.md`): native SparseFP4 is real,
+numerically clean (exact-geometry receipts), and kernel-positive — but FP4's
+increment over sparse BF16 decays to ~1.04x at 90% sparsity, integration
+costs invert it E2E (111.7 vs 106.0 s @720p), and paper-scale paired
+evaluation shows NVFP4's own quality cost (imaging -0.101, dynamic -0.25).
+The positive systems result is geometry alignment: P4G (BF16) 1.40x vs
+dense at deployed-baseline quality.
 
 ## Live right now — RE-AUDIT (V2) in progress
 
