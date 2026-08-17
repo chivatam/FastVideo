@@ -44,26 +44,29 @@ def main():
     except FileNotFoundError:
         pass
 
-    # E2E arms
-    lines += ["", "## End-to-end (median of 5 steady-state reps; 50 steps, 480x832x81, "
-              "seed 1234, prompt p00; first gen excluded as warmup/JIT)", "",
-              "| System | E2E s | E2E speedup vs P0 | DiT s | Peak MB |",
-              "|---|---|---|---|---|"]
-    base = None
-    for arm in ("P0", "P1", "P2", "P2G", "P3", "P4G", "P4"):
-        p = PERF_DIR / f"summary_p00_{arm}_s1234.json"
-        if not p.is_file():
-            lines.append(f"| {ARM_LABELS[arm]} | (pending) | | | |")
-            continue
-        d = json.load(open(p))
-        reps = d["perf_reps"]
-        e2e = statistics.median(r["e2e_s"] for r in reps)
-        dit = statistics.median(r["dit_s"] for r in reps if r["dit_s"])
-        mb = max((r["peak_memory_mb"] or 0) for r in reps)
-        if arm == "P0":
-            base = e2e
-        sp = f"{base / e2e:.3f}x" if base else ""
-        lines.append(f"| {ARM_LABELS[arm]} | {e2e:.2f} | {sp} | {dit:.2f} | {mb:.0f} |")
+    # E2E arms — 480p and 720p
+    for res, perf_dir in (("480x832x81", PERF_DIR),
+                          ("720x1280x81", PERF_DIR.parent / "perf720-s090")):
+        lines += ["", f"## End-to-end at {res} (median steady-state reps; 50 steps, "
+                  "seed 1234, prompt p00; first gen excluded as warmup/JIT)", "",
+                  "| System | E2E s | E2E speedup vs P0 | DiT s | Peak MB |",
+                  "|---|---|---|---|---|"]
+        base = None
+        for arm in ("P0", "P1", "P2", "P2G", "P3", "P4G", "P4"):
+            p = perf_dir / f"summary_p00_{arm}_s1234.json"
+            if not p.is_file():
+                if res.startswith("480") or arm in ("P0", "P1", "P2", "P4G", "P4"):
+                    lines.append(f"| {ARM_LABELS[arm]} | (n/a) | | | |")
+                continue
+            d = json.load(open(p))
+            reps = d["perf_reps"]
+            e2e = statistics.median(r["e2e_s"] for r in reps)
+            dit = statistics.median(r["dit_s"] for r in reps if r["dit_s"])
+            mb = max((r["peak_memory_mb"] or 0) for r in reps)
+            if arm == "P0":
+                base = e2e
+            sp = f"{base / e2e:.3f}x" if base else ""
+            lines.append(f"| {ARM_LABELS[arm]} | {e2e:.2f} | {sp} | {dit:.2f} | {mb:.0f} |")
 
     lines += ["",
               "Notes: all arms share checkpoint/scheduler/steps/resolution/frames/",

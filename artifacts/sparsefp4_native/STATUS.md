@@ -1,15 +1,17 @@
 # SparseFP4 Native Composition — STATUS
 
-_Last updated: 2026-08-17 00:34 ET (updates every ~10 min while work is active)_
+_Last updated: 2026-08-17 01:02 ET (updates every ~10 min while work is active)_
 
 ## Live state
 
-- **QAT fine-tune (Track D):** launched after fixing 4 startup bugs
-  (torchvision read_video removal -> OpenCV decode; ragged tokenizer batch ->
-  bs=1 preprocess; meta-device LUT; fork `_flash_attn_bwd` missing
-  `deterministic` param — fork commit added, patch refreshed). 400 steps,
-  fake-quant NVFP4 fine branch @ sparsity 0.9, GPU3.
-- **P4 quality:** 10/10 P4 videos done, P4G 5/10 + 3 in flight.
+- **QAT fine-tune (Track D):** running (GPU3, 400 steps, fake-quant NVFP4
+  fine branch @ sparsity 0.9). Cleared 7 blockers: torchvision read_video
+  removal (OpenCV decode), ragged tokenizer batches (bs=1), meta-device LUT,
+  compile-opaque fake-quant op, fork bwd `deterministic` param, fork bwd
+  positional-slot skew (2 more fork commits), and fork FA4 backward kernels
+  failing MLIR verification under dsl-4.5 — resolved with an opt-in exact
+  SDPA-recompute backward (`FASTVIDEO_FA4_BWD_FALLBACK`).
+- **P4 quality:** P4 10/10 done; P4G 8/10, last 2 in flight; QAT training 152/400 steps (~29 min left).
 - **720p COMPLETE:** P0 148.8 | P1 135.8 | P2 131.7 | **P4G 106.1 s = 1.40x
   vs dense, 1.24x vs deployed VSA** | P4 250.9 s (localized: FP4 sparse
   kernel itself is 6.1 ms vs BF16 2.95 ms at 720p geometry — persistent-

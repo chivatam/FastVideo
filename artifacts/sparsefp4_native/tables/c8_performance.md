@@ -25,7 +25,7 @@
 
 Quantize overhead: 0.173 ms per call (Q+K), ~0.5 s per 50-step CFG video.
 
-## End-to-end (median of 5 steady-state reps; 50 steps, 480x832x81, seed 1234, prompt p00; first gen excluded as warmup/JIT)
+## End-to-end at 480x832x81 (median steady-state reps; 50 steps, seed 1234, prompt p00; first gen excluded as warmup/JIT)
 
 | System | E2E s | E2E speedup vs P0 | DiT s | Peak MB |
 |---|---|---|---|---|
@@ -34,8 +34,18 @@ Quantize overhead: 0.173 ms per call (Q+K), ~0.5 s per 50-step CFG video.
 | P2 deployed VSA@0.9 (Triton fine) | 49.98 | 0.939x | 47.44 | 8893 |
 | P2G VSA sel. + FA4 BF16 fine (24% kept) | 48.67 | 0.964x | 46.28 | 8893 |
 | P3 VSA sel. + native NVFP4 fine (24% kept) | 53.09 | 0.884x | 50.71 | 8893 |
-| P4G VSA256-FA4 BF16 fine (10% kept, exact) | (pending) | | | |
-| P4 VSA256-FA4 native NVFP4 fine (10% kept, exact) | (pending) | | | |
+| P4G VSA256-FA4 BF16 fine (10% kept, exact) | 45.62 | 1.029x | 43.22 | 8893 |
+| P4 VSA256-FA4 native NVFP4 fine (10% kept, exact) | 47.33 | 0.991x | 44.96 | 8893 |
+
+## End-to-end at 720x1280x81 (median steady-state reps; 50 steps, seed 1234, prompt p00; first gen excluded as warmup/JIT)
+
+| System | E2E s | E2E speedup vs P0 | DiT s | Peak MB |
+|---|---|---|---|---|
+| P0 dense BF16 (FA4) | 148.76 | 1.000x | 144.45 | 19026 |
+| P1 dense native NVFP4 | 135.78 | 1.096x | 131.47 | 19027 |
+| P2 deployed VSA@0.9 (Triton fine) | 131.72 | 1.129x | 127.47 | 19033 |
+| P4G VSA256-FA4 BF16 fine (10% kept, exact) | 106.09 | 1.402x | 101.76 | 19032 |
+| P4 VSA256-FA4 native NVFP4 fine (10% kept, exact) | 250.89 | 0.593x | 241.99 | 19032 |
 
 Notes: all arms share checkpoint/scheduler/steps/resolution/frames/
 guidance/seed/negative prompt; no torch.compile/CUDA graphs; one

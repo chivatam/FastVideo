@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     FASTVIDEO_TRACE_FUNCTION: int = 0
     FASTVIDEO_ATTENTION_BACKEND: str | None = None
     FASTVIDEO_FA4: bool = False
+    FASTVIDEO_FA4_BWD_FALLBACK: bool = False
     FASTVIDEO_WORKER_MULTIPROC_METHOD: str = "spawn"
     FASTVIDEO_TARGET_DEVICE: str = "cuda"
     MAX_JOBS: str | None = None
@@ -216,6 +217,12 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # (FA4's backward asserts sm90+ and its pack_gqa fails to JIT there).
     "FASTVIDEO_FA4":
     lambda: os.getenv("FASTVIDEO_FA4", "0") != "0",
+
+    # Compute the FA4 dense backward by SDPA recompute instead of the CuTe
+    # backward kernels (which fail MLIR verification in the fp4 fork's
+    # cutlass-dsl 4.5 build). Exact gradients; opt-in for QAT training.
+    "FASTVIDEO_FA4_BWD_FALLBACK":
+    lambda: os.getenv("FASTVIDEO_FA4_BWD_FALLBACK", "0") != "0",
 
     # Use dedicated multiprocess context for workers.
     "FASTVIDEO_WORKER_MULTIPROC_METHOD":

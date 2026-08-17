@@ -1,7 +1,7 @@
 From e650c04e7ece7e0a84ec911e1be3897ffa765657 Mon Sep 17 00:00:00 2001
 From: EC2 Default User <ec2-user@ip-172-31-7-30.us-east-2.compute.internal>
 Date: Mon, 17 Aug 2026 01:29:16 +0000
-Subject: [PATCH 1/3] fix: repair FP4 x block-sparse composition on SM100
+Subject: [PATCH 1/4] fix: repair FP4 x block-sparse composition on SM100
 
 - vendor era-matched (8fecc234) SM100 block-sparse helpers as
   block_sparse_utils_fp4.py and point flash_fwd_sm100_fp4.py at them;
@@ -517,7 +517,7 @@ index abc7b016..ff3669eb 100644
 From ffc2bce2cf126a505f43c18e8c487e5989ca9b12 Mon Sep 17 00:00:00 2001
 From: EC2 Default User <ec2-user@ip-172-31-7-30.us-east-2.compute.internal>
 Date: Mon, 17 Aug 2026 04:33:10 +0000
-Subject: [PATCH 2/3] fix: _flash_attn_bwd references undefined
+Subject: [PATCH 2/4] fix: _flash_attn_bwd references undefined
  'deterministic'; add the parameter (default False)
 
 Co-authored-by: Cursor <cursoragent@cursor.com>
@@ -544,7 +544,7 @@ index ff3669eb..36016dc9 100644
 From caf011246b872b21b75c2bd40a4bd7e326d2f73a Mon Sep 17 00:00:00 2001
 From: EC2 Default User <ec2-user@ip-172-31-7-30.us-east-2.compute.internal>
 Date: Mon, 17 Aug 2026 04:37:00 +0000
-Subject: [PATCH 3/3] fix: _flash_attn_bwd positional args vs kernel signatures
+Subject: [PATCH 3/4] fix: _flash_attn_bwd positional args vs kernel signatures
 
 The bwd call sites passed current_stream after softmax_scale and a
 nonexistent softcap slot; all three backward classes take
@@ -602,6 +602,41 @@ index 36016dc9..71ca01b0 100644
      )
  
      num_threads = 256 if compute_capability == 9 else 128
+-- 
+2.50.1
+
+
+From 4a379734bc532f942ab3fe0fd04e67babc052369 Mon Sep 17 00:00:00 2001
+From: EC2 Default User <ec2-user@ip-172-31-7-30.us-east-2.compute.internal>
+Date: Mon, 17 Aug 2026 04:39:56 +0000
+Subject: [PATCH 4/4] fix: bwd preprocess call sites missing the mdLSE slot
+ before stream
+
+Co-authored-by: Cursor <cursoragent@cursor.com>
+---
+ flash_attn/cute/interface.py | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/flash_attn/cute/interface.py b/flash_attn/cute/interface.py
+index 71ca01b0..1dcc9b94 100644
+--- a/flash_attn/cute/interface.py
++++ b/flash_attn/cute/interface.py
+@@ -1284,6 +1284,7 @@ def _flash_attn_bwd(
+             dq_accum_tensor,
+             cu_seqlens_q_tensor,
+             seqused_q_tensor,
++            None,  # mdLSE
+             current_stream,
+             options="--enable-tvm-ffi",
+         )
+@@ -1296,6 +1297,7 @@ def _flash_attn_bwd(
+         dq_accum,
+         cu_seqlens_q,
+         seqused_q,
++        None,  # mdLSE
+         current_stream,
+     )
+ 
 -- 
 2.50.1
 

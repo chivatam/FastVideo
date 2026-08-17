@@ -13,6 +13,7 @@ source artifacts/sparsefp4_followup/configs/env.sh
 export WANDB_MODE=offline
 export TOKENIZERS_PARALLELISM=false
 export FASTVIDEO_ATTENTION_BACKEND=SPARSEFP4_QAT_VSA_ATTN
+export FASTVIDEO_FA4_BWD_FALLBACK=1
 export CUDA_VISIBLE_DEVICES=$GPUS
 NUM_GPUS=$(echo "$GPUS" | tr ',' '\n' | wc -l)
 

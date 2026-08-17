@@ -5,6 +5,7 @@ from collections.abc import Callable
 
 import torch
 
+from fastvideo import envs
 from fastvideo.logger import init_logger
 from fastvideo.platforms import current_platform
 
@@ -145,7 +146,25 @@ def _flash_attn_cute_backward(
 ):
     del grad_lse
     q, k, v, out, lse = ctx.saved_tensors
-    # The hao-ai-lab FA4 fork's _flash_attn_bwd predates the upstream
+    # The hao-ai-lab fp4 fork's FA4 backward kernels fail MLIR verification
+    # under cutlass-dsl 4.5 (only the forwards were migrated). This opt-in
+    # fallback recomputes the backward with torch SDPA — exact gradients,
+    # used in QAT training where the only dense-FA4 consumer is
+    # cross-attention (512-token KV), so the recompute is negligible.
+    if envs.FASTVIDEO_FA4_BWD_FALLBACK:
+        del out, lse
+        with torch.enable_grad():
+            q_, k_, v_ = (t.detach().requires_grad_(True) for t in (q, k, v))
+            recomputed = torch.nn.functional.scaled_dot_product_attention(
+                q_.transpose(1, 2),
+                k_.transpose(1, 2),
+                v_.transpose(1, 2),
+                scale=ctx.softmax_scale,
+                is_causal=ctx.causal,
+            ).transpose(1, 2)
+            dq, dk, dv = torch.autograd.grad(recomputed, (q_, k_, v_), grad_out)
+        return dq, dk, dv, None, None, None
+    # The fork's _flash_attn_bwd also predates the upstream
     # window_size/deterministic kwargs; pass only what it accepts.
     bwd_params = inspect.signature(_flash_attn_bwd).parameters
     extra_kwargs = {}

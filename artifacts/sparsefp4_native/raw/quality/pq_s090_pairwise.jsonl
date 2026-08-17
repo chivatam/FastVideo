@@ -3,68 +3,68 @@
 {"prompt": "p00", "arm": "P2", "psnr_db": 13.334887504577637, "ssim": 0.28952208161354065, "lpips": 0.6728013753890991, "mean_abs_pixel": 0.15085168182849884, "max_abs_pixel": 1.0}
 {"prompt": "p00", "arm": "P2G", "psnr_db": 14.488333702087402, "ssim": 0.3182326853275299, "lpips": 0.6131334900856018, "mean_abs_pixel": 0.1372283399105072, "max_abs_pixel": 1.0}
 {"prompt": "p00", "arm": "P3", "psnr_db": 15.110393524169922, "ssim": 0.3422580659389496, "lpips": 0.5418210625648499, "mean_abs_pixel": 0.12643687427043915, "max_abs_pixel": 1.0}
-{"prompt": "p00", "arm": "P4G", "error": "missing frames"}
-{"prompt": "p00", "arm": "P4", "error": "missing frames"}
+{"prompt": "p00", "arm": "P4G", "psnr_db": 12.670814514160156, "ssim": 0.2471579760313034, "lpips": 0.730010449886322, "mean_abs_pixel": 0.17262837290763855, "max_abs_pixel": 1.0}
+{"prompt": "p00", "arm": "P4", "psnr_db": 14.152755737304688, "ssim": 0.3131157159805298, "lpips": 0.63186115026474, "mean_abs_pixel": 0.14976094663143158, "max_abs_pixel": 1.0}
 {"prompt": "p01", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
 {"prompt": "p01", "arm": "P1", "psnr_db": 18.001541137695312, "ssim": 0.6401597261428833, "lpips": 0.4811759889125824, "mean_abs_pixel": 0.08192691951990128, "max_abs_pixel": 0.927734375}
 {"prompt": "p01", "arm": "P2", "psnr_db": 10.82276439666748, "ssim": 0.2753151059150696, "lpips": 0.7119127511978149, "mean_abs_pixel": 0.20360331237316132, "max_abs_pixel": 1.0}
 {"prompt": "p01", "arm": "P2G", "psnr_db": 10.712533950805664, "ssim": 0.3131727874279022, "lpips": 0.6807712316513062, "mean_abs_pixel": 0.20067737996578217, "max_abs_pixel": 1.0}
 {"prompt": "p01", "arm": "P3", "psnr_db": 13.293710708618164, "ssim": 0.42387428879737854, "lpips": 0.6183295249938965, "mean_abs_pixel": 0.15179823338985443, "max_abs_pixel": 1.0}
-{"prompt": "p01", "arm": "P4G", "error": "missing frames"}
-{"prompt": "p01", "arm": "P4", "error": "missing frames"}
+{"prompt": "p01", "arm": "P4G", "psnr_db": 10.404777526855469, "ssim": 0.28722187876701355, "lpips": 0.7250683903694153, "mean_abs_pixel": 0.21409040689468384, "max_abs_pixel": 1.0}
+{"prompt": "p01", "arm": "P4", "psnr_db": 12.027327537536621, "ssim": 0.3511080741882324, "lpips": 0.659386932849884, "mean_abs_pixel": 0.17800699174404144, "max_abs_pixel": 1.0}
 {"prompt": "p02", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
 {"prompt": "p02", "arm": "P1", "psnr_db": 17.501522064208984, "ssim": 0.5637654066085815, "lpips": 0.4197614789009094, "mean_abs_pixel": 0.07625158131122589, "max_abs_pixel": 1.0}
 {"prompt": "p02", "arm": "P2", "psnr_db": 9.80087661743164, "ssim": 0.23510968685150146, "lpips": 0.639846682548523, "mean_abs_pixel": 0.21293462812900543, "max_abs_pixel": 1.0}
 {"prompt": "p02", "arm": "P2G", "psnr_db": 10.434453010559082, "ssim": 0.28661206364631653, "lpips": 0.592706024646759, "mean_abs_pixel": 0.18888068199157715, "max_abs_pixel": 1.0}
 {"prompt": "p02", "arm": "P3", "psnr_db": 11.95710563659668, "ssim": 0.2842627763748169, "lpips": 0.5734107494354248, "mean_abs_pixel": 0.17144164443016052, "max_abs_pixel": 1.0}
-{"prompt": "p02", "arm": "P4G", "error": "missing frames"}
-{"prompt": "p02", "arm": "P4", "error": "missing frames"}
+{"prompt": "p02", "arm": "P4G", "psnr_db": 9.722383499145508, "ssim": 0.2401062250137329, "lpips": 0.6380212903022766, "mean_abs_pixel": 0.21219640970230103, "max_abs_pixel": 1.0}
+{"prompt": "p02", "arm": "P4", "psnr_db": 11.042455673217773, "ssim": 0.2636125385761261, "lpips": 0.5932660102844238, "mean_abs_pixel": 0.185587078332901, "max_abs_pixel": 1.0}
 {"prompt": "p03", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
 {"prompt": "p03", "arm": "P1", "psnr_db": 19.84258460998535, "ssim": 0.8256596922874451, "lpips": 0.24057063460350037, "mean_abs_pixel": 0.058673132210969925, "max_abs_pixel": 1.0}
 {"prompt": "p03", "arm": "P2", "psnr_db": 13.329543113708496, "ssim": 0.6278656125068665, "lpips": 0.5346260666847229, "mean_abs_pixel": 0.14540795981884003, "max_abs_pixel": 1.0}
 {"prompt": "p03", "arm": "P2G", "psnr_db": 14.06412124633789, "ssim": 0.6818523406982422, "lpips": 0.4580986201763153, "mean_abs_pixel": 0.13045939803123474, "max_abs_pixel": 1.0}
 {"prompt": "p03", "arm": "P3", "psnr_db": 15.343539237976074, "ssim": 0.7264301180839539, "lpips": 0.38172659277915955, "mean_abs_pixel": 0.11693352460861206, "max_abs_pixel": 1.0}
-{"prompt": "p03", "arm": "P4G", "error": "missing frames"}
-{"prompt": "p03", "arm": "P4", "error": "missing frames"}
+{"prompt": "p03", "arm": "P4G", "psnr_db": 12.081183433532715, "ssim": 0.58113694190979, "lpips": 0.617932915687561, "mean_abs_pixel": 0.17849411070346832, "max_abs_pixel": 1.0}
+{"prompt": "p03", "arm": "P4", "psnr_db": 12.928325653076172, "ssim": 0.6545169949531555, "lpips": 0.5393363833427429, "mean_abs_pixel": 0.16245867311954498, "max_abs_pixel": 1.0}
 {"prompt": "p04", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
 {"prompt": "p04", "arm": "P1", "psnr_db": 16.963769912719727, "ssim": 0.5483583211898804, "lpips": 0.4851686358451843, "mean_abs_pixel": 0.09742645919322968, "max_abs_pixel": 1.0}
 {"prompt": "p04", "arm": "P2", "psnr_db": 11.73579216003418, "ssim": 0.3523409068584442, "lpips": 0.6014484167098999, "mean_abs_pixel": 0.18181535601615906, "max_abs_pixel": 1.0}
 {"prompt": "p04", "arm": "P2G", "psnr_db": 12.044509887695312, "ssim": 0.3552168905735016, "lpips": 0.5537427067756653, "mean_abs_pixel": 0.1724669635295868, "max_abs_pixel": 1.0}
 {"prompt": "p04", "arm": "P3", "psnr_db": 14.219344139099121, "ssim": 0.43936237692832947, "lpips": 0.5314410924911499, "mean_abs_pixel": 0.14008282124996185, "max_abs_pixel": 1.0}
-{"prompt": "p04", "arm": "P4G", "error": "missing frames"}
-{"prompt": "p04", "arm": "P4", "error": "missing frames"}
+{"prompt": "p04", "arm": "P4G", "psnr_db": 11.88412094116211, "ssim": 0.35805270075798035, "lpips": 0.604630172252655, "mean_abs_pixel": 0.1789088249206543, "max_abs_pixel": 1.0}
+{"prompt": "p04", "arm": "P4", "psnr_db": 12.812070846557617, "ssim": 0.3589555025100708, "lpips": 0.5928741693496704, "mean_abs_pixel": 0.17078982293605804, "max_abs_pixel": 1.0}
 {"prompt": "p05", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
 {"prompt": "p05", "arm": "P1", "psnr_db": 15.39260196685791, "ssim": 0.52254319190979, "lpips": 0.4007948338985443, "mean_abs_pixel": 0.11036652326583862, "max_abs_pixel": 1.0}
 {"prompt": "p05", "arm": "P2", "psnr_db": 9.05492877960205, "ssim": 0.2564290761947632, "lpips": 0.660900354385376, "mean_abs_pixel": 0.2690852880477905, "max_abs_pixel": 1.0}
 {"prompt": "p05", "arm": "P2G", "psnr_db": 8.89791488647461, "ssim": 0.25262120366096497, "lpips": 0.6374649405479431, "mean_abs_pixel": 0.2594414949417114, "max_abs_pixel": 1.0}
 {"prompt": "p05", "arm": "P3", "psnr_db": 10.300742149353027, "ssim": 0.27094128727912903, "lpips": 0.6297070384025574, "mean_abs_pixel": 0.2304321527481079, "max_abs_pixel": 1.0}
-{"prompt": "p05", "arm": "P4G", "error": "missing frames"}
-{"prompt": "p05", "arm": "P4", "error": "missing frames"}
+{"prompt": "p05", "arm": "P4G", "psnr_db": 8.607370376586914, "ssim": 0.2545700669288635, "lpips": 0.6895995140075684, "mean_abs_pixel": 0.27778807282447815, "max_abs_pixel": 1.0}
+{"prompt": "p05", "arm": "P4", "psnr_db": 9.244545936584473, "ssim": 0.2767101228237152, "lpips": 0.6525734066963196, "mean_abs_pixel": 0.2603150010108948, "max_abs_pixel": 1.0}
 {"prompt": "p06", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
 {"prompt": "p06", "arm": "P1", "psnr_db": 15.606840133666992, "ssim": 0.23506301641464233, "lpips": 0.7850945591926575, "mean_abs_pixel": 0.12167011201381683, "max_abs_pixel": 1.0}
 {"prompt": "p06", "arm": "P2", "psnr_db": 11.260004043579102, "ssim": 0.10013218969106674, "lpips": 0.6010776162147522, "mean_abs_pixel": 0.2086029350757599, "max_abs_pixel": 1.0}
 {"prompt": "p06", "arm": "P2G", "psnr_db": 12.629820823669434, "ssim": 0.17380818724632263, "lpips": 0.6301672458648682, "mean_abs_pixel": 0.16955921053886414, "max_abs_pixel": 1.0}
 {"prompt": "p06", "arm": "P3", "psnr_db": 14.211664199829102, "ssim": 0.15932682156562805, "lpips": 0.5975024700164795, "mean_abs_pixel": 0.1516931653022766, "max_abs_pixel": 1.0}
-{"prompt": "p06", "arm": "P4G", "error": "missing frames"}
-{"prompt": "p06", "arm": "P4", "error": "missing frames"}
+{"prompt": "p06", "arm": "P4G", "psnr_db": 11.143109321594238, "ssim": 0.13992197811603546, "lpips": 0.6875606179237366, "mean_abs_pixel": 0.20591260492801666, "max_abs_pixel": 1.0}
+{"prompt": "p06", "arm": "P4", "psnr_db": 13.218674659729004, "ssim": 0.15249045193195343, "lpips": 0.6443174481391907, "mean_abs_pixel": 0.1680416762828827, "max_abs_pixel": 1.0}
 {"prompt": "p07", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
 {"prompt": "p07", "arm": "P1", "psnr_db": 19.58363151550293, "ssim": 0.7887994050979614, "lpips": 0.26990509033203125, "mean_abs_pixel": 0.06395989656448364, "max_abs_pixel": 0.841796875}
 {"prompt": "p07", "arm": "P2", "psnr_db": 15.00166130065918, "ssim": 0.6248569488525391, "lpips": 0.48747965693473816, "mean_abs_pixel": 0.12790274620056152, "max_abs_pixel": 1.0}
 {"prompt": "p07", "arm": "P2G", "psnr_db": 14.47154426574707, "ssim": 0.6554694175720215, "lpips": 0.4053897559642792, "mean_abs_pixel": 0.13552968204021454, "max_abs_pixel": 1.0}
 {"prompt": "p07", "arm": "P3", "psnr_db": 14.509734153747559, "ssim": 0.6512961983680725, "lpips": 0.4216199219226837, "mean_abs_pixel": 0.139199361205101, "max_abs_pixel": 1.0}
-{"prompt": "p07", "arm": "P4G", "error": "missing frames"}
-{"prompt": "p07", "arm": "P4", "error": "missing frames"}
+{"prompt": "p07", "arm": "P4G", "psnr_db": 15.608383178710938, "ssim": 0.6855932474136353, "lpips": 0.41553813219070435, "mean_abs_pixel": 0.12782764434814453, "max_abs_pixel": 1.0}
+{"prompt": "p07", "arm": "P4", "psnr_db": 15.22995376586914, "ssim": 0.700424313545227, "lpips": 0.40379658341407776, "mean_abs_pixel": 0.14005886018276215, "max_abs_pixel": 1.0}
 {"prompt": "p08", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
 {"prompt": "p08", "arm": "P1", "psnr_db": 20.25684928894043, "ssim": 0.3884740173816681, "lpips": 0.39812085032463074, "mean_abs_pixel": 0.06962627172470093, "max_abs_pixel": 0.93359375}
 {"prompt": "p08", "arm": "P2", "psnr_db": 12.929747581481934, "ssim": 0.20701269805431366, "lpips": 0.7268678545951843, "mean_abs_pixel": 0.16654865443706512, "max_abs_pixel": 1.0}
 {"prompt": "p08", "arm": "P2G", "psnr_db": 13.046036720275879, "ssim": 0.19918479025363922, "lpips": 0.7277156710624695, "mean_abs_pixel": 0.15929539501667023, "max_abs_pixel": 1.0}
 {"prompt": "p08", "arm": "P3", "psnr_db": 15.254305839538574, "ssim": 0.24330662190914154, "lpips": 0.6101350784301758, "mean_abs_pixel": 0.12522055208683014, "max_abs_pixel": 1.0}
-{"prompt": "p08", "arm": "P4G", "error": "missing frames"}
-{"prompt": "p08", "arm": "P4", "error": "missing frames"}
+{"prompt": "p08", "arm": "P4G", "psnr_db": 12.59097671508789, "ssim": 0.18649043142795563, "lpips": 0.7613939642906189, "mean_abs_pixel": 0.1699867993593216, "max_abs_pixel": 1.0}
+{"prompt": "p08", "arm": "P4", "psnr_db": 14.497729301452637, "ssim": 0.23596206307411194, "lpips": 0.6842015385627747, "mean_abs_pixel": 0.13514798879623413, "max_abs_pixel": 1.0}
 {"prompt": "p09", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
 {"prompt": "p09", "arm": "P1", "psnr_db": 18.495391845703125, "ssim": 0.4383814334869385, "lpips": 0.5298939943313599, "mean_abs_pixel": 0.08172330260276794, "max_abs_pixel": 0.890625}
 {"prompt": "p09", "arm": "P2", "psnr_db": 9.77308464050293, "ssim": 0.1983443647623062, "lpips": 0.782681941986084, "mean_abs_pixel": 0.2522848844528198, "max_abs_pixel": 1.0}
 {"prompt": "p09", "arm": "P2G", "psnr_db": 9.838717460632324, "ssim": 0.21095144748687744, "lpips": 0.7758256196975708, "mean_abs_pixel": 0.24835063517093658, "max_abs_pixel": 1.0}
 {"prompt": "p09", "arm": "P3", "psnr_db": 15.067194938659668, "ssim": 0.3097379207611084, "lpips": 0.5957464575767517, "mean_abs_pixel": 0.13041333854198456, "max_abs_pixel": 1.0}
-{"prompt": "p09", "arm": "P4G", "error": "missing frames"}
-{"prompt": "p09", "arm": "P4", "error": "missing frames"}
+{"prompt": "p09", "arm": "P4G", "psnr_db": 9.797426223754883, "ssim": 0.16991476714611053, "lpips": 0.7726052403450012, "mean_abs_pixel": 0.2550637125968933, "max_abs_pixel": 1.0}
+{"prompt": "p09", "arm": "P4", "psnr_db": 10.757814407348633, "ssim": 0.20670826733112335, "lpips": 0.7531507015228271, "mean_abs_pixel": 0.22541850805282593, "max_abs_pixel": 1.0}
