@@ -29,8 +29,11 @@ from fastvideo.logger import init_logger
 
 logger = init_logger(__name__)
 
-_E2M1 = torch.tensor([0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0,
-                      -0.0, -0.5, -1.0, -1.5, -2.0, -3.0, -4.0, -6.0])
+# Python list, not a tensor: this module may be imported under a meta-device
+# context (trainer model init), which would silently make a module-level
+# tensor a meta tensor.
+_E2M1_VALUES = [0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0,
+                -0.0, -0.5, -1.0, -1.5, -2.0, -3.0, -4.0, -6.0]
 
 
 def _unpack_fp4(fp4_tensor: torch.Tensor) -> torch.Tensor:
@@ -38,7 +41,8 @@ def _unpack_fp4(fp4_tensor: torch.Tensor) -> torch.Tensor:
     lo = raw & 0xF
     hi = raw >> 4
     codes = torch.stack([lo, hi], dim=-1).flatten(-2)
-    return _E2M1.to(raw.device)[codes.long()]
+    lut = torch.tensor(_E2M1_VALUES, device=raw.device, dtype=torch.float32)
+    return lut[codes.long()]
 
 
 def _sf_to_canonical(sf_mma: torch.Tensor, batch: int, seqlen_padded: int, nheads: int,
@@ -49,16 +53,34 @@ def _sf_to_canonical(sf_mma: torch.Tensor, batch: int, seqlen_padded: int, nhead
     return scales.reshape(batch, seqlen_padded, nheads, headdim // 16)
 
 
+@torch.library.custom_op("fastvideo::nvfp4_fake_quant_roundtrip", mutates_args=(), device_types="cuda")
+def _nvfp4_roundtrip_op(x: torch.Tensor) -> torch.Tensor:
+    """Quantize BSHD ``x`` with the production NVFP4 quantizer and decode back.
+
+    One opaque graph node so torch.compile / FSDP tracing never descends into
+    the data-dependent unpack (register_fake below supplies shapes).
+    """
+    from fastvideo.attention.backends.flash_attn import _nvfp4_quantize_for_fa4_impl
+    b, s, h, d = x.shape
+    fp4, sf = _nvfp4_quantize_for_fa4_impl(x)
+    s_pad = fp4.shape[1]
+    codes = _unpack_fp4(fp4)
+    scales = _sf_to_canonical(sf, b, s_pad, h, d)
+    return (codes * scales.repeat_interleave(16, dim=-1))[:, :s].to(x.dtype).contiguous()
+
+
+@torch.library.register_fake("fastvideo::nvfp4_fake_quant_roundtrip")
+def _nvfp4_roundtrip_fake(x: torch.Tensor) -> torch.Tensor:
+    return torch.empty_like(x, memory_format=torch.contiguous_format)
+
+
 def nvfp4_fake_quant_ste(x: torch.Tensor) -> torch.Tensor:
     """Exact production NVFP4 round-trip on BSHD ``x``, STE gradient."""
-    from fastvideo.attention.backends.flash_attn import _nvfp4_quantize_for_fa4
-    b, s, h, d = x.shape
-    with torch.no_grad():
-        fp4, sf = _nvfp4_quantize_for_fa4(x)
-        s_pad = fp4.shape[1]
-        codes = _unpack_fp4(fp4)
-        scales = _sf_to_canonical(sf, b, s_pad, h, d)
-        deq = (codes * scales.repeat_interleave(16, dim=-1))[:, :s].to(x.dtype)
+    if x.device.type == "meta":
+        # meta/shape-probe forwards (FSDP init) carry no data; quantization
+        # is a value-level identity there.
+        return x
+    deq = torch.ops.fastvideo.nvfp4_fake_quant_roundtrip(x)
     return x + (deq - x).detach()
 
 

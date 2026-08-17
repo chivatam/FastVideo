@@ -1,21 +1,20 @@
 # SparseFP4 Native Composition — STATUS
 
-_Last updated: 2026-08-17 00:02 ET (updates every ~10 min while work is active)_
+_Last updated: 2026-08-17 00:34 ET (updates every ~10 min while work is active)_
 
 ## Live state
 
-- **P4/P4G runs in flight:** perf reps (GPUs 1/3) + 20 quality generations
-  (GPUs 4-7). Both smokes passed; keep fraction 0.1012 exact (no coarsening).
-- **VBench complete (7 dims, means over 10 prompts):** within the sparse
-  family P3 beats P2 on temporal_flickering (0.966 vs 0.951),
-  motion_smoothness (0.980 vs 0.975), aesthetic_quality (0.410 vs 0.399);
-  trails on subject_consistency (0.846 vs 0.899), background_consistency
-  (0.918 vs 0.946), imaging_quality (0.610 vs 0.644). No catastrophic
-  degradation on any dim. Raw: `raw/quality/pq_s090_vbench.jsonl`.
-- **Paired quality complete:** P3 closer to dense reference than P2
-  (PSNR 14.4 vs 11.5 dB, LPIPS 0.585 vs 0.650).
-- Next: fold P4/P4G into quality+perf tables, write RESULTS_DECISION.md,
-  REPORT.md, PAPER_UPDATE.md; commit study code.
+- **QAT fine-tune (Track D):** launched after fixing 4 startup bugs
+  (torchvision read_video removal -> OpenCV decode; ragged tokenizer batch ->
+  bs=1 preprocess; meta-device LUT; fork `_flash_attn_bwd` missing
+  `deterministic` param — fork commit added, patch refreshed). 400 steps,
+  fake-quant NVFP4 fine branch @ sparsity 0.9, GPU3.
+- **P4 quality:** 10/10 P4 videos done, P4G 5/10 + 3 in flight.
+- **720p COMPLETE:** P0 148.8 | P1 135.8 | P2 131.7 | **P4G 106.1 s = 1.40x
+  vs dense, 1.24x vs deployed VSA** | P4 250.9 s (localized: FP4 sparse
+  kernel itself is 6.1 ms vs BF16 2.95 ms at 720p geometry — persistent-
+  scheduler tuning item — plus per-call quantize allocation churn).
+- 480p milestone: P4G 45.6 s beats dense BF16 46.9 s.
 
 ## Four-arm operator result (median over 25 real-VSA cells, rel-L2 vs A0)
 

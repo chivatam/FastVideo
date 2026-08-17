@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 
 import torch
@@ -144,6 +145,15 @@ def _flash_attn_cute_backward(
 ):
     del grad_lse
     q, k, v, out, lse = ctx.saved_tensors
+    # The hao-ai-lab FA4 fork's _flash_attn_bwd predates the upstream
+    # window_size/deterministic kwargs; pass only what it accepts.
+    bwd_params = inspect.signature(_flash_attn_bwd).parameters
+    extra_kwargs = {}
+    if "window_size_left" in bwd_params:
+        extra_kwargs["window_size_left"] = None
+        extra_kwargs["window_size_right"] = None
+    if "deterministic" in bwd_params:
+        extra_kwargs["deterministic"] = ctx.deterministic
     dq, dk, dv = _flash_attn_bwd(
         q,
         k,
@@ -154,9 +164,7 @@ def _flash_attn_cute_backward(
         softmax_scale=ctx.softmax_scale,
         causal=ctx.causal,
         softcap=0.0,
-        window_size_left=None,
-        window_size_right=None,
-        deterministic=ctx.deterministic,
+        **extra_kwargs,
     )
     return dq, dk, dv, None, None, None
 

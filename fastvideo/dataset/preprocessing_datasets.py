@@ -258,8 +258,33 @@ class VideoTransformStage(DatasetStage):
         assert os.path.exists(batch.path), f"file {batch.path} do not exist!"
         assert batch.sample_frame_index is not None, "Frame indices must be set before transformation"
 
-        torchvision_video, _, metadata = torchvision.io.read_video(batch.path, output_format="TCHW")
-        video = torchvision_video[batch.sample_frame_index]
+        if hasattr(torchvision.io, "read_video"):
+            torchvision_video, _, metadata = torchvision.io.read_video(batch.path, output_format="TCHW")
+            video = torchvision_video[batch.sample_frame_index]
+        else:
+            # torchvision >= 0.27 removed read_video and this host has no
+            # FFmpeg shared libs for torchcodec; decode the sampled frames
+            # with OpenCV (bundles its own codecs).
+            import cv2
+            wanted = list(int(i) for i in batch.sample_frame_index)
+            need = set(wanted)
+            cap = cv2.VideoCapture(batch.path)
+            frames: dict[int, torch.Tensor] = {}
+            idx = 0
+            max_needed = max(need)
+            while idx <= max_needed:
+                ok, frame = cap.read()
+                if not ok:
+                    break
+                if idx in need:
+                    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    frames[idx] = torch.from_numpy(rgb).permute(2, 0, 1)  # CHW
+                idx += 1
+            cap.release()
+            missing = [i for i in wanted if i not in frames]
+            if missing:
+                raise RuntimeError(f"could not decode frames {missing[:5]} from {batch.path}")
+            video = torch.stack([frames[i] for i in wanted])  # TCHW uint8
         if self.transform is not None:
             video = self.transform(video)
         video = rearrange(video, "t c h w -> c t h w")
