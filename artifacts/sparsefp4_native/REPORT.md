@@ -160,7 +160,19 @@ an exact SDPA-recompute backward for dense FA4 (`FASTVIDEO_FA4_BWD_FALLBACK`)
 since the fork's CuTe backward kernels fail MLIR verification under
 dsl-4.5.
 
-## 9. Literature alignment
+## 9. Precision-ladder + selector ablations (B-track)
+
+- **B3 selector receipt** (`raw/operator/b3_selector_receipt.json`): running
+  the *selector's* pooled inputs through the exact NVFP4 production
+  round-trip leaves the deployed `fused_topk_mask` output 99.55% identical
+  (kept-block flip 2.25%) — the design decision to quantize compute but not
+  routing costs nothing (mechanism re-check of study 2's F2; receipt only,
+  not headline evidence).
+- **B1/B2 ladder** (sparse arms on frozen masks: BF16 / NVFP4 / NVFP4+FP8-PV
+  / MXFP8-QK): running at report time; results land in
+  `raw/operator/b_ladder.jsonl` and this section's table on completion.
+
+## 10. Literature alignment
 
 Four-arm pattern follows FPSAttention/QuantSparse; VSA baselines preserved
 per the VSA paper; QAT direction per Attn-QAT (B200 NVFP4-QK+BF16-PV
@@ -169,7 +181,7 @@ supplies the low-bit-forward/high-precision-backward fine-tune recipe.
 No custom routing metrics were used as evidence (F1/F2 routing studies are
 cited only as justification for keeping the selector in BF16).
 
-## 10. Reproduction
+## 11. Reproduction
 
 ```bash
 source artifacts/sparsefp4_followup/configs/env.sh   # env + CUDA 13 bind-mount

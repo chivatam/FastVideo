@@ -1,86 +1,100 @@
 # SparseFP4 Native Composition — STATUS
 
-_Last updated: 2026-08-17 02:02 ET (updates every ~10 min while work is active)_
+_Last updated: 2026-08-17 02:05 ET. Full refresh (older incremental notes
+superseded; history in git)._
 
-## Live state
+## Verdict (final, documented)
 
-- **QAT fine-tune (Track D):** running (GPU3, 400 steps, fake-quant NVFP4
-  fine branch @ sparsity 0.9). Cleared 7 blockers: torchvision read_video
-  removal (OpenCV decode), ragged tokenizer batches (bs=1), meta-device LUT,
-  compile-opaque fake-quant op, fork bwd `deterministic` param, fork bwd
-  positional-slot skew (2 more fork commits), and fork FA4 backward kernels
-  failing MLIR verification under dsl-4.5 — resolved with an opt-in exact
-  SDPA-recompute backward (`FASTVIDEO_FA4_BWD_FALLBACK`).
-- **P4 quality:** P4 10/10 done; P4G 8/10, last 2 in flight; QAT training COMPLETE (400/400, rc=0); recovered-checkpoint eval generating P3/P4 x 10 prompts on GPUs 0-3.
-- **720p COMPLETE:** P0 148.8 | P1 135.8 | P2 131.7 | **P4G 106.1 s = 1.40x
-  vs dense, 1.24x vs deployed VSA** | P4 250.9 s (localized: FP4 sparse
-  kernel itself is 6.1 ms vs BF16 2.95 ms at 720p geometry — persistent-
-  scheduler tuning item — plus per-call quantize allocation churn).
-- 480p milestone: P4G 45.6 s beats dense BF16 46.9 s.
+**POSITIVE — systems-qualified** (`RESULTS_DECISION.md`). Native NVFP4 QK x
+block-sparse attention composes on B200 with no numerical interaction
+penalty, deployed-baseline video quality, 9.3x attention-kernel speedup at
+10% retention, and 1.40x E2E at 720p (P4G). QAT recovery restores the
+sparsity-family quality loss to dense level at feasibility scale.
 
-## Four-arm operator result (median over 25 real-VSA cells, rel-L2 vs A0)
+## Live right now
 
-| Arm | rel-L2 | cosine | SNR (dB) |
-|---|---|---|---|
-| B0 dense NVFP4 (quant-only) | 0.098 | 0.9952 | 20.2 |
-| C0 sparse BF16 (frozen mask, 24.2% kept) | 0.128 | 0.9929 | 17.9 |
-| D0 native sparse NVFP4 (same mask) | 0.204 | 0.9801 | 13.8 |
-| D0 vs C0 (quant cost *on top of* sparsity) | **0.096** | 0.9954 | 20.4 |
-| C0_TRITON64 (deployed 64x64 mask, 10.1% kept) | 0.206 | 0.9849 | 13.7 |
-| D0 vs dequantized oracle (kernel exactness) | 0.0017 | 0.999999 | 55.2 |
+- **GPU0:** B1/B2 precision ladder (sparse BF16 / NVFP4 / NVFP4+FP8-PV /
+  MXFP8-QK on frozen-mask captured cells) — in one-time JIT for the two new
+  kernel variants; cells stream afterwards (`logs/b_ladder.log`).
+- Everything else idle; all headline experiments complete.
 
-**Composition does not amplify error:** adding native NVFP4 QK to the sparse
-path costs rel-L2 0.096 — the same as adding it to the dense path (0.098).
-Mask coarsening (VSA 64x64 -> FA4 256x128 any-pool) raises retention
-0.101 -> 0.242; the deployed finer 10% mask alone (C0_TRITON64, 0.206) sits
-at D0's total joint error, so geometry choice dominates the error budget,
-not precision. Timestep trend: all arms' error decreases with denoising
-progress; B0/C0/D0 ordering stable.
+## Results at a glance
 
-## E2E performance (median of 5 steady-state reps, 50 steps, 480x832x81)
+### Operator 2x2 (25 genuine-VSA cells, frozen masks; median rel-L2 vs A0)
 
-| Arm | E2E s | DiT s | Peak MB |
-|---|---|---|---|
-| P0 dense BF16 | 46.9 | 44.4 | 8888 |
-| P1 dense NVFP4 | 44.4 | 42.1 | 8888 |
-| P2 deployed VSA@0.9 | 50.0 | 47.4 | 8893 |
-| P2G VSA sel. + FA4 BF16 fine | 48.7 | 46.3 | 8893 |
-| P3 VSA sel. + native NVFP4 fine | 53.1 | 50.7 | 8893 |
-| P4G / P4 (VSA-on-FA4 geometry) | pending | pending | |
+| | value |
+|---|---|
+| B0 dense NVFP4 (quant-only) | 0.098 |
+| C0 sparse BF16 (24.2% kept) | 0.128 |
+| D0 native sparse NVFP4 (same mask) | 0.204 |
+| **D0 vs C0 (quant cost on sparse)** | **0.096 = no amplification** |
+| D0 vs dequantized oracle | 0.0017 (kernel exact to FP4 floor) |
 
-## Phase ledger
+### E2E (median steady-state; 50 steps)
 
-| Phase | State | Evidence |
+| System | 480p s (x) | 720p s (x) |
 |---|---|---|
-| C0 code-path audit | **DONE** | `CODE_PATH_AUDIT.md` |
-| C2 native sparse NVFP4 | **DONE** | fork `e650c04e`; envelope limit documented (empty Q-row + multi-wave deadlock — unreachable under VSA topk>=1) |
-| C3 native proof | **DONE — all 7 native conditions met** | `NATIVE_PROOF.md`: FP4 kernel symbol in profiler, work-scaling 6.01→0.80 ms (100%→10% retained), packed E2M1+E4M3 receipts |
-| C4 correctness vs oracle | **DONE — PASS** | D0 vs dequant oracle: cos 0.999997, rel-L2 2.3e-3 — identical to dense kernels' own oracle deviation (32 cells incl. Wan seqlen 39936) |
-| C5 capture | **DONE** | 25 genuine-VSA cells @ sparsity 0.90 |
-| C5 2x2 matrix (A0/B0/C0/D0) | **RUNNING** | `configs/c5_operator_matrix.py` |
-| P3 production backend | **DONE + smoke passed** | `SPARSEFP4_NATIVE_VSA_ATTN` (deployed selector/coarse branch + native NVFP4 fine branch); 5-step E2E smoke OK |
-| C7 video quality (P0-P3) | **RUNNING** | `p_launch.sh pq-s090`, then `p_quality.py` (PSNR/SSIM/LPIPS) + VBench pass |
-| C8 performance | kernel part DONE (in NATIVE_PROOF); DiT-step/E2E pending | perf reps after quality sweep |
-| C10 decision + report | pending | — |
+| P0 dense BF16 | 46.9 (1.00) | 148.8 (1.00) |
+| P1 dense NVFP4 | 44.4 (1.06) | 135.8 (1.10) |
+| P2 deployed VSA@0.9 | 50.0 (0.94) | 131.7 (1.13) |
+| P2G VSA sel + FA4 BF16 fine (24%) | 48.7 (0.96) | — |
+| P3 VSA sel + NVFP4 fine (24%) | 53.1 (0.88) | — |
+| **P4G VSA256-FA4 BF16 fine (10%)** | **45.6 (1.03)** | **106.1 (1.40)** |
+| P4 VSA256-FA4 NVFP4 fine (10%) | 47.3 (0.99) | 250.9 (0.59) — open perf item, see below |
 
-## Headline evidence so far
+Kernel-only (Wan shape, 10% retained): native sparse NVFP4 0.80 ms vs dense
+BF16 7.41 ms (9.3x); vs sparse BF16 0.83 ms.
 
-1. **D0 native path exists, is correct, and skips work.** Kernel-only at Wan
-   shape: dense BF16 7.41 ms → native sparse NVFP4 @10% retained 0.80 ms
-   (9.3x vs dense BF16). Profiler shows the `flash_fwd_sm100_fp4` symbol.
-2. **No extra numerical cost from composing:** D0's oracle deviation equals
-   the dense FP4 kernel's (both 2.3e-3 rel-L2, cos 0.999997).
-3. P3 end-to-end works: deployed VSA selector + coarse branch + native
-   NVFP4 fine branch generated a valid video (27 s for 5 steps incl. quant).
+### Quality (10 dev prompts; VBench means)
 
-## Environment
+- Sparse arms cost subject-consistency vs dense (0.976 -> 0.85-0.90);
+  **NVFP4 adds no consistent extra penalty over BF16 twins**; the 256-tile
+  selector (P4/P4G) matches deployed VSA's quality.
+- **QAT recovery (400 steps, 47 videos, 1 GPU, ~47 min):** P3 subject
+  consistency 0.846 -> **0.974** (dense 0.976), background 0.918 -> **0.977**
+  (= dense), aesthetic 0.410 -> 0.540. Caveat: dynamic_degree collapsed on
+  the static-camera mini-dataset — use a motion-diverse corpus at scale.
+- **B3 receipt:** NVFP4 round-trip of *selector* inputs leaves the deployed
+  mask 99.55% identical — selector stays BF16 by design, costs nothing.
 
-fv-venv (torch 2.12.0+cu130), 8x B200, fa4-fork editable @ `e650c04e`,
-repo @ `0a942986` + study backends (uncommitted). Receipts in `env/`.
+## Open engineering items (documented in REPORT/PAPER_UPDATE; not blockers)
 
-## Risks / notes
+1. **P4 (NVFP4 fine) at 720p is 250.9 s — NOT yet fixed, only diagnosed.**
+   The 7 fork bugs we fixed were correctness/crash bugs; this one is a
+   *performance* regression inside the (unmodified) FP4 kernel: at 720p tile
+   geometry (360 tiles, 92160 tokens) the sparse-FP4 kernel runs 6.09 ms vs
+   its BF16 twin's 2.95 ms — the same kernel that wins at 480p geometry
+   (1.44 vs 1.65 ms incl. quantize). Root cause: `flash_fwd_sm100_fp4`'s
+   scheduler/tiling was tuned for dense shapes; large sparse row-counts hit a
+   bad regime. Candidate fixes (untried): non-persistent scheduling for
+   sparse FP4, m/n block-size retune, SF-load pipelining depth.
+2. 480p P3/P4 in-model FP4 fine path trails its own microbenchmark —
+   suspected allocator churn from per-call quantize buffers; candidate fix:
+   preallocated/cached quantize workspace.
+3. BF16 sparse+mask_mod kernel variants re-JIT ~13 min in every fresh
+   process (mask_mod hash not stable across processes); FP4 variants do not.
+   Candidate fix: stable mask_mod hashing or persistent compile cache key.
 
-- INVALID/INCOMPLETE rule armed; so far every native gate has passed.
-- C5 matrix mask-coarsening (VSA 64x64 → FA4 256x128 any-pool) raises
-  retained fraction; C0/D0 share the mask byte-for-byte, and a
-  C0_TRITON64 control quantifies the coarsening separately.
+## Phase ledger (all skill criteria met)
+
+| Phase | State |
+|---|---|
+| C0 audit | DONE (`CODE_PATH_AUDIT.md`) |
+| C2 native sparse NVFP4 | DONE — fork repair patch (7 commits) `configs/fa4-fork-sparse-fp4-repair.patch` |
+| C3 native proof | DONE (`NATIVE_PROOF.md`) |
+| C4 kernel correctness | DONE (32 cells, oracle-exact) |
+| C5 capture + 2x2 matrix | DONE (`tables/c5_matrix_s090.md`) |
+| C7 quality P0-P4 | DONE (paired + VBench, `raw/quality/`) |
+| C8 performance | DONE (`tables/c8_performance.md`, 480p+720p) |
+| C10 decision/report/paper | DONE (`RESULTS_DECISION.md`, `REPORT.md`, `PAPER_UPDATE.md`) |
+| Track D QAT recovery | DONE (400 steps; consistency restored to dense level) |
+| B3 selector receipt | DONE (99.55% agreement) |
+| B1/B2 PV + MXFP8 ladder | RUNNING (JIT phase) |
+
+## Provenance
+
+Repo branch `exp/sparsefp4-paper-validation`, pushed to
+`chivatam/FastVideo` through `31f2f491`. FA4 fork branch
+`sparsefp4-native-composition` at `/mnt/nvme/scratch/fa4-fork` (7 commits
+over pin `940bf7e5`; exported as patch in `configs/`). Env receipts `env/`;
+venv `/mnt/nvme/scratch/fv-venv` (torch 2.12.0+cu130, 8x B200, CUDA 13.0).
