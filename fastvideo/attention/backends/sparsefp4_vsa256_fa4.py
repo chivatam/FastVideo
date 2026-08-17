@@ -25,6 +25,8 @@ Enable with ``FASTVIDEO_ATTENTION_BACKEND=SPARSEFP4_VSA256_FA4_ATTN``.
 from __future__ import annotations
 
 import math
+import os
+import time
 from typing import Any
 
 import torch
@@ -104,6 +106,44 @@ class SparseFP4VSA256FA4Impl(VideoSparseAttentionImpl):
         super().__init__(*args, **kwargs)
         self.fine_precision = _fine_precision()
         self._logged = False
+        from fastvideo.attention.backends.abstract import layer_idx_from_prefix
+        self.layer_idx = layer_idx_from_prefix(kwargs.get("prefix", args[5] if len(args) > 5 else ""),
+                                               default=-1)
+
+    def _maybe_capture(self, cfg_path: str, query, key, value, mask256, block_sizes, topk,
+                       attn_metadata) -> None:
+        """Env-gated QKV+mask dump for the exact-10% controlled matrix."""
+        import json
+        from pathlib import Path
+
+        from fastvideo.forward_context import get_forward_context
+
+        cfg = json.loads(Path(cfg_path).read_text())
+        ctx = get_forward_context()
+        timestep = int(getattr(ctx, "current_timestep", -1) or 0)
+        batch = getattr(ctx, "forward_batch", None)
+        branch = "negative" if bool(getattr(batch, "is_cfg_negative", False)) else "positive"
+        if (self.layer_idx not in cfg["layers"] or timestep not in cfg["timesteps"]
+                or branch not in cfg.get("cfg_branches", ["positive"])):
+            return
+        out_dir = Path(cfg["out_dir"])
+        out_dir.mkdir(parents=True, exist_ok=True)
+        fname = out_dir / f"cell_step{timestep:03d}_layer{self.layer_idx:03d}_{branch}.pt"
+        torch.save({
+            "q_bshd": query.detach().to(torch.bfloat16).cpu(),
+            "k_bshd": key.detach().to(torch.bfloat16).cpu(),
+            "v_bshd": value.detach().to(torch.bfloat16).cpu(),
+            "mask256_bhqk": mask256.detach().to(torch.bool).cpu(),
+            "variable_block_sizes": block_sizes.detach().cpu(),
+            "topk": int(topk),
+            "vsa_sparsity": float(attn_metadata.VSA_sparsity),
+            "tile_size": list(TILE256),
+            "layer": self.layer_idx,
+            "timestep": timestep,
+            "cfg_branch": branch,
+        }, fname)
+        logger.info("sparsefp4 capture256: wrote %s (keep %.4f)", fname,
+                    mask256.float().mean().item())
 
     def tile(self, x: torch.Tensor, attn_metadata: VideoSparseAttentionMetadata) -> torch.Tensor:
         """Base ``tile()`` hardcodes the 64-token tile; redo it at 256."""
@@ -136,6 +176,7 @@ class SparseFP4VSA256FA4Impl(VideoSparseAttentionImpl):
         n_tiles = int(block_sizes.numel())
         topk = compute_topk(float(attn_metadata.VSA_sparsity), n_tiles)
         b, s, h, d = query.shape
+        self._timing_pre()
 
         # ---- selector + coarse branch (VSA algorithm at 256-tile geometry) ----
         q_bhsd = query.transpose(1, 2).contiguous()
@@ -150,6 +191,11 @@ class SparseFP4VSA256FA4Impl(VideoSparseAttentionImpl):
         out_c = out_c.view(b, h, n_tiles, 1, d).expand(b, h, n_tiles, TILE_ELEMENTS, d)\
             .reshape(b, h, s, d).transpose(1, 2)
         mask256 = fused_topk_mask(scores, topk)  # [B,H,n_tiles,n_tiles], bool
+
+        capture_cfg = os.environ.get("FASTVIDEO_SPARSEFP4_CAPTURE256", "")
+        if capture_cfg:
+            self._maybe_capture(capture_cfg, query, key, value, mask256, block_sizes, topk,
+                                attn_metadata)
 
         # ---- exact 1:1 mapping onto FA4 sparse geometry (no coarsening) ----
         # Q: one 256-tile == one sparse row. KV: one tile == two 128-blocks.
@@ -185,5 +231,20 @@ class SparseFP4VSA256FA4Impl(VideoSparseAttentionImpl):
             self._logged = True
 
         if gate_compress is not None:
-            return out_c * gate_compress + out_s
-        return out_c + out_s
+            out = out_c * gate_compress + out_s
+        else:
+            out = out_c + out_s
+        if os.environ.get("FASTVIDEO_SPARSEFP4_TIMING", "0") == "1":
+            torch.cuda.synchronize()
+            now = time.perf_counter()
+            prev = getattr(self, "_t_last", None)
+            if prev is not None:
+                logger.info("sparsefp4 timing: fine=%s layer=%d fwd_wall=%.2f ms",
+                            self.fine_precision, self.layer_idx, (now - prev) * 1000)
+            self._t_last = now
+        return out
+
+    def _timing_pre(self) -> None:
+        if os.environ.get("FASTVIDEO_SPARSEFP4_TIMING", "0") == "1":
+            torch.cuda.synchronize()
+            self._t_last = time.perf_counter()
