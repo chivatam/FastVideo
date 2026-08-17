@@ -13,10 +13,11 @@ sparsity-family quality loss to dense level at feasibility scale.
 
 ## Live right now
 
-- **GPU0:** B1/B2 precision ladder (sparse BF16 / NVFP4 / NVFP4+FP8-PV /
-  MXFP8-QK on frozen-mask captured cells) — in one-time JIT for the two new
-  kernel variants; cells stream afterwards (`logs/b_ladder.log`).
-- Everything else idle; all headline experiments complete.
+- All experiments complete; GPUs idle. B1/B2 ladder finished: MXFP8 QK
+  ~= NVFP4 QK accuracy (rel-L2 0.199 vs 0.204) -> NVFP4 is the right
+  operating point (2x MMA throughput for free); FP8-PV blocked in this fork
+  build (`MmaF8F6F4Op` unsupported under dsl 4.5.3) — needs newer fork
+  branches, recorded not simulated.
 
 ## Results at a glance
 
@@ -89,7 +90,7 @@ BF16 7.41 ms (9.3x); vs sparse BF16 0.83 ms.
 | C10 decision/report/paper | DONE (`RESULTS_DECISION.md`, `REPORT.md`, `PAPER_UPDATE.md`) |
 | Track D QAT recovery | DONE (400 steps; consistency restored to dense level) |
 | B3 selector receipt | DONE (99.55% agreement) |
-| B1/B2 PV + MXFP8 ladder | RUNNING (JIT phase) |
+| B1/B2 PV + MXFP8 ladder | DONE (MXFP8~=NVFP4; FP8-PV blocked in build) |
 
 ## Provenance
 

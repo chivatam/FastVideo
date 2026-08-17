@@ -168,9 +168,24 @@ dsl-4.5.
   (kept-block flip 2.25%) — the design decision to quantize compute but not
   routing costs nothing (mechanism re-check of study 2's F2; receipt only,
   not headline evidence).
-- **B1/B2 ladder** (sparse arms on frozen masks: BF16 / NVFP4 / NVFP4+FP8-PV
-  / MXFP8-QK): running at report time; results land in
-  `raw/operator/b_ladder.jsonl` and this section's table on completion.
+- **B1/B2 ladder** (9 frozen-mask cells, sparse arms vs all-retained BF16 on
+  identical machinery; median rel-L2):
+
+| Arm | rel-L2 med | max |
+|---|---|---|
+| sparse BF16 (mask effect only) | 0.175 | 0.279 |
+| sparse **NVFP4 QK** + BF16 PV | 0.204 | 0.444 |
+| sparse **MXFP8 QK** + BF16 PV | 0.199 | 0.398 |
+| sparse NVFP4 QK + **FP8-E4M3 PV** | unsupported in this build |
+
+  Two findings: (a) **MXFP8 QK buys almost nothing over NVFP4 QK**
+  (0.199 vs 0.204) — per-16 E4M3 block scaling already absorbs most of the
+  dynamic-range pressure, so NVFP4's 2x MMA-throughput advantage makes it
+  the right operating point; (b) the FP8-PV path raises
+  `Unsupported tcgen05 MMA op kind: MmaF8F6F4Op` in the pinned fork build
+  (dsl 4.5.3) — block-scaled PV needs the fork's newer B300/mixed-precision
+  branches; recorded as blocked, not attempted via simulation.
+  Raw: `raw/operator/b_ladder.jsonl`.
 
 ## 10. Literature alignment
 
