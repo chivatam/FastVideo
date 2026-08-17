@@ -79,12 +79,17 @@ def analytic() -> None:
 CATEGORIES = [
     ("attention fine kernel (FP4 FA4)", ["flash", "fp4_fwd", "fmha", "sm100_fp4"]),
     ("quantize (NVFP4 Q/K)", ["quantize", "fp4quant", "nvfp4"]),
+    ("linear GEMMs (cublas/cutlass/inductor)", ["tem_fused", "gemm", "nvjet", "cutlass",
+                                                "sgemm", "hgemm", "gemvx", "matmul",
+                                                "cublas", "addmm", "_mm_"]),
+    ("fused norm/elementwise (inductor)", ["triton_poi", "triton_red", "triton_per"]),
     ("selector/coarse + fused triton", ["triton"]),
-    ("linear GEMMs (cublas/cutlass)", ["gemm", "nvjet", "cutlass", "sgemm", "hgemm",
-                                       "gemvx", "matmul", "cublas"]),
-    ("norm/elementwise", ["elementwise", "vectorized", "layer_norm", "rms", "norm",
-                          "reduce_kernel", "softmax", "cat", "copy", "fill", "index",
-                          "unrolled", "gelu", "sigmoid", "mul", "add", "div"]),
+    ("index/scatter/copies (tiling, rope, layout)", ["index_elementwise", "direct_copy",
+                                                     "copy_kernel", "radixsort", "cat",
+                                                     "index"]),
+    ("norm/elementwise (eager)", ["elementwise", "vectorized", "layer_norm", "rms", "norm",
+                                  "reduce_kernel", "softmax", "fill", "unrolled", "gelu",
+                                  "sigmoid", "mul", "add", "div", "neg"]),
 ]
 
 

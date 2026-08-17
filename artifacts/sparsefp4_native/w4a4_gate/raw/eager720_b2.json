@@ -1,0 +1,20 @@
+{
+  "res": "720",
+  "batch": 2,
+  "compile": false,
+  "reps": 3,
+  "wall_ms_per_forward": 2144.3915459967684,
+  "families_ms": {
+    "other linears (embedders/head)": 0.3077439994861682,
+    "norms": 701.2117647218207,
+    "self QKV proj GEMMs": 38.249386658271156,
+    "gate_compress proj GEMM": 13.116554707288742,
+    "sparse attention (selector+quant+FP4 kernel+glue)": 1096.4165534973145,
+    "self o_proj GEMM": 11.424341320991516,
+    "cross-attn proj GEMMs": 25.36436255928129,
+    "cross-attn kernel": 10.964362700780233,
+    "ffn GEMMs": 146.49916815757751
+  },
+  "residual_ms": 100.8373076739565,
+  "peak_mem_mb": 14325.746176
+}

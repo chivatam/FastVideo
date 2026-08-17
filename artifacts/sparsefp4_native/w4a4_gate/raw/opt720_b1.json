@@ -1,0 +1,10 @@
+{
+  "res": "720",
+  "batch": 1,
+  "compile": true,
+  "reps": 3,
+  "wall_ms_per_forward": 801.681528998112,
+  "families_ms": {},
+  "residual_ms": 801.681528998112,
+  "peak_mem_mb": 7110.705664
+}

@@ -39,6 +39,7 @@ def main() -> None:
     ap.add_argument("--model-path", default="checkpoints/dqvsa_T3/checkpoint-500/transformer")
     ap.add_argument("--out", required=True)
     ap.add_argument("--reps", type=int, default=2)
+    ap.add_argument("--compile", action="store_true")
     args = ap.parse_args()
 
     maybe_init_distributed_environment_and_model_parallel(1, 1)
@@ -48,6 +49,10 @@ def main() -> None:
                                                            dit_precision="bf16"))
     fv_args.device = device
     model = TransformerLoader().load(args.model_path, fv_args).to(dtype=torch.bfloat16).eval()
+    if args.compile:
+        for i, blk in enumerate(model.blocks):
+            model.blocks[i] = torch.compile(blk, mode="max-autotune-no-cudagraphs",
+                                            dynamic=False)
 
     t, h, w = RES[args.res]
     hidden = torch.randn(1, 16, t, h, w, device=device, dtype=torch.bfloat16)
