@@ -1,6 +1,6 @@
 # SparseFP4 Native Composition — STATUS
 
-_Last updated: 2026-08-17 02:05 ET. Full refresh (older incremental notes
+_Last updated: 2026-08-17 03:12 ET. Re-audit (V2) in progress (older incremental notes
 superseded; history in git)._
 
 ## Verdict (final, documented)
@@ -11,13 +11,24 @@ penalty, deployed-baseline video quality, 9.3x attention-kernel speedup at
 10% retention, and 1.40x E2E at 720p (P4G). QAT recovery restores the
 sparsity-family quality loss to dense level at feasibility scale.
 
-## Live right now
+## Live right now — RE-AUDIT (V2) in progress
 
-- All experiments complete; GPUs idle. B1/B2 ladder finished: MXFP8 QK
-  ~= NVFP4 QK accuracy (rel-L2 0.199 vs 0.204) -> NVFP4 is the right
-  operating point (2x MMA throughput for free); FP8-PV blocked in this fork
-  build (`MmaF8F6F4Op` unsupported under dsl 4.5.3) — needs newer fork
-  branches, recorded not simulated.
+- **P4 720p root cause cornered:** kernel-only FP4 BEATS BF16 (3.16 vs
+  3.98 ms) at 720p geometry; mask_mod predicate costs FP4 +42% (BF16 free);
+  synced in-model per-layer walls are 8.00 (FP4) vs 6.05 ms (BF16) — the
+  145 s E2E gap only exists UNSYNCED -> CUDA caching-allocator thrash from
+  ~200 MB/call transient FP4 buffers. **CONFIRMED + FIXED: PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+  takes P4 720p E2E 250.9 -> 111.7 s (2.25x recovery).** Fair-twin control: P0 dense under the same allocator config = 148.7 s
+  (unchanged from 148.8) -> the fix is FP4-specific, not a global speedup.
+  P4G rerun in flight; durable in-backend fix
+  (preallocated quantize workspace) still worth adding.
+- **Priority 2:** VSA256 exact-10% captures running (480p 5/25+, 720p
+  queued, GPU1); offline A0/B0/C0_256/D0_256 runner staged.
+- **Priority 3:** paper-scale VBench protocol verification queued.
+- Claim-language corrections (1.40x is P4G/BF16; 9.3x is sparsity not FP4;
+  FP4 increment over sparse BF16 ~1.04x at 10%; no QuantSparse-contradiction
+  claim; QAT supplementary-only) will land in REPORT_V2/RESULTS_DECISION_V2/
+  PAPER_UPDATE_V2.
 
 ## Results at a glance
 
