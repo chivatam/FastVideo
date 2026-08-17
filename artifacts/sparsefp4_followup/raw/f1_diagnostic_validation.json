@@ -1,0 +1,225 @@
+{
+  "verdict": "PASS",
+  "shards": [
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-214333-6e886a9c-f1-diag2/p01_s1234.jsonl"
+  ],
+  "n_rows": 51840,
+  "n_expected": 51840,
+  "lattice": {
+    "arms": [
+      "R0",
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R4L",
+      "R5",
+      "R5L",
+      "R6",
+      "R7",
+      "R8",
+      "R9"
+    ],
+    "layers": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29
+    ],
+    "timesteps": [
+      0,
+      1,
+      10,
+      25,
+      40,
+      48
+    ],
+    "cfg_branches": [
+      "negative",
+      "positive"
+    ],
+    "heads": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "sparsities": [
+      0.9
+    ]
+  },
+  "ladder_positions": [
+    {
+      "position": "bf16_acc_bf16",
+      "arm": "R4L"
+    },
+    {
+      "position": "bf16_acc_bf16",
+      "arm": "R5L"
+    },
+    {
+      "position": "bf16_acc_fp32",
+      "arm": "R4"
+    },
+    {
+      "position": "bf16_acc_fp32",
+      "arm": "R5"
+    },
+    {
+      "position": "fp32",
+      "arm": "R2"
+    },
+    {
+      "position": "fp32",
+      "arm": "R3"
+    },
+    {
+      "position": "fp64",
+      "arm": "R0"
+    },
+    {
+      "position": "fp64",
+      "arm": "R1"
+    },
+    {
+      "position": "fp8",
+      "arm": "R6"
+    },
+    {
+      "position": "fp8",
+      "arm": "R7"
+    },
+    {
+      "position": "nvfp4_like",
+      "arm": "R8"
+    },
+    {
+      "position": "nvfp4_like",
+      "arm": "R9"
+    }
+  ],
+  "n_checks": 11,
+  "n_failed": 0,
+  "checks": [
+    {
+      "check": "no_malformed_rows",
+      "passed": true,
+      "detail": "51840 rows parsed"
+    },
+    {
+      "check": "lattice_complete",
+      "passed": true,
+      "detail": {
+        "expected": 51840,
+        "observed": 51840,
+        "n_holes": 0,
+        "example_holes": []
+      }
+    },
+    {
+      "check": "no_duplicate_cells",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "reference_arm_is_exact_null",
+      "passed": true,
+      "detail": {
+        "n_reference_rows": 4320,
+        "jaccards": [
+          1.0
+        ],
+        "excesses": [
+          0.0
+        ]
+      }
+    },
+    {
+      "check": "retained_k_identical_across_arms",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "reference_mask_shared_within_cell",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "matched_random_swap_count_equals_arm",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "fp64_shadow_ties_negligible",
+      "passed": true,
+      "detail": {
+        "total_ties": 0,
+        "denominator_query_blocks": 13271040,
+        "tie_rate": 0.0,
+        "n_rows_with_any_tie": 0
+      }
+    },
+    {
+      "check": "no_nans_in_reportable_columns",
+      "passed": true,
+      "detail": {
+        "jaccard": 0,
+        "recall": 0,
+        "rel_l2_vs_dense_bf16": 0,
+        "sparsification_error": 0,
+        "wrong_mask_excess": 0,
+        "changed_pair_gap_fp64_median": 0,
+        "reference_margin_fp64_median": 0
+      }
+    },
+    {
+      "check": "bf16_native_accumulation_is_labelled_fp32",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "simulated_arms_declared",
+      "passed": true,
+      "detail": {
+        "simulated_arms": [
+          "R8",
+          "R9"
+        ]
+      }
+    }
+  ]
+}

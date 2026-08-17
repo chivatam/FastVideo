@@ -1,0 +1,586 @@
+{
+  "stage": "F1-full",
+  "shards": [
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f1-full/p01_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f1-full/p02_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f1-full/p03_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f1-full/p04_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f1-full/p05_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f1-full/p06_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f1-full/p07_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f1-full/p08_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f1-full/p09_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f1-full/p10_s1234.jsonl"
+  ],
+  "n_rows": 1555200,
+  "run_ids": [
+    "20260816-215059-6e886a9c-f1-full"
+  ],
+  "prompts": [
+    "p01",
+    "p02",
+    "p03",
+    "p04",
+    "p05",
+    "p06",
+    "p07",
+    "p08",
+    "p09",
+    "p10"
+  ],
+  "seeds": [
+    1234
+  ],
+  "geometry": [
+    "128x64-raster"
+  ],
+  "arms": [
+    "R0",
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R4L",
+    "R5",
+    "R5L",
+    "R6",
+    "R7",
+    "R8",
+    "R9"
+  ],
+  "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+  ],
+  "timesteps": [
+    0,
+    1,
+    10,
+    25,
+    40,
+    48
+  ],
+  "sparsities": [
+    0.8,
+    0.9,
+    0.95
+  ],
+  "worker_tf32_state": [
+    [
+      false,
+      "highest"
+    ]
+  ],
+  "decision_rules_F1_6": [
+    {
+      "sparsity": 0.8,
+      "verdict": "PARTIAL_SUPPORT",
+      "all_arms_under_0_1pct_of_sparsification": false,
+      "isolation_ratio_at_least_10x_for_all_arms": true,
+      "any_arm_reaches_1pct_or_10x_R1": false,
+      "per_arm": [
+        {
+          "arm": "R2",
+          "ladder_position": "fp32",
+          "arm_label": "repr=bf16, pool=fp32/native, score=fp32/native",
+          "jaccard_median": 1.0,
+          "abs_wrong_mask_over_sparsification_median": 0.0,
+          "under_0_1pct_of_sparsification": true,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": null,
+          "random_at_least_10x_more_damaging": null,
+          "excess_ratio_vs_study1_arm_R1": 0.0,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R3",
+          "ladder_position": "fp32",
+          "arm_label": "repr=nvfp4, pool=fp32/native, score=fp32/native",
+          "jaccard_median": 0.9812157186866031,
+          "abs_wrong_mask_over_sparsification_median": 0.0014478761932896,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 29.700023035542486,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 1.0,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R4",
+          "ladder_position": "bf16_acc_fp32",
+          "arm_label": "repr=bf16, pool=bf16/native, score=bf16/native",
+          "jaccard_median": 0.994402843960366,
+          "abs_wrong_mask_over_sparsification_median": 0.0005419109724499076,
+          "under_0_1pct_of_sparsification": true,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 44.20344635908838,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.19501619263133646,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R5",
+          "ladder_position": "bf16_acc_fp32",
+          "arm_label": "repr=nvfp4, pool=bf16/native, score=bf16/native",
+          "jaccard_median": 0.9800998760935681,
+          "abs_wrong_mask_over_sparsification_median": 0.0015749953635643974,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 52.54566044573292,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.598273689345384,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R4L",
+          "ladder_position": "bf16_acc_bf16",
+          "arm_label": "repr=bf16, pool=bf16/low, score=bf16/low",
+          "jaccard_median": 0.9717340910790399,
+          "abs_wrong_mask_over_sparsification_median": 0.0016533128955460337,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 263.84505205872904,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.1792741094052765,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R5L",
+          "ladder_position": "bf16_acc_bf16",
+          "arm_label": "repr=nvfp4, pool=bf16/low, score=bf16/low",
+          "jaccard_median": 0.9655609392471114,
+          "abs_wrong_mask_over_sparsification_median": 0.0022526047781686407,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 85.13773121226525,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.6699345519586987,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R6",
+          "ladder_position": "fp8",
+          "arm_label": "repr=bf16, pool=fp32+fp8_e4m3/native, score=fp8_e4m3/native",
+          "jaccard_median": 0.9691572383406146,
+          "abs_wrong_mask_over_sparsification_median": 0.0015999463497790706,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 102.93401567944251,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.49778452282551255,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R7",
+          "ladder_position": "fp8",
+          "arm_label": "repr=nvfp4, pool=fp32+fp8_e4m3/native, score=fp8_e4m3/native",
+          "jaccard_median": 0.9640236862686679,
+          "abs_wrong_mask_over_sparsification_median": 0.002185540032645204,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 38.04866077688963,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 1.5460372091762762,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R8",
+          "ladder_position": "nvfp4_like",
+          "arm_label": "repr=bf16, pool=fp32+nvfp4/native, score=fp32/native",
+          "jaccard_median": 0.9111401029209248,
+          "abs_wrong_mask_over_sparsification_median": 0.006713956255427032,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 23.468483210304523,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 6.707489261372105,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R9",
+          "ladder_position": "nvfp4_like",
+          "arm_label": "repr=nvfp4, pool=fp32+nvfp4/native, score=fp32/native",
+          "jaccard_median": 0.909064581523313,
+          "abs_wrong_mask_over_sparsification_median": 0.007379719692890685,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 20.326692629807184,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 7.9538476131112885,
+          "increases_excess_10x_vs_R1": false
+        }
+      ]
+    },
+    {
+      "sparsity": 0.9,
+      "verdict": "PARTIAL_SUPPORT",
+      "all_arms_under_0_1pct_of_sparsification": false,
+      "isolation_ratio_at_least_10x_for_all_arms": true,
+      "any_arm_reaches_1pct_or_10x_R1": false,
+      "per_arm": [
+        {
+          "arm": "R2",
+          "ladder_position": "fp32",
+          "arm_label": "repr=bf16, pool=fp32/native, score=fp32/native",
+          "jaccard_median": 1.0,
+          "abs_wrong_mask_over_sparsification_median": 0.0,
+          "under_0_1pct_of_sparsification": true,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": null,
+          "random_at_least_10x_more_damaging": null,
+          "excess_ratio_vs_study1_arm_R1": 0.0,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R3",
+          "ladder_position": "fp32",
+          "arm_label": "repr=nvfp4, pool=fp32/native, score=fp32/native",
+          "jaccard_median": 0.9750741839762611,
+          "abs_wrong_mask_over_sparsification_median": 0.0013736459779078738,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 20.878423900879756,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 1.0,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R4",
+          "ladder_position": "bf16_acc_fp32",
+          "arm_label": "repr=bf16, pool=bf16/native, score=bf16/native",
+          "jaccard_median": 0.9907282787498131,
+          "abs_wrong_mask_over_sparsification_median": 0.0007048932918554712,
+          "under_0_1pct_of_sparsification": true,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 104.31217788249154,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.07794413869488617,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R5",
+          "ladder_position": "bf16_acc_fp32",
+          "arm_label": "repr=nvfp4, pool=bf16/native, score=bf16/native",
+          "jaccard_median": 0.9728788440163023,
+          "abs_wrong_mask_over_sparsification_median": 0.0016063234738154005,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 23.530664395229984,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.970175549344918,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R4L",
+          "ladder_position": "bf16_acc_bf16",
+          "arm_label": "repr=bf16, pool=bf16/low, score=bf16/low",
+          "jaccard_median": 0.9567837718653536,
+          "abs_wrong_mask_over_sparsification_median": 0.0019392854829278668,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 490.29956427015253,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.08429123171480549,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R5L",
+          "ladder_position": "bf16_acc_bf16",
+          "arm_label": "repr=nvfp4, pool=bf16/low, score=bf16/low",
+          "jaccard_median": 0.9490483162518302,
+          "abs_wrong_mask_over_sparsification_median": 0.0024467390277471976,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 45.909660107334524,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 1.0265533448491562,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R6",
+          "ladder_position": "fp8",
+          "arm_label": "repr=bf16, pool=fp32+fp8_e4m3/native, score=fp8_e4m3/native",
+          "jaccard_median": 0.9598086124401913,
+          "abs_wrong_mask_over_sparsification_median": 0.001660208168857954,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 67.03745724534913,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.5503262497632753,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R7",
+          "ladder_position": "fp8",
+          "arm_label": "repr=nvfp4, pool=fp32+fp8_e4m3/native, score=fp8_e4m3/native",
+          "jaccard_median": 0.9529083840680701,
+          "abs_wrong_mask_over_sparsification_median": 0.0021439044099512412,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 24.976161084135736,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 1.6735665956970611,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R8",
+          "ladder_position": "nvfp4_like",
+          "arm_label": "repr=bf16, pool=fp32+nvfp4/native, score=fp32/native",
+          "jaccard_median": 0.8874237912944846,
+          "abs_wrong_mask_over_sparsification_median": 0.006523469798784476,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 14.277572792644111,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 7.78913418994221,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R9",
+          "ladder_position": "nvfp4_like",
+          "arm_label": "repr=nvfp4, pool=fp32+nvfp4/native, score=fp32/native",
+          "jaccard_median": 0.8848849557522124,
+          "abs_wrong_mask_over_sparsification_median": 0.006999722357211184,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 12.17662536571956,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 9.352286617733984,
+          "increases_excess_10x_vs_R1": false
+        }
+      ]
+    },
+    {
+      "sparsity": 0.95,
+      "verdict": "PARTIAL_SUPPORT",
+      "all_arms_under_0_1pct_of_sparsification": false,
+      "isolation_ratio_at_least_10x_for_all_arms": true,
+      "any_arm_reaches_1pct_or_10x_R1": false,
+      "per_arm": [
+        {
+          "arm": "R2",
+          "ladder_position": "fp32",
+          "arm_label": "repr=bf16, pool=fp32/native, score=fp32/native",
+          "jaccard_median": 1.0,
+          "abs_wrong_mask_over_sparsification_median": 0.0,
+          "under_0_1pct_of_sparsification": true,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": null,
+          "random_at_least_10x_more_damaging": null,
+          "excess_ratio_vs_study1_arm_R1": 0.0,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R3",
+          "ladder_position": "fp32",
+          "arm_label": "repr=nvfp4, pool=fp32/native, score=fp32/native",
+          "jaccard_median": 0.9645808736717828,
+          "abs_wrong_mask_over_sparsification_median": 0.0014821938338122394,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 14.280339014622333,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.999615962015152,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R4",
+          "ladder_position": "bf16_acc_fp32",
+          "arm_label": "repr=bf16, pool=bf16/native, score=bf16/native",
+          "jaccard_median": 0.9847920083494857,
+          "abs_wrong_mask_over_sparsification_median": 0.0008933883098137416,
+          "under_0_1pct_of_sparsification": true,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 35.48321464903357,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.18303483108147425,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R5",
+          "ladder_position": "bf16_acc_fp32",
+          "arm_label": "repr=nvfp4, pool=bf16/native, score=bf16/native",
+          "jaccard_median": 0.9608189718662542,
+          "abs_wrong_mask_over_sparsification_median": 0.0017692290475620261,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 11.164969185857931,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 1.4351383118621188,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R4L",
+          "ladder_position": "bf16_acc_bf16",
+          "arm_label": "repr=bf16, pool=bf16/low, score=bf16/low",
+          "jaccard_median": 0.9337594421847762,
+          "abs_wrong_mask_over_sparsification_median": 0.0023522317889510913,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 65.49052957093159,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.4817000081462603,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R5L",
+          "ladder_position": "bf16_acc_bf16",
+          "arm_label": "repr=nvfp4, pool=bf16/low, score=bf16/low",
+          "jaccard_median": 0.9231436001155735,
+          "abs_wrong_mask_over_sparsification_median": 0.002860411472415081,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 28.710455305564,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 1.2248251463417472,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R6",
+          "ladder_position": "fp8",
+          "arm_label": "repr=bf16, pool=fp32+fp8_e4m3/native, score=fp8_e4m3/native",
+          "jaccard_median": 0.9430740037950665,
+          "abs_wrong_mask_over_sparsification_median": 0.0019241312664963273,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 230.1470099667774,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 0.11209254151683366,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R7",
+          "ladder_position": "fp8",
+          "arm_label": "repr=nvfp4, pool=fp32+fp8_e4m3/native, score=fp8_e4m3/native",
+          "jaccard_median": 0.9337594421847762,
+          "abs_wrong_mask_over_sparsification_median": 0.0023526359505442896,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 25.742207314080012,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 1.137962736677955,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R8",
+          "ladder_position": "nvfp4_like",
+          "arm_label": "repr=bf16, pool=fp32+nvfp4/native, score=fp32/native",
+          "jaccard_median": 0.8491457146825948,
+          "abs_wrong_mask_over_sparsification_median": 0.006771773421381698,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 21.589768654284782,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 3.42869112872255,
+          "increases_excess_10x_vs_R1": false
+        },
+        {
+          "arm": "R9",
+          "ladder_position": "nvfp4_like",
+          "arm_label": "repr=nvfp4, pool=fp32+nvfp4/native, score=fp32/native",
+          "jaccard_median": 0.8463245492371706,
+          "abs_wrong_mask_over_sparsification_median": 0.007208003255557484,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 17.139176554442162,
+          "random_at_least_10x_more_damaging": true,
+          "excess_ratio_vs_study1_arm_R1": 4.441061806840531,
+          "increases_excess_10x_vs_R1": false
+        }
+      ]
+    }
+  ],
+  "r1_vs_study1_baseline": [
+    {
+      "sparsity": 0.8,
+      "quantity": "mask_jaccard_median[router=nvfp4]",
+      "followup_R1_value": 0.9812157186866031,
+      "study1_frozen_value": 0.980695,
+      "note": "R1 reproduces study 1's condition exactly (nvfp4 representation, fp64 scorer); any gap is prompt/layer coverage, not method"
+    },
+    {
+      "sparsity": 0.8,
+      "quantity": "isolation_ratio",
+      "followup_R1_value": 29.515413487987644,
+      "study1_frozen_value": 26.998616291661655,
+      "note": "ratio of medians in both studies"
+    },
+    {
+      "sparsity": 0.8,
+      "quantity": "wrong_mask_excess_median",
+      "followup_R1_value": 3.436533734202385e-05,
+      "study1_frozen_value": 3.096088767051697e-05,
+      "note": "signed paired difference"
+    },
+    {
+      "sparsity": 0.9,
+      "quantity": "mask_jaccard_median[router=nvfp4]",
+      "followup_R1_value": 0.9750741839762611,
+      "study1_frozen_value": 0.973756,
+      "note": "R1 reproduces study 1's condition exactly (nvfp4 representation, fp64 scorer); any gap is prompt/layer coverage, not method"
+    },
+    {
+      "sparsity": 0.9,
+      "quantity": "isolation_ratio",
+      "followup_R1_value": 21.046363620712413,
+      "study1_frozen_value": 21.663399607952954,
+      "note": "ratio of medians in both studies"
+    },
+    {
+      "sparsity": 0.9,
+      "quantity": "wrong_mask_excess_median",
+      "followup_R1_value": 4.0571438148617744e-05,
+      "study1_frozen_value": 3.325752913951874e-05,
+      "note": "signed paired difference"
+    },
+    {
+      "sparsity": 0.95,
+      "quantity": "mask_jaccard_median[router=nvfp4]",
+      "followup_R1_value": 0.9645808736717828,
+      "study1_frozen_value": 0.961108,
+      "note": "R1 reproduces study 1's condition exactly (nvfp4 representation, fp64 scorer); any gap is prompt/layer coverage, not method"
+    },
+    {
+      "sparsity": 0.95,
+      "quantity": "isolation_ratio",
+      "followup_R1_value": 14.354874373028895,
+      "study1_frozen_value": 10.076817719339438,
+      "note": "ratio of medians in both studies"
+    },
+    {
+      "sparsity": 0.95,
+      "quantity": "wrong_mask_excess_median",
+      "followup_R1_value": 8.002761751413345e-05,
+      "study1_frozen_value": 9.519606828689575e-05,
+      "note": "signed paired difference"
+    }
+  ]
+}

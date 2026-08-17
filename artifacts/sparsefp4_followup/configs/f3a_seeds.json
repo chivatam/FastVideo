@@ -1,0 +1,25 @@
+{
+  "phase": "F3A",
+  "purpose": "seed robustness for the F1 scorer-precision mechanism",
+  "seeds": [1234, 2026, 3407],
+  "seed_1234_source": "study 1 and F1/F2 primary seed; reused, not re-run",
+  "new_seeds": [2026, 3407],
+  "new_seeds_chosen": "the SKILL.md suggested defaults, taken verbatim and written here before execution",
+  "chosen_before_execution": true,
+  "sparsity_primary": 0.9,
+  "prompts": 10,
+  "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+  "resolution": "480x832",
+  "frames": 81,
+  "num_inference_steps": 50,
+  "timesteps_measured": [0, 1, 10, 25, 40, 48],
+  "layers": "all 30",
+  "cfg_branches": ["positive", "negative"],
+  "pass_criteria": {
+    "mechanism_direction_same_across_seeds": "required",
+    "no_seed_reaches_1pct_of_sparsification": "required",
+    "random_over_quantization_ratio_above_5x_every_seed": "required",
+    "higher_precision_rescue_under_1pct_every_seed": "required"
+  },
+  "note": "Seed 1234 data is reused from the F1 full run rather than regenerated, since it is the identical configuration at sparsity 0.90; only 2026 and 3407 are newly executed."
+}

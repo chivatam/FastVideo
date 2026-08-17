@@ -1,0 +1,4 @@
+seed,n_arms,max_damage_share,damage_share_under_1pct,min_isolation_ratio,isolation_above_5x,rescue_share_R9_to_R1,rescue_under_1pct,arms_damaging_in_majority_of_cells,jaccard_median_R9
+1234,6,0.006999722357211184,True,12.17662536571956,True,0.0018977433313641667,True,"['R1', 'R3', 'R6', 'R7', 'R8', 'R9']",0.8848849557522124
+2026,6,0.006991231877107678,True,11.882047958522358,True,0.0017002499075767093,True,"['R1', 'R3', 'R6', 'R7', 'R8', 'R9']",0.8878252854002694
+3407,6,0.0069591660130383926,True,11.616234390009605,True,0.0017283372980250863,True,"['R1', 'R3', 'R6', 'R7', 'R8', 'R9']",0.8876914350538854

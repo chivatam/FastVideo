@@ -137,3 +137,7 @@ fastvideo/tests/ssim/reference_videos/**
 *.nvimlog
 .nvimlog
 .python-version
+
+# Regenerable intermediate caches and packaged skill bundles from research runs
+artifacts/**/raw/cache/
+sparsefp4-paper-validation.zip

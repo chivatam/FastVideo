@@ -1,0 +1,543 @@
+{
+  "n_tensors": 30,
+  "summary": {
+    "median_rel_disagreement": 0.009802031796425581,
+    "p90_rel_disagreement": 0.010721617471426725,
+    "max_rel_disagreement": 0.01103946566581726,
+    "median_pooled_rel_disagreement": 0.0013913653674535453,
+    "p90_pooled_rel_disagreement": 0.002201767242513597,
+    "max_pooled_rel_disagreement": 0.0028374302200973034,
+    "native_twin": "quantize_router_input(..., 'nvfp4') via the FA4 fork's real quantize/dequantize",
+    "simulated": "quantize_router_input(..., 'nvfp4_sim'), the arithmetic emulation",
+    "latency_policy": "simulated arms are never used for latency claims"
+  },
+  "per_tensor": [
+    {
+      "layer": 0,
+      "timestep": 0,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.009429062716662884,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9995884895324707,
+      "pooled_rel_disagreement": 0.0011698774760589004,
+      "native_saturation_frac": 0.09660357236862183,
+      "simulated_saturation_frac": 0.09648461639881134
+    },
+    {
+      "layer": 0,
+      "timestep": 0,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010372018441557884,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9996530413627625,
+      "pooled_rel_disagreement": 0.001661603688262403,
+      "native_saturation_frac": 0.09476016461849213,
+      "simulated_saturation_frac": 0.09467121958732605
+    },
+    {
+      "layer": 1,
+      "timestep": 0,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010264560580253601,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9994324445724487,
+      "pooled_rel_disagreement": 0.0013341360026970506,
+      "native_saturation_frac": 0.1009833812713623,
+      "simulated_saturation_frac": 0.10082928091287613
+    },
+    {
+      "layer": 1,
+      "timestep": 0,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.009712673723697662,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9994720220565796,
+      "pooled_rel_disagreement": 0.0012595424195751548,
+      "native_saturation_frac": 0.10563371330499649,
+      "simulated_saturation_frac": 0.10548055171966553
+    },
+    {
+      "layer": 15,
+      "timestep": 0,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010996365919709206,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9993279576301575,
+      "pooled_rel_disagreement": 0.0015134563436731696,
+      "native_saturation_frac": 0.10760720819234848,
+      "simulated_saturation_frac": 0.10742690414190292
+    },
+    {
+      "layer": 15,
+      "timestep": 0,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010444744490087032,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9993665218353271,
+      "pooled_rel_disagreement": 0.001286588958464563,
+      "native_saturation_frac": 0.10818442702293396,
+      "simulated_saturation_frac": 0.10800465196371078
+    },
+    {
+      "layer": 28,
+      "timestep": 0,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010697870515286922,
+      "max_abs_disagreement": 30.0,
+      "frac_elements_bit_identical": 0.9995201826095581,
+      "pooled_rel_disagreement": 0.0019822644535452127,
+      "native_saturation_frac": 0.10044022649526596,
+      "simulated_saturation_frac": 0.1003221794962883
+    },
+    {
+      "layer": 28,
+      "timestep": 0,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.0045855846256017685,
+      "max_abs_disagreement": 15.0,
+      "frac_elements_bit_identical": 0.9995285868644714,
+      "pooled_rel_disagreement": 0.0022487123496830463,
+      "native_saturation_frac": 0.09658161550760269,
+      "simulated_saturation_frac": 0.09646080434322357
+    },
+    {
+      "layer": 29,
+      "timestep": 0,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.007191323675215244,
+      "max_abs_disagreement": 7.5,
+      "frac_elements_bit_identical": 0.9993863105773926,
+      "pooled_rel_disagreement": 0.002201496157795191,
+      "native_saturation_frac": 0.10160648077726364,
+      "simulated_saturation_frac": 0.10145226120948792
+    },
+    {
+      "layer": 29,
+      "timestep": 0,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.004883062094449997,
+      "max_abs_disagreement": 7.5,
+      "frac_elements_bit_identical": 0.9993610382080078,
+      "pooled_rel_disagreement": 0.0012175627052783966,
+      "native_saturation_frac": 0.10778755694627762,
+      "simulated_saturation_frac": 0.10758447647094727
+    },
+    {
+      "layer": 0,
+      "timestep": 25,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010571981780230999,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9995504021644592,
+      "pooled_rel_disagreement": 0.001391624566167593,
+      "native_saturation_frac": 0.09507610648870468,
+      "simulated_saturation_frac": 0.09494200348854065
+    },
+    {
+      "layer": 0,
+      "timestep": 25,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010617691092193127,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9996381402015686,
+      "pooled_rel_disagreement": 0.002204207004979253,
+      "native_saturation_frac": 0.09289776533842087,
+      "simulated_saturation_frac": 0.09280392527580261
+    },
+    {
+      "layer": 1,
+      "timestep": 25,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010081559419631958,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9994470477104187,
+      "pooled_rel_disagreement": 0.0013911061687394977,
+      "native_saturation_frac": 0.10296418517827988,
+      "simulated_saturation_frac": 0.10281267762184143
+    },
+    {
+      "layer": 1,
+      "timestep": 25,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.0098913898691535,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9994651675224304,
+      "pooled_rel_disagreement": 0.0016015219734981656,
+      "native_saturation_frac": 0.102874755859375,
+      "simulated_saturation_frac": 0.10271825641393661
+    },
+    {
+      "layer": 15,
+      "timestep": 25,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.01103946566581726,
+      "max_abs_disagreement": 3.75,
+      "frac_elements_bit_identical": 0.999321460723877,
+      "pooled_rel_disagreement": 0.001428093295544386,
+      "native_saturation_frac": 0.1071898341178894,
+      "simulated_saturation_frac": 0.1070021390914917
+    },
+    {
+      "layer": 15,
+      "timestep": 25,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010462344624102116,
+      "max_abs_disagreement": 3.75,
+      "frac_elements_bit_identical": 0.9993689060211182,
+      "pooled_rel_disagreement": 0.0014013866893947124,
+      "native_saturation_frac": 0.10916320979595184,
+      "simulated_saturation_frac": 0.10898809134960175
+    },
+    {
+      "layer": 28,
+      "timestep": 25,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.005604447331279516,
+      "max_abs_disagreement": 15.0,
+      "frac_elements_bit_identical": 0.9994616508483887,
+      "pooled_rel_disagreement": 0.0009823755826801062,
+      "native_saturation_frac": 0.10073710978031158,
+      "simulated_saturation_frac": 0.1005876287817955
+    },
+    {
+      "layer": 28,
+      "timestep": 25,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.003538888180628419,
+      "max_abs_disagreement": 7.5,
+      "frac_elements_bit_identical": 0.999571681022644,
+      "pooled_rel_disagreement": 0.0008978577679954469,
+      "native_saturation_frac": 0.09822458028793335,
+      "simulated_saturation_frac": 0.0981011912226677
+    },
+    {
+      "layer": 29,
+      "timestep": 25,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.004136791452765465,
+      "max_abs_disagreement": 7.5,
+      "frac_elements_bit_identical": 0.9995213747024536,
+      "pooled_rel_disagreement": 0.000698657357133925,
+      "native_saturation_frac": 0.10205260664224625,
+      "simulated_saturation_frac": 0.10191671550273895
+    },
+    {
+      "layer": 29,
+      "timestep": 25,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.006064905319362879,
+      "max_abs_disagreement": 7.5,
+      "frac_elements_bit_identical": 0.9995266795158386,
+      "pooled_rel_disagreement": 0.0014349876437336206,
+      "native_saturation_frac": 0.10257068276405334,
+      "simulated_saturation_frac": 0.10243786871433258
+    },
+    {
+      "layer": 0,
+      "timestep": 48,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010614422149956226,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9995428919792175,
+      "pooled_rel_disagreement": 0.002014320809394121,
+      "native_saturation_frac": 0.08944698423147202,
+      "simulated_saturation_frac": 0.08932202309370041
+    },
+    {
+      "layer": 0,
+      "timestep": 48,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.009551878087222576,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9995371103286743,
+      "pooled_rel_disagreement": 0.0028374302200973034,
+      "native_saturation_frac": 0.0969092845916748,
+      "simulated_saturation_frac": 0.09678132086992264
+    },
+    {
+      "layer": 1,
+      "timestep": 48,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.00955190323293209,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.999401330947876,
+      "pooled_rel_disagreement": 0.0014474568888545036,
+      "native_saturation_frac": 0.09718329459428787,
+      "simulated_saturation_frac": 0.09702535718679428
+    },
+    {
+      "layer": 1,
+      "timestep": 48,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.01034813653677702,
+      "max_abs_disagreement": 1.875,
+      "frac_elements_bit_identical": 0.9994206428527832,
+      "pooled_rel_disagreement": 0.0019476161105558276,
+      "native_saturation_frac": 0.09994137287139893,
+      "simulated_saturation_frac": 0.0997743234038353
+    },
+    {
+      "layer": 15,
+      "timestep": 48,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010935340076684952,
+      "max_abs_disagreement": 3.75,
+      "frac_elements_bit_identical": 0.9992934465408325,
+      "pooled_rel_disagreement": 0.001344089861959219,
+      "native_saturation_frac": 0.10657289624214172,
+      "simulated_saturation_frac": 0.10638024657964706
+    },
+    {
+      "layer": 15,
+      "timestep": 48,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.010076649487018585,
+      "max_abs_disagreement": 3.75,
+      "frac_elements_bit_identical": 0.9993856549263,
+      "pooled_rel_disagreement": 0.0013599436497315764,
+      "native_saturation_frac": 0.10760130733251572,
+      "simulated_saturation_frac": 0.10742668062448502
+    },
+    {
+      "layer": 28,
+      "timestep": 48,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.0066217887215316296,
+      "max_abs_disagreement": 15.0,
+      "frac_elements_bit_identical": 0.9994317889213562,
+      "pooled_rel_disagreement": 0.001268145046196878,
+      "native_saturation_frac": 0.10166706889867783,
+      "simulated_saturation_frac": 0.10151253640651703
+    },
+    {
+      "layer": 28,
+      "timestep": 48,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.0039604357443749905,
+      "max_abs_disagreement": 7.5,
+      "frac_elements_bit_identical": 0.9995489716529846,
+      "pooled_rel_disagreement": 0.0010929510463029146,
+      "native_saturation_frac": 0.09634377062320709,
+      "simulated_saturation_frac": 0.09622165560722351
+    },
+    {
+      "layer": 29,
+      "timestep": 48,
+      "which": "query",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.00803117174655199,
+      "max_abs_disagreement": 15.0,
+      "frac_elements_bit_identical": 0.9995056390762329,
+      "pooled_rel_disagreement": 0.0012715253978967667,
+      "native_saturation_frac": 0.09791567176580429,
+      "simulated_saturation_frac": 0.09779208153486252
+    },
+    {
+      "layer": 29,
+      "timestep": 48,
+      "which": "key",
+      "shape": [
+        1,
+        32760,
+        12,
+        128
+      ],
+      "rel_l2_disagreement": 0.004340447951108217,
+      "max_abs_disagreement": 3.75,
+      "frac_elements_bit_identical": 0.9995352625846863,
+      "pooled_rel_disagreement": 0.0007699506240896881,
+      "native_saturation_frac": 0.09882292151451111,
+      "simulated_saturation_frac": 0.09870709478855133
+    }
+  ],
+  "phase": "F4.5",
+  "model_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+  "model_revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+  "git_commit": "6e886a9c300312ffd88e407dc2a5e2e7509a776d",
+  "capture": "/mnt/nvme/scratch/sparsefp4_followup/f45_capture/qk.pt",
+  "layers": [
+    0,
+    1,
+    15,
+    28,
+    29
+  ],
+  "timesteps": [
+    0,
+    25,
+    48
+  ]
+}

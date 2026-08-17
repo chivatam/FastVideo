@@ -1,0 +1,1420 @@
+{
+  "purpose": "Frozen study-1 baseline for the SparseFP4 paper-validation follow-up. Every value is read from a committed study-1 artifact, so later follow-up runs cannot move the comparison baseline.",
+  "frozen_at_utc": "2026-08-16T20:54:14Z",
+  "study1_report": "artifacts/sparsefp4/REPORT.md",
+  "study1_git_commit_at_report_time": "8208536cd1db7a1d32b68aaa6a679953ae23ab8b",
+  "study1_run_ids": {
+    "phase1_stage2": "20260814-014229-8208536-p1-stage2",
+    "phase2_main": "20260814-025500-8208536-p2-main",
+    "phase2b_cube": "20260814-032500-8208536-p2b-64x64-cube",
+    "phase5_main": "20260814-032700-8208536-p5-main"
+  },
+  "study1_configuration": {
+    "model_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    "model_revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+    "resolution": "480x832",
+    "frames": 81,
+    "num_inference_steps": 50,
+    "guidance_scale": 3.0,
+    "sp_size": 1,
+    "seed": 1234,
+    "layers": 30,
+    "heads": 12,
+    "head_dim": 128,
+    "seq_len": 32760
+  },
+  "binding_terminology": "'NVFP4' means NVFP4 Q/K with BF16 PV; the FA4 kernel is qk_mode=nvfp4, pv_mode=bf16. No fully-FP4 attention exists in this environment.",
+  "known_limitations_this_followup_tests": [
+    "scorer arithmetic precision was fp64 throughout study 1 (F1)",
+    "the cube geometry control did NOT use VSA's own gate/selector (F2)",
+    "single seed 1234, single model configuration (F3)"
+  ],
+  "families_missing_sources": [],
+  "families": {
+    "mask_overlap_by_sparsity": [
+      {
+        "metric": "mask_jaccard_median[sparsity=0.5,router=bf16]",
+        "value": 1.0,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 7200.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.0,
+        "recall_median": 1.0
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.5,router=fp8_e4m3]",
+        "value": 0.995858,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.001762,
+        "recall_median": 0.997925
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.5,router=nvfp4]",
+        "value": 0.988169,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.005968,
+        "recall_median": 0.994049
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.5,router=nvfp4_sim]",
+        "value": 0.988138,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.005998,
+        "recall_median": 0.994034
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.7,router=bf16]",
+        "value": 1.0,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 7200.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.0,
+        "recall_median": 1.0
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.7,router=fp8_e4m3]",
+        "value": 0.99383,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.002873,
+        "recall_median": 0.996905
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.7,router=nvfp4]",
+        "value": 0.983597,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.009124,
+        "recall_median": 0.991731
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.7,router=nvfp4_sim]",
+        "value": 0.983548,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.009174,
+        "recall_median": 0.991706
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.8,router=bf16]",
+        "value": 1.0,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 7200.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.0,
+        "recall_median": 1.0
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.8,router=fp8_e4m3]",
+        "value": 0.992368,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.004213,
+        "recall_median": 0.99617
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.8,router=nvfp4]",
+        "value": 0.980695,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.011067,
+        "recall_median": 0.990253
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.8,router=nvfp4_sim]",
+        "value": 0.98062,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.011067,
+        "recall_median": 0.990215
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.9,router=bf16]",
+        "value": 1.0,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 7200.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.0,
+        "recall_median": 1.0
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.9,router=fp8_e4m3]",
+        "value": 0.989092,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.007866,
+        "recall_median": 0.994516
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.9,router=nvfp4]",
+        "value": 0.973756,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.017231,
+        "recall_median": 0.986704
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.9,router=nvfp4_sim]",
+        "value": 0.973756,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.017083,
+        "recall_median": 0.986704
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.95,router=bf16]",
+        "value": 1.0,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 7200.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.0,
+        "recall_median": 1.0
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.95,router=fp8_e4m3]",
+        "value": 0.982723,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.013556,
+        "recall_median": 0.991286
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.95,router=nvfp4]",
+        "value": 0.961108,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.023636,
+        "recall_median": 0.980168
+      },
+      {
+        "metric": "mask_jaccard_median[sparsity=0.95,router=nvfp4_sim]",
+        "value": 0.961108,
+        "source_path": "artifacts/sparsefp4/tables/main_stage2/agg_by_sparsity_precision.csv",
+        "source_run_id": "20260814-014229-8208536-p1-stage2",
+        "n": 72000.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated",
+        "note": "equal-size masks: recall and jaccard are one measurement, not two",
+        "jaccard_iqr": 0.023636,
+        "recall_median": 0.980168
+      }
+    ],
+    "error_attribution": [
+      {
+        "metric": "quantization_B[sparsity=0.8]",
+        "value": 0.05203893035650253,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native"
+      },
+      {
+        "metric": "sparsification_C[sparsity=0.8]",
+        "value": 0.10580692812800407,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native"
+      },
+      {
+        "metric": "wrong_mask_D_minus_C[sparsity=0.8]",
+        "value": 3.096088767051697e-05,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native"
+      },
+      {
+        "metric": "wrong_mask_D8_minus_C[sparsity=0.8]",
+        "value": 7.863854989409447e-08,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native compute / simulated fp8 router"
+      },
+      {
+        "metric": "random_mask_Crand_minus_C[sparsity=0.8]",
+        "value": 0.0008359011262655258,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "synthetic control"
+      },
+      {
+        "metric": "router_recoverable_E_minus_F16[sparsity=0.8]",
+        "value": 6.631016731262207e-06,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated; numerical-only"
+      },
+      {
+        "metric": "share_wrong_mask_of_E[sparsity=0.8]",
+        "value": 0.0001993348724642966,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "derived"
+      },
+      {
+        "metric": "share_sparsification_of_E[sparsity=0.8]",
+        "value": 0.6812146585938802,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "derived"
+      },
+      {
+        "metric": "quantization_B[sparsity=0.9]",
+        "value": 0.05203893035650253,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native"
+      },
+      {
+        "metric": "sparsification_C[sparsity=0.9]",
+        "value": 0.1762191504240036,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native"
+      },
+      {
+        "metric": "wrong_mask_D_minus_C[sparsity=0.9]",
+        "value": 3.325752913951874e-05,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native"
+      },
+      {
+        "metric": "wrong_mask_D8_minus_C[sparsity=0.9]",
+        "value": -3.986060619354248e-07,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native compute / simulated fp8 router"
+      },
+      {
+        "metric": "random_mask_Crand_minus_C[sparsity=0.9]",
+        "value": 0.0007204711437225342,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "synthetic control"
+      },
+      {
+        "metric": "router_recoverable_E_minus_F16[sparsity=0.9]",
+        "value": 8.419156074523926e-06,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated; numerical-only"
+      },
+      {
+        "metric": "share_wrong_mask_of_E[sparsity=0.9]",
+        "value": 0.00015640267984932924,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "derived"
+      },
+      {
+        "metric": "share_sparsification_of_E[sparsity=0.9]",
+        "value": 0.8287190323569859,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "derived"
+      },
+      {
+        "metric": "quantization_B[sparsity=0.95]",
+        "value": 0.05203893035650253,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native"
+      },
+      {
+        "metric": "sparsification_C[sparsity=0.95]",
+        "value": 0.2740054428577423,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native"
+      },
+      {
+        "metric": "wrong_mask_D_minus_C[sparsity=0.95]",
+        "value": 9.519606828689575e-05,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native"
+      },
+      {
+        "metric": "wrong_mask_D8_minus_C[sparsity=0.95]",
+        "value": 1.2880191206932068e-06,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native compute / simulated fp8 router"
+      },
+      {
+        "metric": "random_mask_Crand_minus_C[sparsity=0.95]",
+        "value": 0.0009592734277248383,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "synthetic control"
+      },
+      {
+        "metric": "router_recoverable_E_minus_F16[sparsity=0.95]",
+        "value": 4.8138201236724854e-05,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated; numerical-only"
+      },
+      {
+        "metric": "share_wrong_mask_of_E[sparsity=0.95]",
+        "value": 0.00032145157538443237,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "derived"
+      },
+      {
+        "metric": "share_sparsification_of_E[sparsity=0.95]",
+        "value": 0.9252428472684616,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table4_error_attribution.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "derived"
+      }
+    ],
+    "random_matched_contrast": [
+      {
+        "metric": "random_over_quantization_ratio[sparsity=0.8,region=all]",
+        "value": 26.998616291661655,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table7_random_perturbation_contrast.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native compute; random arm is a synthetic control",
+        "note": "ratio of medians, not median of per-cell ratios",
+        "excess_quantization_median": 3.096088767051697e-05,
+        "excess_random_median": 0.0008359011262655258,
+        "frac_cells_random_worse": 0.6323529411764706
+      },
+      {
+        "metric": "random_over_quantization_ratio[sparsity=0.9,region=all]",
+        "value": 21.663399607952954,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table7_random_perturbation_contrast.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native compute; random arm is a synthetic control",
+        "note": "ratio of medians, not median of per-cell ratios",
+        "excess_quantization_median": 3.325752913951874e-05,
+        "excess_random_median": 0.0007204711437225342,
+        "frac_cells_random_worse": 0.616078431372549
+      },
+      {
+        "metric": "random_over_quantization_ratio[sparsity=0.95,region=all]",
+        "value": 10.076817719339438,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table7_random_perturbation_contrast.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native compute; random arm is a synthetic control",
+        "note": "ratio of medians, not median of per-cell ratios",
+        "excess_quantization_median": 9.519606828689575e-05,
+        "excess_random_median": 0.0009592734277248383,
+        "frac_cells_random_worse": 0.6162745098039216
+      }
+    ],
+    "higher_precision_router_recovery": [
+      {
+        "metric": "h3_median_relative_reduction[E_to_F8,sparsity=0.8,region=all]",
+        "value": 0.000503913568821426,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table3_h3_paired.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated; numerical-only",
+        "note": "pre-registered support threshold was >=0.20 (i.e. 20%)",
+        "router_reference": "nvfp4",
+        "router_candidate": "fp8_e4m3",
+        "frac_cells_improved": 0.5548039215686275,
+        "meets_20pct_threshold": "False"
+      },
+      {
+        "metric": "h3_median_relative_reduction[E_to_F8,sparsity=0.9,region=all]",
+        "value": 0.00037445543311112443,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table3_h3_paired.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated; numerical-only",
+        "note": "pre-registered support threshold was >=0.20 (i.e. 20%)",
+        "router_reference": "nvfp4",
+        "router_candidate": "fp8_e4m3",
+        "frac_cells_improved": 0.5288725490196079,
+        "meets_20pct_threshold": "False"
+      },
+      {
+        "metric": "h3_median_relative_reduction[E_to_F8,sparsity=0.95,region=all]",
+        "value": 0.0010355284372562602,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table3_h3_paired.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated; numerical-only",
+        "note": "pre-registered support threshold was >=0.20 (i.e. 20%)",
+        "router_reference": "nvfp4",
+        "router_candidate": "fp8_e4m3",
+        "frac_cells_improved": 0.5404411764705882,
+        "meets_20pct_threshold": "False"
+      },
+      {
+        "metric": "h3_median_relative_reduction[E_to_F16,sparsity=0.8,region=all]",
+        "value": 0.0005089982749894481,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table3_h3_paired.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated; numerical-only",
+        "note": "pre-registered support threshold was >=0.20 (i.e. 20%)",
+        "router_reference": "nvfp4",
+        "router_candidate": "bf16",
+        "frac_cells_improved": 0.553921568627451,
+        "meets_20pct_threshold": "False"
+      },
+      {
+        "metric": "h3_median_relative_reduction[E_to_F16,sparsity=0.9,region=all]",
+        "value": 0.0005456881178321936,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table3_h3_paired.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated; numerical-only",
+        "note": "pre-registered support threshold was >=0.20 (i.e. 20%)",
+        "router_reference": "nvfp4",
+        "router_candidate": "bf16",
+        "frac_cells_improved": 0.5224509803921569,
+        "meets_20pct_threshold": "False"
+      },
+      {
+        "metric": "h3_median_relative_reduction[E_to_F16,sparsity=0.95,region=all]",
+        "value": 0.0007263794227517674,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table3_h3_paired.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated; numerical-only",
+        "note": "pre-registered support threshold was >=0.20 (i.e. 20%)",
+        "router_reference": "nvfp4",
+        "router_candidate": "bf16",
+        "frac_cells_improved": 0.5466176470588235,
+        "meets_20pct_threshold": "False"
+      },
+      {
+        "metric": "h3_median_relative_reduction[F16_to_F16_null_control,sparsity=,region=all]",
+        "value": 0.0,
+        "source_path": "artifacts/sparsefp4/tables/phase2_main/table3_h3_paired.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 61200.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "simulated; numerical-only",
+        "note": "pre-registered support threshold was >=0.20 (i.e. 20%)",
+        "router_reference": "bf16",
+        "router_candidate": "bf16",
+        "frac_cells_improved": 0.0,
+        "meets_20pct_threshold": "False"
+      }
+    ],
+    "deployed_cube_geometry": [
+      {
+        "metric": "cube_geometry_isolation_ratio[geometry=128x64-raster,sparsity=0.8]",
+        "value": 26.998616291661655,
+        "source_path": "artifacts/sparsefp4/tables/phase2b_geometry/table1_three_geometry_headline.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native compute, research mean-pooled scorer \u2014 NOT VSA's own selector",
+        "note": "cube geometry matches VSA's (4,4,4) tiles and token ordering but the mask came from the research mean-pooled scorer, not VSA's gate; F2 tests that",
+        "mask_jaccard_median": 0.9797282078234102,
+        "sparsification_C": 0.10580692812800407,
+        "wrong_mask_excess": 3.096088767051697e-05,
+        "random_excess": 0.0008359011262655258,
+        "agreed_over_swapped_mass_ratio": 5.724237606356238,
+        "score_gap_swapped_norm_median": 0.004835489045259389,
+        "frac_cells_random_worse": 0.6323529411764706
+      },
+      {
+        "metric": "cube_geometry_isolation_ratio[geometry=128x64-raster,sparsity=0.9]",
+        "value": 21.663399607952954,
+        "source_path": "artifacts/sparsefp4/tables/phase2b_geometry/table1_three_geometry_headline.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native compute, research mean-pooled scorer \u2014 NOT VSA's own selector",
+        "note": "cube geometry matches VSA's (4,4,4) tiles and token ordering but the mask came from the research mean-pooled scorer, not VSA's gate; F2 tests that",
+        "mask_jaccard_median": 0.9722942440180754,
+        "sparsification_C": 0.1762191504240036,
+        "wrong_mask_excess": 3.325752913951874e-05,
+        "random_excess": 0.0007204711437225342,
+        "agreed_over_swapped_mass_ratio": 4.6589341781428715,
+        "score_gap_swapped_norm_median": 0.0046826558013372925,
+        "frac_cells_random_worse": 0.616078431372549
+      },
+      {
+        "metric": "cube_geometry_isolation_ratio[geometry=128x64-raster,sparsity=0.95]",
+        "value": 10.076817719339438,
+        "source_path": "artifacts/sparsefp4/tables/phase2b_geometry/table1_three_geometry_headline.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "128x64-raster",
+        "native_or_simulated": "native compute, research mean-pooled scorer \u2014 NOT VSA's own selector",
+        "note": "cube geometry matches VSA's (4,4,4) tiles and token ordering but the mask came from the research mean-pooled scorer, not VSA's gate; F2 tests that",
+        "mask_jaccard_median": 0.9619749447310243,
+        "sparsification_C": 0.2740054428577423,
+        "wrong_mask_excess": 9.519606828689575e-05,
+        "random_excess": 0.0009592734277248383,
+        "agreed_over_swapped_mass_ratio": 3.8319459060842576,
+        "score_gap_swapped_norm_median": 0.004227514650545548,
+        "frac_cells_random_worse": 0.6162745098039216
+      },
+      {
+        "metric": "cube_geometry_isolation_ratio[geometry=64x64-raster,sparsity=0.8]",
+        "value": 47.07710992460872,
+        "source_path": "artifacts/sparsefp4/tables/phase2b_geometry/table1_three_geometry_headline.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "64x64-raster",
+        "native_or_simulated": "native compute, research mean-pooled scorer \u2014 NOT VSA's own selector",
+        "note": "cube geometry matches VSA's (4,4,4) tiles and token ordering but the mask came from the research mean-pooled scorer, not VSA's gate; F2 tests that",
+        "mask_jaccard_median": 0.9786140396953439,
+        "sparsification_C": 0.09790657833218575,
+        "wrong_mask_excess": 2.0320992916822433e-05,
+        "random_excess": 0.0009566536173224449,
+        "agreed_over_swapped_mass_ratio": 6.237541464016082,
+        "score_gap_swapped_norm_median": 0.005007274193518157,
+        "frac_cells_random_worse": 0.6472549019607843
+      },
+      {
+        "metric": "cube_geometry_isolation_ratio[geometry=64x64-raster,sparsity=0.9]",
+        "value": 23.297649076783372,
+        "source_path": "artifacts/sparsefp4/tables/phase2b_geometry/table1_three_geometry_headline.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "64x64-raster",
+        "native_or_simulated": "native compute, research mean-pooled scorer \u2014 NOT VSA's own selector",
+        "note": "cube geometry matches VSA's (4,4,4) tiles and token ordering but the mask came from the research mean-pooled scorer, not VSA's gate; F2 tests that",
+        "mask_jaccard_median": 0.9714909844866526,
+        "sparsification_C": 0.1596265211701393,
+        "wrong_mask_excess": 3.692135214805603e-05,
+        "random_excess": 0.0008601807057857513,
+        "agreed_over_swapped_mass_ratio": 4.93049871531654,
+        "score_gap_swapped_norm_median": 0.004784417681205329,
+        "frac_cells_random_worse": 0.6413235294117647
+      },
+      {
+        "metric": "cube_geometry_isolation_ratio[geometry=64x64-raster,sparsity=0.95]",
+        "value": 24.19630177514793,
+        "source_path": "artifacts/sparsefp4/tables/phase2b_geometry/table1_three_geometry_headline.csv",
+        "source_run_id": "20260814-025500-8208536-p2-main",
+        "n": 20400.0,
+        "geometry": "64x64-raster",
+        "native_or_simulated": "native compute, research mean-pooled scorer \u2014 NOT VSA's own selector",
+        "note": "cube geometry matches VSA's (4,4,4) tiles and token ordering but the mask came from the research mean-pooled scorer, not VSA's gate; F2 tests that",
+        "mask_jaccard_median": 0.961830373590745,
+        "sparsification_C": 0.24247518926858902,
+        "wrong_mask_excess": 5.036592483520508e-05,
+        "random_excess": 0.0012186691164970398,
+        "agreed_over_swapped_mass_ratio": 4.258873276389883,
+        "score_gap_swapped_norm_median": 0.004317309940545793,
+        "frac_cells_random_worse": 0.6579901960784313
+      },
+      {
+        "metric": "cube_geometry_isolation_ratio[geometry=64x64-cube,sparsity=0.8]",
+        "value": 75.60861550892609,
+        "source_path": "artifacts/sparsefp4/tables/phase2b_geometry/table1_three_geometry_headline.csv",
+        "source_run_id": "20260814-032500-8208536-p2b-64x64-cube",
+        "n": 20400.0,
+        "geometry": "64x64-cube",
+        "native_or_simulated": "native compute, research mean-pooled scorer \u2014 NOT VSA's own selector",
+        "note": "cube geometry matches VSA's (4,4,4) tiles and token ordering but the mask came from the research mean-pooled scorer, not VSA's gate; F2 tests that",
+        "mask_jaccard_median": 0.979368885843706,
+        "sparsification_C": 0.08460834622383118,
+        "wrong_mask_excess": 1.8441583961248398e-05,
+        "random_excess": 0.0013943426311016083,
+        "agreed_over_swapped_mass_ratio": 11.051432202330806,
+        "score_gap_swapped_norm_median": 0.004919434553998241,
+        "frac_cells_random_worse": 0.6767647058823529
+      },
+      {
+        "metric": "cube_geometry_isolation_ratio[geometry=64x64-cube,sparsity=0.9]",
+        "value": 44.580719794344475,
+        "source_path": "artifacts/sparsefp4/tables/phase2b_geometry/table1_three_geometry_headline.csv",
+        "source_run_id": "20260814-032500-8208536-p2b-64x64-cube",
+        "n": 20400.0,
+        "geometry": "64x64-cube",
+        "native_or_simulated": "native compute, research mean-pooled scorer \u2014 NOT VSA's own selector",
+        "note": "cube geometry matches VSA's (4,4,4) tiles and token ordering but the mask came from the research mean-pooled scorer, not VSA's gate; F2 tests that",
+        "mask_jaccard_median": 0.9722563652326602,
+        "sparsification_C": 0.136905275285244,
+        "wrong_mask_excess": 2.898275852203369e-05,
+        "random_excess": 0.0012920722365379333,
+        "agreed_over_swapped_mass_ratio": 8.107361523949486,
+        "score_gap_swapped_norm_median": 0.0043670517553020625,
+        "frac_cells_random_worse": 0.676813725490196
+      },
+      {
+        "metric": "cube_geometry_isolation_ratio[geometry=64x64-cube,sparsity=0.95]",
+        "value": 35.71743542435424,
+        "source_path": "artifacts/sparsefp4/tables/phase2b_geometry/table1_three_geometry_headline.csv",
+        "source_run_id": "20260814-032500-8208536-p2b-64x64-cube",
+        "n": 20400.0,
+        "geometry": "64x64-cube",
+        "native_or_simulated": "native compute, research mean-pooled scorer \u2014 NOT VSA's own selector",
+        "note": "cube geometry matches VSA's (4,4,4) tiles and token ordering but the mask came from the research mean-pooled scorer, not VSA's gate; F2 tests that",
+        "mask_jaccard_median": 0.9644842343450244,
+        "sparsification_C": 0.20002374053001404,
+        "wrong_mask_excess": 4.038214683532715e-05,
+        "random_excess": 0.0014423467218875885,
+        "agreed_over_swapped_mass_ratio": 6.875057575498951,
+        "score_gap_swapped_norm_median": 0.004183940835034903,
+        "frac_cells_random_worse": 0.6982843137254902
+      }
+    ],
+    "vbench_routing_significance": [
+      {
+        "metric": "vbench_routing_family_n_significant_after_holm",
+        "value": 0,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "the headline end-to-end null: routing precision changed no VBench dimension after Holm correction across the declared family",
+        "family_size": 24,
+        "n_raw_significant_at_0_05": 3,
+        "expected_false_positives_at_0_05": 1.2,
+        "test": "Wilcoxon signed-rank, two-sided, exact, paired by prompt"
+      },
+      {
+        "metric": "vbench_routing_test[pixel.mean_abs_diff_vs_DENSE-BF16::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.556640625,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs BF16 router",
+        "median_difference": 0.00016760718310521172,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[pixel.mean_abs_diff_vs_DENSE-BF16::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE8]",
+        "value": 0.275390625,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs FP8 router",
+        "median_difference": 0.0004635083885450447,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[pixel.mean_abs_diff_vs_DENSE-BF16::SPARSE-FP4-ROUTE8_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.6953125,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: FP8 router vs BF16 router",
+        "median_difference": -0.000188654061798757,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.aesthetic_quality::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.6953125,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs BF16 router",
+        "median_difference": -4.127621650695801e-06,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.aesthetic_quality::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE8]",
+        "value": 0.625,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs FP8 router",
+        "median_difference": -0.004039466381072998,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.aesthetic_quality::SPARSE-FP4-ROUTE8_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.845703125,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: FP8 router vs BF16 router",
+        "median_difference": 0.001409485936164856,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.background_consistency::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.375,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs BF16 router",
+        "median_difference": -0.0015679197385907173,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.background_consistency::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE8]",
+        "value": 0.921875,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs FP8 router",
+        "median_difference": 1.2688525021120611e-05,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.background_consistency::SPARSE-FP4-ROUTE8_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.322265625,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: FP8 router vs BF16 router",
+        "median_difference": -0.0025770118460058944,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.dynamic_degree::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE16]",
+        "value": 1.0,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs BF16 router",
+        "median_difference": 0.0,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.5
+      },
+      {
+        "metric": "vbench_routing_test[vbench.dynamic_degree::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE8]",
+        "value": 1.0,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs FP8 router",
+        "median_difference": 0.0,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 1.0
+      },
+      {
+        "metric": "vbench_routing_test[vbench.dynamic_degree::SPARSE-FP4-ROUTE8_vs_SPARSE-FP4-ROUTE16]",
+        "value": 1.0,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: FP8 router vs BF16 router",
+        "median_difference": 0.0,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 1.0
+      },
+      {
+        "metric": "vbench_routing_test[vbench.imaging_quality::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.083984375,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs BF16 router",
+        "median_difference": -0.004753093719482349,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.imaging_quality::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE8]",
+        "value": 1.0,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs FP8 router",
+        "median_difference": -0.0005352783203124711,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.imaging_quality::SPARSE-FP4-ROUTE8_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.037109375,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: FP8 router vs BF16 router",
+        "median_difference": -0.005626983642578132,
+        "significant_at_0_05": true,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.motion_smoothness::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.083984375,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs BF16 router",
+        "median_difference": -0.00032533978385024254,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.motion_smoothness::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE8]",
+        "value": 0.10546875,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs FP8 router",
+        "median_difference": -0.00017816398394282507,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.motion_smoothness::SPARSE-FP4-ROUTE8_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.4921875,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: FP8 router vs BF16 router",
+        "median_difference": -0.0001664491617962005,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.subject_consistency::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.845703125,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs BF16 router",
+        "median_difference": -0.002185207232832942,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.subject_consistency::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE8]",
+        "value": 0.375,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs FP8 router",
+        "median_difference": 0.0033507976680994256,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.subject_consistency::SPARSE-FP4-ROUTE8_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.083984375,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: FP8 router vs BF16 router",
+        "median_difference": -0.004410196095705032,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.temporal_flickering::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.037109375,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs BF16 router",
+        "median_difference": -0.00026378126705384197,
+        "significant_at_0_05": true,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.temporal_flickering::SPARSE-FP4-NAIVE_vs_SPARSE-FP4-ROUTE8]",
+        "value": 0.02734375,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: NVFP4 router vs FP8 router",
+        "median_difference": -0.0001288668986629271,
+        "significant_at_0_05": true,
+        "min_attainable_two_sided_p": 0.001953125
+      },
+      {
+        "metric": "vbench_routing_test[vbench.temporal_flickering::SPARSE-FP4-ROUTE8_vs_SPARSE-FP4-ROUTE16]",
+        "value": 0.845703125,
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/phase5_significance.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": 10,
+        "geometry": "n/a (end-to-end video)",
+        "native_or_simulated": "native BF16 compute; sparse-NVFP4 arms simulated",
+        "note": "routing precision: FP8 router vs BF16 router",
+        "median_difference": 3.3935609401403166e-05,
+        "significant_at_0_05": false,
+        "min_attainable_two_sided_p": 0.001953125
+      }
+    ],
+    "dense_measured_latency": [
+      {
+        "metric": "dense_attention_kernel_latency_probe",
+        "value": {
+          "verdict": "NATIVE NVFP4 ATTENTION AVAILABLE AND EXECUTED",
+          "arch": "sm_100",
+          "device": "NVIDIA B200",
+          "attn_qat_infer_receipt": "arch=sm_100 kernel=flash-attention-fp4 qk_mode=nvfp4(per-16-e4m3-sf) pv_mode=bf16 train_sim_mismatch=measured",
+          "attn_qat_infer_available": true,
+          "shape": {
+            "batch": 1,
+            "seqlen": 32760,
+            "heads": 12,
+            "head_dim": 128
+          },
+          "shape_note": "Wan2.1-T2V-1.3B DiT self-attention at 480x832x81 (seqlen 21*30*52=32760)",
+          "nvfp4_quantized_tensors": {
+            "q_dtype": "torch.float4_e2m1fn_x2",
+            "q_shape": [
+              1,
+              32760,
+              12,
+              64
+            ],
+            "scale_factor_dtype": "torch.uint8",
+            "scale_factor_shape": [
+              32,
+              4,
+              256,
+              4,
+              2,
+              12,
+              1
+            ]
+          },
+          "precision_labels": {
+            "fp4_path": "native NVFP4 (E2M1 Q/K, per-16 E4M3 scale factors, BF16 V/PV) via tcgen05.mma.kind::mxf4nvf4.block_scale",
+            "bf16_path": "native BF16 FA4 CuTe",
+            "is_simulated_quantization": false
+          },
+          "accuracy_vs_bf16_sdpa_reference": {
+            "native_nvfp4": {
+              "cosine_similarity": 0.9905,
+              "relative_l2_error": 0.137828,
+              "max_abs_error": 0.011963
+            },
+            "native_bf16_fa4": {
+              "cosine_similarity": 0.999995,
+              "relative_l2_error": 0.003108,
+              "max_abs_error": 0.000244
+            }
+          },
+          "attention_kernel_only_latency_ms": {
+            "native_nvfp4_median": 4.013,
+            "native_nvfp4_stdev": 0.141,
+            "native_bf16_fa4_median": 5.135,
+            "native_bf16_fa4_stdev": 0.334,
+            "nvfp4_speedup_vs_bf16": 1.28,
+            "reps": 20,
+            "warmup": 3,
+            "measurement_note": "Measured attention-kernel wall-clock only, warmed (JIT compile excluded), CUDA-synchronized, median of reps. NOT an end-to-end generation speedup and NOT a theoretical FLOP count."
+          }
+        },
+        "source_path": "artifacts/sparsefp4/raw/phase0_nvfp4_kernel_probe.json",
+        "source_run_id": "phase0_nvfp4_kernel_probe",
+        "n": null,
+        "geometry": "dense (no blocking)",
+        "native_or_simulated": "native",
+        "note": "attention kernel in isolation; NOT an end-to-end speedup"
+      },
+      {
+        "metric": "dense_end_to_end_latency[DENSE-BF16]",
+        "value": {
+          "run_id": "20260814-035500-8208536-p5-perf",
+          "stage": "5-perf",
+          "arm": "DENSE-BF16",
+          "native_latency_claim_allowed": true,
+          "reporting_class": "headline",
+          "why": "native end-to-end path",
+          "prompt_id": "p01",
+          "prompt": "A majestic lion strides across the golden savanna, its powerful frame glistening under the warm afternoon sun. The tall grass ripples gently in the breeze, enhancing the lion's commanding presence. The tone is vibrant, embodying the raw energy of the wild. Low angle, steady tracking shot, cinematic.",
+          "seed": 1234,
+          "steps": 50,
+          "height": 480,
+          "width": 832,
+          "num_frames": 81,
+          "guidance_scale": 3.0,
+          "requested_sparsity": null,
+          "model_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+          "model_revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+          "git_commit": "8208536cd1db7a1d32b68aaa6a679953ae23ab8b",
+          "device": "NVIDIA B200",
+          "capability": [
+            10,
+            0
+          ],
+          "torch_version": "2.12.0+cu130",
+          "attention_backend": "SPARSEFP4_EXEC_ATTN",
+          "flash_attention_4_enabled": true,
+          "torch_compile": false,
+          "cuda_graphs": false,
+          "compile_mode": null,
+          "num_warmup_runs": 1,
+          "num_measurement_runs": 5,
+          "cuda_synchronized": true,
+          "model_load_seconds": 38.39,
+          "warmup_wall_seconds": [
+            51.199
+          ],
+          "e2e_wall_seconds": [
+            46.822,
+            47.064,
+            47.181,
+            46.876,
+            46.808
+          ],
+          "e2e_wall_seconds_stats": {
+            "median": 46.8759748199991,
+            "mean": 46.95017211459926,
+            "min": 46.80835298799866,
+            "max": 47.18057447499814,
+            "stdev": 0.16455837193054892,
+            "iqr": 0.30758337949919223
+          },
+          "peak_memory_mb_max": 8517.91748046875,
+          "peak_memory_mb_all": [
+            8517.88232421875,
+            8517.91748046875,
+            8517.91748046875,
+            8517.91748046875,
+            8517.91748046875
+          ],
+          "dit_time_s_all": [
+            44.47324931700132,
+            44.713997877999645,
+            44.82953484799873,
+            44.526928919000056,
+            44.45910432000164
+          ],
+          "dit_time_s_stats": {
+            "median": 44.526928919000056,
+            "mean": 44.600563056400276,
+            "min": 44.45910432000164,
+            "max": 44.82953484799873,
+            "stdev": 0.16350603095375757,
+            "iqr": 0.3055895444977068
+          },
+          "per_step_dit_ms_median": 890.5385783800011,
+          "component_times_measured": [
+            {
+              "text_encoder_time_s": 0.9026274339994416,
+              "dit_time_s": 44.47324931700132,
+              "vae_decode_time_s": 1.4289429919990653
+            },
+            {
+              "text_encoder_time_s": 0.902506185000675,
+              "dit_time_s": 44.713997877999645,
+              "vae_decode_time_s": 1.4308325950005383
+            },
+            {
+              "text_encoder_time_s": 0.9029645910013642,
+              "dit_time_s": 44.82953484799873,
+              "vae_decode_time_s": 1.430978528002015
+            },
+            {
+              "text_encoder_time_s": 0.9026980580019881,
+              "dit_time_s": 44.526928919000056,
+              "vae_decode_time_s": 1.4296661989974382
+            },
+            {
+              "text_encoder_time_s": 0.9024254500000097,
+              "dit_time_s": 44.45910432000164,
+              "vae_decode_time_s": 1.4299758970009862
+            }
+          ],
+          "throughput_fps_median": 1.7279640649828636,
+          "note": "Warmed (first-call CuTeDSL JIT excluded), CUDA-synchronized, identical shapes/prompt/seed/steps. This is measured wall clock, never a FLOP-count claim."
+        },
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/perf/phase5_perf_p01_DENSE-BF16.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": null,
+        "geometry": "dense",
+        "native_or_simulated": "native",
+        "note": "warmed, compile/CUDA-graphs off"
+      },
+      {
+        "metric": "dense_end_to_end_latency[DENSE-FP4]",
+        "value": {
+          "run_id": "20260814-035500-8208536-p5-perf",
+          "stage": "5-perf",
+          "arm": "DENSE-FP4",
+          "native_latency_claim_allowed": true,
+          "reporting_class": "headline",
+          "why": "native end-to-end path",
+          "prompt_id": "p01",
+          "prompt": "A majestic lion strides across the golden savanna, its powerful frame glistening under the warm afternoon sun. The tall grass ripples gently in the breeze, enhancing the lion's commanding presence. The tone is vibrant, embodying the raw energy of the wild. Low angle, steady tracking shot, cinematic.",
+          "seed": 1234,
+          "steps": 50,
+          "height": 480,
+          "width": 832,
+          "num_frames": 81,
+          "guidance_scale": 3.0,
+          "requested_sparsity": null,
+          "model_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+          "model_revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+          "git_commit": "8208536cd1db7a1d32b68aaa6a679953ae23ab8b",
+          "device": "NVIDIA B200",
+          "capability": [
+            10,
+            0
+          ],
+          "torch_version": "2.12.0+cu130",
+          "attention_backend": "SPARSEFP4_EXEC_ATTN",
+          "flash_attention_4_enabled": true,
+          "torch_compile": false,
+          "cuda_graphs": false,
+          "compile_mode": null,
+          "num_warmup_runs": 1,
+          "num_measurement_runs": 5,
+          "cuda_synchronized": true,
+          "model_load_seconds": 37.09,
+          "warmup_wall_seconds": [
+            53.458
+          ],
+          "e2e_wall_seconds": [
+            44.182,
+            44.286,
+            44.436,
+            44.55,
+            44.584
+          ],
+          "e2e_wall_seconds_stats": {
+            "median": 44.43645389200174,
+            "mean": 44.40756926280083,
+            "min": 44.181793175001076,
+            "max": 44.58386356000119,
+            "stdev": 0.17158572112563694,
+            "iqr": 0.33268942599897855
+          },
+          "peak_memory_mb_max": 8517.91748046875,
+          "peak_memory_mb_all": [
+            8517.88232421875,
+            8517.91748046875,
+            8517.91748046875,
+            8517.91748046875,
+            8517.91748046875
+          ],
+          "dit_time_s_all": [
+            41.83583900699887,
+            41.940431240996986,
+            41.98730156199963,
+            42.078565064999566,
+            42.11066956799914
+          ],
+          "dit_time_s_stats": {
+            "median": 41.98730156199963,
+            "mean": 41.99056128859884,
+            "min": 41.83583900699887,
+            "max": 42.11066956799914,
+            "stdev": 0.11026478965977335,
+            "iqr": 0.20648219250142574
+          },
+          "per_step_dit_ms_median": 839.7460312399926,
+          "component_times_measured": [
+            {
+              "text_encoder_time_s": 0.9026572799994028,
+              "dit_time_s": 41.83583900699887,
+              "vae_decode_time_s": 1.426236933999462
+            },
+            {
+              "text_encoder_time_s": 0.9022398960005376,
+              "dit_time_s": 41.940431240996986,
+              "vae_decode_time_s": 1.4264742150007805
+            },
+            {
+              "text_encoder_time_s": 1.0046835939974699,
+              "dit_time_s": 41.98730156199963,
+              "vae_decode_time_s": 1.427449926002737
+            },
+            {
+              "text_encoder_time_s": 1.024607212999399,
+              "dit_time_s": 42.078565064999566,
+              "vae_decode_time_s": 1.4294421070007957
+            },
+            {
+              "text_encoder_time_s": 1.028235214002052,
+              "dit_time_s": 42.11066956799914,
+              "vae_decode_time_s": 1.4277232239983277
+            }
+          ],
+          "throughput_fps_median": 1.822827721511312,
+          "note": "Warmed (first-call CuTeDSL JIT excluded), CUDA-synchronized, identical shapes/prompt/seed/steps. This is measured wall clock, never a FLOP-count claim."
+        },
+        "source_path": "artifacts/sparsefp4/raw/20260814-032700-8208536-p5-main/perf/phase5_perf_p01_DENSE-FP4.json",
+        "source_run_id": "20260814-032700-8208536-p5-main",
+        "n": null,
+        "geometry": "dense",
+        "native_or_simulated": "native",
+        "note": "warmed, compile/CUDA-graphs off"
+      }
+    ]
+  }
+}

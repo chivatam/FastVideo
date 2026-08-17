@@ -1,0 +1,29 @@
+{
+  "shape": {
+    "seq_len": 32760,
+    "heads": 12,
+    "dim": 128,
+    "n_q_blocks": 256,
+    "n_k_blocks": 512
+  },
+  "timings_ms": {
+    "quantize_router_input(nvfp4) q+k": 3.834460666439554,
+    "pool fp64/native": 0.2813123334514482,
+    "pool fp32/native": 0.19234433329984313,
+    "pool bf16/native": 0.03997033339449748,
+    "pool bf16/low (sequential, 128 steps)": 1.3734993332642869,
+    "score fp64/native": 0.05283499983003518,
+    "score fp32/native": 0.06111733303744889,
+    "score bf16/native": 0.058131000211384766,
+    "score bf16/low (rank-1 loop, 128 steps)": 2.426021333424918,
+    "quantize_pooled_fp8 + native fp8 gemm": 2.0142716666669003,
+    "quantize_pooled_nvfp4 q+k": 0.5608203334001397,
+    "sparse_bf16 kernel (full 12-head)": 1.9829463332522814,
+    "mask_comparison": 0.3919273331121076,
+    "boundary_diagnostics": 0.7857646666404131,
+    "random_matched_mask (all heads)": 0.3763363332230559,
+    "spearman_rho stride=32 (8 q-blocks)": 0.5073716668751634,
+    "spearman_rho stride=128 (2 q-blocks)": 0.5016710001655156
+  },
+  "estimated_seconds_per_cell": 0.24071465829517058
+}

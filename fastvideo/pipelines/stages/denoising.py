@@ -42,6 +42,20 @@ try:
 except ImportError:
     vsa_available = False
 
+
+def _needs_vsa_metadata(attn_backend: type | None) -> bool:
+    """True for VSA and any backend that subclasses it.
+
+    An identity comparison against ``VideoSparseAttentionBackend`` silently skips
+    metadata construction for subclasses, which then receive ``attn_metadata=None``
+    and fail inside ``tile()``. Research backends that wrap VSA (e.g. the
+    ``VSA_PRECISION_PROBE_ATTN`` selector probe) need exactly the same metadata.
+    """
+    if not vsa_available or attn_backend is None:
+        return False
+    return isinstance(attn_backend, type) and issubclass(attn_backend, VideoSparseAttentionBackend)
+
+
 logger = init_logger(__name__)
 
 
@@ -67,8 +81,8 @@ class DenoisingStage(PipelineStage):
             dtype=torch.float16,  # TODO(will): hack
             supported_attention_backends=(AttentionBackendEnum.VIDEO_SPARSE_ATTN, AttentionBackendEnum.BSA_ATTN,
                                           AttentionBackendEnum.VMOBA_ATTN, AttentionBackendEnum.FLASH_ATTN,
-                                          AttentionBackendEnum.TORCH_SDPA,
-                                          AttentionBackendEnum.SAGE_ATTN_THREE),  # hack
+                                          AttentionBackendEnum.TORCH_SDPA, AttentionBackendEnum.SAGE_ATTN_THREE,
+                                          AttentionBackendEnum.VSA_PRECISION_PROBE_ATTN),  # hack
             # Build metadata for the backend this transformer actually resolved
             # instead of re-deriving it from the environment. The two agreed
             # only when the request arrived via the env var: a request passed as
@@ -463,7 +477,7 @@ class DenoisingStage(PipelineStage):
 
                 # Predict noise residual
                 with torch.autocast(device_type="cuda", dtype=target_dtype, enabled=autocast_enabled):
-                    if (vsa_available and self.attn_backend == VideoSparseAttentionBackend):
+                    if _needs_vsa_metadata(self.attn_backend):
                         self.attn_metadata_builder_cls = self.attn_backend.get_builder_cls()
 
                         if self.attn_metadata_builder_cls is not None:
@@ -1344,7 +1358,7 @@ class DmdDenoisingStage(DenoisingStage):
 
                 # Predict noise residual
                 with torch.autocast(device_type="cuda", dtype=target_dtype, enabled=autocast_enabled):
-                    if (vsa_available and self.attn_backend == VideoSparseAttentionBackend):
+                    if _needs_vsa_metadata(self.attn_backend):
                         self.attn_metadata_builder_cls = self.attn_backend.get_builder_cls()
 
                         if self.attn_metadata_builder_cls is not None:

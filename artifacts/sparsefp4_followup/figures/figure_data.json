@@ -1,0 +1,244 @@
+{
+  "sparsity": 0.9,
+  "bootstrap": {
+    "resamples": 4000,
+    "seed": 20260816,
+    "resampling_unit": "prompt"
+  },
+  "figureA": {
+    "ladder": [
+      "fp64",
+      "fp32",
+      "bf16 (fp32 acc)",
+      "bf16 (bf16 acc)",
+      "fp8",
+      "NVFP4 like"
+    ],
+    "exact": [
+      {
+        "arm": "R0",
+        "jaccard": 1.0,
+        "share": 0.0,
+        "isolation": null
+      },
+      {
+        "arm": "R2",
+        "jaccard": 1.0,
+        "share": 0.0,
+        "isolation": null
+      },
+      {
+        "arm": "R4",
+        "jaccard": 0.9907282787498131,
+        "share": 0.0007048932918554712,
+        "isolation": 104.31217788249154
+      },
+      {
+        "arm": "R4L",
+        "jaccard": 0.9567837718653536,
+        "share": 0.0019392854829278668,
+        "isolation": 490.29956427015253
+      },
+      {
+        "arm": "R6",
+        "jaccard": 0.9598086124401913,
+        "share": 0.001660208168857954,
+        "isolation": 67.03745724534913
+      },
+      {
+        "arm": "R8",
+        "jaccard": 0.8874237912944846,
+        "share": 0.006523469798784476,
+        "isolation": 14.277572792644111
+      }
+    ],
+    "nvfp4": [
+      {
+        "arm": "R1",
+        "jaccard": 0.9750741839762611,
+        "share": 0.0013733804304749179,
+        "isolation": 21.046363620712413
+      },
+      {
+        "arm": "R3",
+        "jaccard": 0.9750741839762611,
+        "share": 0.0013736459779078738,
+        "isolation": 20.878423900879756
+      },
+      {
+        "arm": "R5",
+        "jaccard": 0.9728788440163023,
+        "share": 0.0016063234738154005,
+        "isolation": 23.530664395229984
+      },
+      {
+        "arm": "R5L",
+        "jaccard": 0.9490483162518302,
+        "share": 0.0024467390277471976,
+        "isolation": 45.909660107334524
+      },
+      {
+        "arm": "R7",
+        "jaccard": 0.9529083840680701,
+        "share": 0.0021439044099512412,
+        "isolation": 24.976161084135736
+      },
+      {
+        "arm": "R9",
+        "jaccard": 0.8848849557522124,
+        "share": 0.006999722357211184,
+        "isolation": 12.17662536571956
+      }
+    ]
+  },
+  "figureB": {
+    "arms": [
+      "FP8 repr.",
+      "NVFP4 repr.",
+      "bf16 low selector",
+      "NVFP4 repr. +fp64 sel.",
+      "fp64 selector (rescue)"
+    ],
+    "values": [
+      {
+        "jaccard": 0.9868593955321945,
+        "share": 0.0004530297194798052,
+        "isolation": 310.2291325695581
+      },
+      {
+        "jaccard": 0.9686514096850117,
+        "share": 0.0011184691881916662,
+        "isolation": 224.5449247207382
+      },
+      {
+        "jaccard": 0.9621662091340155,
+        "share": 0.000875177790750286,
+        "isolation": 47.726023391812866
+      },
+      {
+        "jaccard": 0.9686514096850117,
+        "share": 0.001752196929469492,
+        "isolation": 9.970410192530432
+      },
+      {
+        "jaccard": 0.9891213600829812,
+        "share": 0.0013451251067417413,
+        "isolation": 3.1814453781512606
+      }
+    ],
+    "gate_invariant": {
+      "jaccard": 1.0,
+      "share": 0.0,
+      "isolation": null
+    }
+  },
+  "figureC": {
+    "rows": [
+      {
+        "group": "seed",
+        "label": "seed 1234 480p proxy",
+        "plot_label": "seed 1234\n480p proxy",
+        "arm": "R9",
+        "seed": 1234,
+        "share": {
+          "point": 0.006999722357211184,
+          "ci_low": 0.006624102261681813,
+          "ci_high": 0.007482552380195747,
+          "n_prompts": 10,
+          "n_resamples": 4000
+        },
+        "isolation": {
+          "point": 12.17662536571956,
+          "ci_low": 10.312840040227046,
+          "ci_high": 14.395358969989818,
+          "n_prompts": 10,
+          "n_resamples": 4000
+        }
+      },
+      {
+        "group": "seed",
+        "label": "seed 2026 480p proxy",
+        "plot_label": "seed 2026\n480p proxy",
+        "arm": "R9",
+        "seed": 2026,
+        "share": {
+          "point": 0.006991231877107678,
+          "ci_low": 0.006678406326180719,
+          "ci_high": 0.007295753287256861,
+          "n_prompts": 10,
+          "n_resamples": 4000
+        },
+        "isolation": {
+          "point": 11.882047958522358,
+          "ci_low": 10.006465084870303,
+          "ci_high": 14.143008849822312,
+          "n_prompts": 10,
+          "n_resamples": 4000
+        }
+      },
+      {
+        "group": "seed",
+        "label": "seed 3407 480p proxy",
+        "plot_label": "seed 3407\n480p proxy",
+        "arm": "R9",
+        "seed": 3407,
+        "share": {
+          "point": 0.0069591660130383926,
+          "ci_low": 0.0066049840689395905,
+          "ci_high": 0.007358620895025441,
+          "n_prompts": 10,
+          "n_resamples": 4000
+        },
+        "isolation": {
+          "point": 11.616234390009605,
+          "ci_low": 9.16065667100911,
+          "ci_high": 15.154697204264103,
+          "n_prompts": 10,
+          "n_resamples": 4000
+        }
+      },
+      {
+        "group": "config",
+        "label": "720x1280 75.6k tokens",
+        "plot_label": "720x1280\n75.6k tokens",
+        "arm": "R9",
+        "seed": null,
+        "share": {
+          "point": 0.005391229339200708,
+          "ci_low": 0.005275968428040742,
+          "ci_high": 0.005528456117227141,
+          "n_prompts": 5,
+          "n_resamples": 4000
+        },
+        "isolation": {
+          "point": 13.67925615706766,
+          "ci_low": 10.987956776568794,
+          "ci_high": 16.916500427472215,
+          "n_prompts": 5,
+          "n_resamples": 4000
+        }
+      },
+      {
+        "group": "config",
+        "label": "real VSA NVFP4 routing",
+        "plot_label": "real VSA\nNVFP4 routing",
+        "arm": "VA_NVFP4",
+        "seed": null,
+        "share": {
+          "point": 0.0011184691881916662,
+          "ci_low": 0.0010577880367269878,
+          "ci_high": 0.0011839858728802163,
+          "n_prompts": 10,
+          "n_resamples": 4000
+        },
+        "isolation": {
+          "point": 224.5449247207382,
+          "ci_low": 123.40789408855542,
+          "ci_high": 760.4957139818492,
+          "n_prompts": 10,
+          "n_resamples": 4000
+        }
+      }
+    ]
+  }
+}

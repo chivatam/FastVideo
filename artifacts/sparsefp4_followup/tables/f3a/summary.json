@@ -1,0 +1,91 @@
+{
+  "phase": "F3A",
+  "verdict": "SEED_ROBUST",
+  "sparsity": 0.9,
+  "seeds_declared": [
+    1234,
+    2026,
+    3407
+  ],
+  "seeds_observed": [
+    1234,
+    2026,
+    3407
+  ],
+  "n_rows": 1555200,
+  "criteria": {
+    "mechanism_direction_same_across_seeds": true,
+    "no_seed_reaches_1pct_of_sparsification": true,
+    "isolation_above_5x_every_seed": true,
+    "rescue_under_1pct_every_seed": true
+  },
+  "direction_signatures": [
+    [
+      "R1",
+      "R3",
+      "R6",
+      "R7",
+      "R8",
+      "R9"
+    ]
+  ],
+  "per_seed": [
+    {
+      "seed": 1234,
+      "n_arms": 6,
+      "max_damage_share": 0.006999722357211184,
+      "damage_share_under_1pct": true,
+      "min_isolation_ratio": 12.17662536571956,
+      "isolation_above_5x": true,
+      "rescue_share_R9_to_R1": 0.0018977433313641667,
+      "rescue_under_1pct": true,
+      "arms_damaging_in_majority_of_cells": [
+        "R1",
+        "R3",
+        "R6",
+        "R7",
+        "R8",
+        "R9"
+      ],
+      "jaccard_median_R9": 0.8848849557522124
+    },
+    {
+      "seed": 2026,
+      "n_arms": 6,
+      "max_damage_share": 0.006991231877107678,
+      "damage_share_under_1pct": true,
+      "min_isolation_ratio": 11.882047958522358,
+      "isolation_above_5x": true,
+      "rescue_share_R9_to_R1": 0.0017002499075767093,
+      "rescue_under_1pct": true,
+      "arms_damaging_in_majority_of_cells": [
+        "R1",
+        "R3",
+        "R6",
+        "R7",
+        "R8",
+        "R9"
+      ],
+      "jaccard_median_R9": 0.8878252854002694
+    },
+    {
+      "seed": 3407,
+      "n_arms": 6,
+      "max_damage_share": 0.0069591660130383926,
+      "damage_share_under_1pct": true,
+      "min_isolation_ratio": 11.616234390009605,
+      "isolation_above_5x": true,
+      "rescue_share_R9_to_R1": 0.0017283372980250863,
+      "rescue_under_1pct": true,
+      "arms_damaging_in_majority_of_cells": [
+        "R1",
+        "R3",
+        "R6",
+        "R7",
+        "R8",
+        "R9"
+      ],
+      "jaccard_median_R9": 0.8876914350538854
+    }
+  ]
+}

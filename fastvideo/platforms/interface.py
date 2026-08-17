@@ -27,6 +27,8 @@ class AttentionBackendEnum(enum.Enum):
     ROUTING_PROBE_ATTN = enum.auto()
     PRECISION_SPARSE_ATTN = enum.auto()
     SPARSEFP4_EXEC_ATTN = enum.auto()
+    SCORER_PRECISION_ATTN = enum.auto()
+    VSA_PRECISION_PROBE_ATTN = enum.auto()
     NO_ATTENTION = enum.auto()
 
 

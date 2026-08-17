@@ -1,0 +1,393 @@
+{
+  "stage": "F2-full",
+  "shards": [
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p01_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p02_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p03_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p04_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p05_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p06_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p07_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p08_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p09_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p10_s1234.jsonl"
+  ],
+  "n_rows": 1166400,
+  "run_ids": [
+    "20260816-215059-6e886a9c-f2-full"
+  ],
+  "prompts": [
+    "p01",
+    "p02",
+    "p03",
+    "p04",
+    "p05",
+    "p06",
+    "p07",
+    "p08",
+    "p09",
+    "p10"
+  ],
+  "seeds": [
+    1234
+  ],
+  "arms": [
+    "V0",
+    "V0_FP64",
+    "VA_FP8",
+    "VA_NVFP4",
+    "VA_NVFP4_VB_FP64",
+    "VB_BF16_LOW",
+    "VB_FP32",
+    "VC_GATE_NVFP4",
+    "VD_TORCH_TOPK"
+  ],
+  "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+  ],
+  "timesteps": [
+    0,
+    1,
+    10,
+    25,
+    40,
+    48
+  ],
+  "sparsities": [
+    0.8,
+    0.9,
+    0.95
+  ],
+  "geometry": [
+    "vsa-4x4x4-cube-64"
+  ],
+  "trajectory_backend": [
+    "VIDEO_SPARSE_ATTN (real, unmodified)"
+  ],
+  "routing_interface": [
+    "actual_vsa_fused_block_mean_plus_fused_topk_mask"
+  ],
+  "vsa_sparsity_for_execution": [
+    0.9
+  ],
+  "worker_autocast": [
+    [
+      true,
+      "torch.bfloat16"
+    ]
+  ],
+  "kernel_budget_deviation": {
+    "total_violating_selector_rows": 5376,
+    "by_arm": {
+      "V0": 456,
+      "VA_FP8": 480,
+      "VA_NVFP4": 300,
+      "VB_BF16_LOW": 3684,
+      "VC_GATE_NVFP4": 456
+    },
+    "cause": "fused_topk_mask fp32 bisection cannot resolve a k-th-value tie",
+    "lesson": ".agents/lessons/vsa-fused-topk-mask-can-overselect-on-ties.md"
+  },
+  "decision_rules_F2_8": [
+    {
+      "sparsity": 0.8,
+      "verdict": "INDETERMINATE_ISOLATION_THRESHOLD",
+      "verdict_hinges_on_unresolved_threshold": true,
+      "arms_with_unresolved_isolation_interval": [
+        "VA_NVFP4_VB_FP64"
+      ],
+      "arms_driving_a_revision_verdict": [
+        "VA_NVFP4_VB_FP64"
+      ],
+      "low_precision_selector_changes_selections": true,
+      "all_degraded_arms_under_0_1pct": false,
+      "isolation_at_least_10x_for_all_degraded_arms": false,
+      "any_degraded_arm_reaches_1pct": false,
+      "rescue": {
+        "arm": "V0_FP64",
+        "signed_excess_over_sparsification_median": 0.0009050941070277421,
+        "rescue_magnitude_over_sparsification_median": 0.0009050941070277421,
+        "frac_cells_fp64_router_better_than_deployed": 0.11293981481481481,
+        "jaccard_vs_deployed_median": 0.9935847465208112,
+        "under_1pct_of_total_sparse_error": true,
+        "at_least_5pct_and_consistent": false
+      },
+      "gate_invariant": {
+        "arm": "VC_GATE_NVFP4",
+        "frac_cells_mask_identical_to_deployed": 1.0,
+        "gate_is_outside_selection_path": true,
+        "meaning": "confirms VSA_GATE_MAP.md: quantizing gate_compress cannot move the mask"
+      },
+      "per_arm": [
+        {
+          "arm": "VA_FP8",
+          "purpose": "routing input quantized to FP8-E4M3, kernel arithmetic unchanged",
+          "intervention_kind": "intervention_a",
+          "jaccard_median": 0.9911165568999847,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.00038738823569480017,
+          "under_0_1pct_of_sparsification": true,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 971.04,
+          "random_at_least_10x_more_damaging": true
+        },
+        {
+          "arm": "VA_NVFP4",
+          "purpose": "routing input quantized to NVFP4, kernel arithmetic unchanged",
+          "intervention_kind": "intervention_a",
+          "jaccard_median": 0.9770359668466276,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.0010671541936372968,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 43.12391457404365,
+          "random_at_least_10x_more_damaging": true
+        },
+        {
+          "arm": "VB_BF16_LOW",
+          "purpose": "selector arithmetic lowered to true bf16 accumulation",
+          "intervention_kind": "intervention_b",
+          "jaccard_median": 0.9771863117870723,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.0007008714961870019,
+          "under_0_1pct_of_sparsification": true,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 25.885706936465745,
+          "random_at_least_10x_more_damaging": true
+        },
+        {
+          "arm": "VA_NVFP4_VB_FP64",
+          "purpose": "the H3 question at VSA's interface: can exact arithmetic rescue a quantized routing input?",
+          "intervention_kind": "intervention_ab",
+          "jaccard_median": 0.9770860792862213,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.0014331260324218337,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 9.042690878669324,
+          "random_at_least_10x_more_damaging": false
+        }
+      ]
+    },
+    {
+      "sparsity": 0.9,
+      "verdict": "INDETERMINATE_ISOLATION_THRESHOLD",
+      "verdict_hinges_on_unresolved_threshold": true,
+      "arms_with_unresolved_isolation_interval": [
+        "VA_NVFP4_VB_FP64"
+      ],
+      "arms_driving_a_revision_verdict": [
+        "VA_NVFP4_VB_FP64"
+      ],
+      "low_precision_selector_changes_selections": true,
+      "all_degraded_arms_under_0_1pct": false,
+      "isolation_at_least_10x_for_all_degraded_arms": false,
+      "any_degraded_arm_reaches_1pct": false,
+      "rescue": {
+        "arm": "V0_FP64",
+        "signed_excess_over_sparsification_median": 0.0013031300603349183,
+        "rescue_magnitude_over_sparsification_median": 0.0013031300603349183,
+        "frac_cells_fp64_router_better_than_deployed": 0.0993287037037037,
+        "jaccard_vs_deployed_median": 0.9891213600829812,
+        "under_1pct_of_total_sparse_error": true,
+        "at_least_5pct_and_consistent": false
+      },
+      "gate_invariant": {
+        "arm": "VC_GATE_NVFP4",
+        "frac_cells_mask_identical_to_deployed": 1.0,
+        "gate_is_outside_selection_path": true,
+        "meaning": "confirms VSA_GATE_MAP.md: quantizing gate_compress cannot move the mask"
+      },
+      "per_arm": [
+        {
+          "arm": "VA_FP8",
+          "purpose": "routing input quantized to FP8-E4M3, kernel arithmetic unchanged",
+          "intervention_kind": "intervention_a",
+          "jaccard_median": 0.9868593955321945,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.0004530297194798052,
+          "under_0_1pct_of_sparsification": true,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 310.2291325695581,
+          "random_at_least_10x_more_damaging": true
+        },
+        {
+          "arm": "VA_NVFP4",
+          "purpose": "routing input quantized to NVFP4, kernel arithmetic unchanged",
+          "intervention_kind": "intervention_a",
+          "jaccard_median": 0.9686514096850117,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.0011184691881916662,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 224.5449247207382,
+          "random_at_least_10x_more_damaging": true
+        },
+        {
+          "arm": "VB_BF16_LOW",
+          "purpose": "selector arithmetic lowered to true bf16 accumulation",
+          "intervention_kind": "intervention_b",
+          "jaccard_median": 0.9621662091340155,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.000875177790750286,
+          "under_0_1pct_of_sparsification": true,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 47.726023391812866,
+          "random_at_least_10x_more_damaging": true
+        },
+        {
+          "arm": "VA_NVFP4_VB_FP64",
+          "purpose": "the H3 question at VSA's interface: can exact arithmetic rescue a quantized routing input?",
+          "intervention_kind": "intervention_ab",
+          "jaccard_median": 0.9686514096850117,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.001752196929469492,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 9.970410192530432,
+          "random_at_least_10x_more_damaging": false
+        }
+      ]
+    },
+    {
+      "sparsity": 0.95,
+      "verdict": "PARTIAL_SUPPORT",
+      "verdict_hinges_on_unresolved_threshold": true,
+      "arms_with_unresolved_isolation_interval": [
+        "VA_NVFP4_VB_FP64"
+      ],
+      "arms_driving_a_revision_verdict": [],
+      "low_precision_selector_changes_selections": true,
+      "all_degraded_arms_under_0_1pct": false,
+      "isolation_at_least_10x_for_all_degraded_arms": true,
+      "any_degraded_arm_reaches_1pct": false,
+      "rescue": {
+        "arm": "V0_FP64",
+        "signed_excess_over_sparsification_median": 0.0015126574862697284,
+        "rescue_magnitude_over_sparsification_median": 0.0015126574862697284,
+        "frac_cells_fp64_router_better_than_deployed": 0.10423611111111111,
+        "jaccard_vs_deployed_median": 0.9840031794922748,
+        "under_1pct_of_total_sparse_error": true,
+        "at_least_5pct_and_consistent": false
+      },
+      "gate_invariant": {
+        "arm": "VC_GATE_NVFP4",
+        "frac_cells_mask_identical_to_deployed": 1.0,
+        "gate_is_outside_selection_path": true,
+        "meaning": "confirms VSA_GATE_MAP.md: quantizing gate_compress cannot move the mask"
+      },
+      "per_arm": [
+        {
+          "arm": "VA_FP8",
+          "purpose": "routing input quantized to FP8-E4M3, kernel arithmetic unchanged",
+          "intervention_kind": "intervention_a",
+          "jaccard_median": 0.9826242367075411,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.0005388608879596387,
+          "under_0_1pct_of_sparsification": true,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 578.8090737240076,
+          "random_at_least_10x_more_damaging": true
+        },
+        {
+          "arm": "VA_NVFP4",
+          "purpose": "routing input quantized to NVFP4, kernel arithmetic unchanged",
+          "intervention_kind": "intervention_a",
+          "jaccard_median": 0.9601452832040837,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.0011615246117639229,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 797.5703380588877,
+          "random_at_least_10x_more_damaging": true
+        },
+        {
+          "arm": "VB_BF16_LOW",
+          "purpose": "selector arithmetic lowered to true bf16 accumulation",
+          "intervention_kind": "intervention_b",
+          "jaccard_median": 0.9464834040064337,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.0010984028844873938,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 67.5950490425035,
+          "random_at_least_10x_more_damaging": true
+        },
+        {
+          "arm": "VA_NVFP4_VB_FP64",
+          "purpose": "the H3 question at VSA's interface: can exact arithmetic rescue a quantized routing input?",
+          "intervention_kind": "intervention_ab",
+          "jaccard_median": 0.9599528857479388,
+          "changes_selections": true,
+          "abs_wrong_mask_over_sparsification_median": 0.0019797652646330504,
+          "under_0_1pct_of_sparsification": false,
+          "reaches_1pct_of_sparsification": false,
+          "isolation_ratio_abs": 10.48574545663346,
+          "random_at_least_10x_more_damaging": true
+        }
+      ]
+    }
+  ],
+  "isolation_intervals_source": "artifacts/sparsefp4_followup/raw/f4_gates.json",
+  "arms_with_unresolved_isolation_interval": [
+    {
+      "phase": "F2",
+      "arm": "VA_NVFP4_VB_FP64",
+      "sparsity": 0.8,
+      "point": 9.042690878669324,
+      "ci": [
+        6.617304120193928,
+        11.99001612303265
+      ]
+    },
+    {
+      "phase": "F2",
+      "arm": "VA_NVFP4_VB_FP64",
+      "sparsity": 0.9,
+      "point": 9.970410192530432,
+      "ci": [
+        8.168356733619037,
+        12.041690759963835
+      ]
+    },
+    {
+      "phase": "F2",
+      "arm": "VA_NVFP4_VB_FP64",
+      "sparsity": 0.95,
+      "point": 10.48574545663346,
+      "ci": [
+        8.679746844564086,
+        12.445539523973359
+      ]
+    }
+  ]
+}

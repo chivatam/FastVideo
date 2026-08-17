@@ -1,0 +1,778 @@
+{
+  "phase": "F4",
+  "verdict": "PASS",
+  "upstream_validators": {
+    "F1": {
+      "verdict": "PASS",
+      "n_rows": 1555200,
+      "n_checks": 11,
+      "n_failed": 0
+    },
+    "F2": {
+      "verdict": "PASS",
+      "n_rows": 1166400,
+      "n_checks": 17,
+      "n_failed": 0
+    }
+  },
+  "bootstrap": {
+    "resamples": 4000,
+    "seed": 20260816,
+    "resampling_unit": "prompt",
+    "why": "cells within a prompt share one denoising trajectory and are not independent",
+    "interval": "percentile 2.5/97.5"
+  },
+  "representation_fidelity": {
+    "median_rel_disagreement": 0.009802031796425581,
+    "p90_rel_disagreement": 0.010721617471426725,
+    "max_rel_disagreement": 0.01103946566581726,
+    "median_pooled_rel_disagreement": 0.0013913653674535453,
+    "p90_pooled_rel_disagreement": 0.002201767242513597,
+    "max_pooled_rel_disagreement": 0.0028374302200973034,
+    "native_twin": "quantize_router_input(..., 'nvfp4') via the FA4 fork's real quantize/dequantize",
+    "simulated": "quantize_router_input(..., 'nvfp4_sim'), the arithmetic emulation",
+    "latency_policy": "simulated arms are never used for latency claims"
+  },
+  "decision_threshold_intervals": [
+    {
+      "arm": "R3",
+      "sparsity": 0.8,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 29.700023035542486,
+        "ci_low": 22.46283511819237,
+        "ci_high": 39.216436475235156
+      },
+      "damage_share": {
+        "point": 0.0014478761932896,
+        "ci_low": 0.001373499394201776,
+        "ci_high": 0.001529288666148319
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R6",
+      "sparsity": 0.8,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 102.93401567944251,
+        "ci_low": 86.88472069915998,
+        "ci_high": 126.3800324878505
+      },
+      "damage_share": {
+        "point": 0.0015999463497790706,
+        "ci_low": 0.0014954487495777691,
+        "ci_high": 0.001695786979424826
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R7",
+      "sparsity": 0.8,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 38.04866077688963,
+        "ci_low": 30.06093011436813,
+        "ci_high": 48.97861688637065
+      },
+      "damage_share": {
+        "point": 0.002185540032645204,
+        "ci_low": 0.00208147913285341,
+        "ci_high": 0.0022805921668100815
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R8",
+      "sparsity": 0.8,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 23.468483210304523,
+        "ci_low": 19.877839589897253,
+        "ci_high": 28.021459035335393
+      },
+      "damage_share": {
+        "point": 0.006713956255427032,
+        "ci_low": 0.006425137579852939,
+        "ci_high": 0.007003949551531963
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R9",
+      "sparsity": 0.8,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 20.326692629807184,
+        "ci_low": 16.800241310772364,
+        "ci_high": 24.356755046785615
+      },
+      "damage_share": {
+        "point": 0.007379719692890685,
+        "ci_low": 0.0070945766298241095,
+        "ci_high": 0.0077500382664304635
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R3",
+      "sparsity": 0.9,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 20.878423900879756,
+        "ci_low": 15.65144039442405,
+        "ci_high": 28.26847111423476
+      },
+      "damage_share": {
+        "point": 0.0013736459779078738,
+        "ci_low": 0.0013036759428554016,
+        "ci_high": 0.0014536537209172038
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R6",
+      "sparsity": 0.9,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 67.03745724534913,
+        "ci_low": 53.13641740284588,
+        "ci_high": 85.64801471488552
+      },
+      "damage_share": {
+        "point": 0.001660208168857954,
+        "ci_low": 0.0015815538785248445,
+        "ci_high": 0.0017606512930915023
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R7",
+      "sparsity": 0.9,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 24.976161084135736,
+        "ci_low": 19.81909711201234,
+        "ci_high": 31.572068654894508
+      },
+      "damage_share": {
+        "point": 0.0021439044099512412,
+        "ci_low": 0.0020040159676567803,
+        "ci_high": 0.0022922049915744267
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R8",
+      "sparsity": 0.9,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 14.277572792644111,
+        "ci_low": 12.108384970691995,
+        "ci_high": 16.78856056962545
+      },
+      "damage_share": {
+        "point": 0.006523469798784476,
+        "ci_low": 0.006172150958589947,
+        "ci_high": 0.006932452400681136
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R9",
+      "sparsity": 0.9,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 12.17662536571956,
+        "ci_low": 10.376868331282992,
+        "ci_high": 14.46173465619023
+      },
+      "damage_share": {
+        "point": 0.006999722357211184,
+        "ci_low": 0.006609304857857827,
+        "ci_high": 0.007473272148369828
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R3",
+      "sparsity": 0.95,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 14.280339014622333,
+        "ci_low": 11.559598142341551,
+        "ci_high": 17.820808366355585
+      },
+      "damage_share": {
+        "point": 0.0014821938338122394,
+        "ci_low": 0.0014025631136764618,
+        "ci_high": 0.0015554133552059205
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R6",
+      "sparsity": 0.95,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 230.1470099667774,
+        "ci_low": 130.89020998015405,
+        "ci_high": 1029.0134436209323
+      },
+      "damage_share": {
+        "point": 0.0019241312664963273,
+        "ci_low": 0.0018335821238646608,
+        "ci_high": 0.002023726171708529
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R7",
+      "sparsity": 0.95,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 25.742207314080012,
+        "ci_low": 20.515796060578825,
+        "ci_high": 31.798168246172114
+      },
+      "damage_share": {
+        "point": 0.0023526359505442896,
+        "ci_low": 0.0022302918575483528,
+        "ci_high": 0.0024753114848766757
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R8",
+      "sparsity": 0.95,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 21.589768654284782,
+        "ci_low": 19.4461423177324,
+        "ci_high": 24.9059983110109
+      },
+      "damage_share": {
+        "point": 0.006771773421381698,
+        "ci_low": 0.006346322420436917,
+        "ci_high": 0.007168314158241697
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "R9",
+      "sparsity": 0.95,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 17.139176554442162,
+        "ci_low": 14.76139495885181,
+        "ci_high": 19.278300101499255
+      },
+      "damage_share": {
+        "point": 0.007208003255557484,
+        "ci_low": 0.00679511297099046,
+        "ci_high": 0.007630432897354032
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F1"
+    },
+    {
+      "arm": "VA_FP8",
+      "sparsity": 0.8,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 971.04,
+        "ci_low": 311.41324999182126,
+        "ci_high": 10551.421875
+      },
+      "damage_share": {
+        "point": 0.00038738823569480017,
+        "ci_low": 0.00037874789026943426,
+        "ci_high": 0.00039584585020922857
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    },
+    {
+      "arm": "VA_NVFP4",
+      "sparsity": 0.8,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 43.12391457404365,
+        "ci_low": 32.01517154427875,
+        "ci_high": 60.24849389149008
+      },
+      "damage_share": {
+        "point": 0.0010671541936372968,
+        "ci_low": 0.001006977225521825,
+        "ci_high": 0.0011214509823260367
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    },
+    {
+      "arm": "VB_BF16_LOW",
+      "sparsity": 0.8,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 25.885706936465745,
+        "ci_low": 20.296179964363233,
+        "ci_high": 30.70351697760033
+      },
+      "damage_share": {
+        "point": 0.0007008714961870019,
+        "ci_low": 0.0006801307667007655,
+        "ci_high": 0.0007190979090041292
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    },
+    {
+      "arm": "VA_NVFP4_VB_FP64",
+      "sparsity": 0.8,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 9.042690878669324,
+        "ci_low": 6.617304120193928,
+        "ci_high": 11.99001612303265
+      },
+      "damage_share": {
+        "point": 0.0014331260324218337,
+        "ci_low": 0.0013140094230158677,
+        "ci_high": 0.0015625885869929531
+      },
+      "isolation_ci_resolves_10x": false,
+      "isolation_side": "straddles",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    },
+    {
+      "arm": "VA_FP8",
+      "sparsity": 0.9,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 310.2291325695581,
+        "ci_low": 216.36141811697968,
+        "ci_high": 494.89992396538617
+      },
+      "damage_share": {
+        "point": 0.0004530297194798052,
+        "ci_low": 0.00043905919098810435,
+        "ci_high": 0.0004661836845972238
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    },
+    {
+      "arm": "VA_NVFP4",
+      "sparsity": 0.9,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 224.5449247207382,
+        "ci_low": 123.53637602607911,
+        "ci_high": 706.7830623276581
+      },
+      "damage_share": {
+        "point": 0.0011184691881916662,
+        "ci_low": 0.0010586542277461228,
+        "ci_high": 0.0011833851821688003
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    },
+    {
+      "arm": "VB_BF16_LOW",
+      "sparsity": 0.9,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 47.726023391812866,
+        "ci_low": 41.40939066555593,
+        "ci_high": 55.10344814176349
+      },
+      "damage_share": {
+        "point": 0.000875177790750286,
+        "ci_low": 0.0008485954770000964,
+        "ci_high": 0.00090407818782144
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    },
+    {
+      "arm": "VA_NVFP4_VB_FP64",
+      "sparsity": 0.9,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 9.970410192530432,
+        "ci_low": 8.168356733619037,
+        "ci_high": 12.041690759963835
+      },
+      "damage_share": {
+        "point": 0.001752196929469492,
+        "ci_low": 0.0015972002051239899,
+        "ci_high": 0.0019405000560313468
+      },
+      "isolation_ci_resolves_10x": false,
+      "isolation_side": "straddles",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    },
+    {
+      "arm": "VA_FP8",
+      "sparsity": 0.95,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 578.8090737240076,
+        "ci_low": 329.6127194689921,
+        "ci_high": 1398.8406584905665
+      },
+      "damage_share": {
+        "point": 0.0005388608879596387,
+        "ci_low": 0.0005238974912417024,
+        "ci_high": 0.0005553931303968808
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    },
+    {
+      "arm": "VA_NVFP4",
+      "sparsity": 0.95,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 797.5703380588877,
+        "ci_low": 322.2658992814577,
+        "ci_high": 10551.229504504512
+      },
+      "damage_share": {
+        "point": 0.0011615246117639229,
+        "ci_low": 0.001108230766431831,
+        "ci_high": 0.0012245072952819347
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    },
+    {
+      "arm": "VB_BF16_LOW",
+      "sparsity": 0.95,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 67.5950490425035,
+        "ci_low": 58.54988571687018,
+        "ci_high": 79.1442353644408
+      },
+      "damage_share": {
+        "point": 0.0010984028844873938,
+        "ci_low": 0.0010654222047908996,
+        "ci_high": 0.0011323089397712093
+      },
+      "isolation_ci_resolves_10x": true,
+      "isolation_side": "above",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    },
+    {
+      "arm": "VA_NVFP4_VB_FP64",
+      "sparsity": 0.95,
+      "n_cells": 43200,
+      "n_prompts": 10,
+      "isolation_ratio": {
+        "point": 10.48574545663346,
+        "ci_low": 8.679746844564086,
+        "ci_high": 12.445539523973359
+      },
+      "damage_share": {
+        "point": 0.0019797652646330504,
+        "ci_low": 0.001840987445502572,
+        "ci_high": 0.002133307847640269
+      },
+      "isolation_ci_resolves_10x": false,
+      "isolation_side": "straddles",
+      "damage_ci_resolves_1pct": true,
+      "damage_side": "below",
+      "phase": "F2"
+    }
+  ],
+  "thresholds_not_resolved": {
+    "isolation_10x": [
+      {
+        "phase": "F2",
+        "arm": "VA_NVFP4_VB_FP64",
+        "sparsity": 0.8,
+        "point": 9.042690878669324,
+        "ci": [
+          6.617304120193928,
+          11.99001612303265
+        ]
+      },
+      {
+        "phase": "F2",
+        "arm": "VA_NVFP4_VB_FP64",
+        "sparsity": 0.9,
+        "point": 9.970410192530432,
+        "ci": [
+          8.168356733619037,
+          12.041690759963835
+        ]
+      },
+      {
+        "phase": "F2",
+        "arm": "VA_NVFP4_VB_FP64",
+        "sparsity": 0.95,
+        "point": 10.48574545663346,
+        "ci": [
+          8.679746844564086,
+          12.445539523973359
+        ]
+      }
+    ],
+    "damage_1pct": []
+  },
+  "n_checks": 16,
+  "n_failed": 0,
+  "checks": [
+    {
+      "check": "f1_all_validator_checks_passed",
+      "passed": true,
+      "detail": {
+        "verdict": "PASS",
+        "n_rows": 1555200,
+        "n_checks": 11,
+        "n_failed": 0
+      }
+    },
+    {
+      "check": "f1_F4.1_complete_lattice",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "f1_F4.2_pairing",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "f1_F4.4_fp64_shadow_resolution",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "f1_F4.3_matched_random_equal_count",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "f1_F4.3_reference_null",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "f2_all_validator_checks_passed",
+      "passed": true,
+      "detail": {
+        "verdict": "PASS",
+        "n_rows": 1166400,
+        "n_checks": 17,
+        "n_failed": 0
+      }
+    },
+    {
+      "check": "f2_F4.1_complete_lattice",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "f2_F4.2_pairing",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "f2_F4.4_fp64_shadow_resolution",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "f2_F4.3_matched_random_equal_count",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "f2_F4.3_reference_null",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "f4_5_native_vs_simulated_reported",
+      "passed": true,
+      "detail": {
+        "n_tensors": 30,
+        "representation_rel_median": 0.009802031796425581,
+        "representation_rel_p90": 0.010721617471426725,
+        "representation_rel_max": 0.01103946566581726,
+        "pooled_rel_median": 0.0013913653674535453,
+        "pooled_rel_max": 0.0028374302200973034
+      }
+    },
+    {
+      "check": "f4_5_simulated_arms_declared_in_records",
+      "passed": true,
+      "detail": {
+        "simulated_arms": [
+          "R8",
+          "R9"
+        ],
+        "policy": "simulated arms are never used for latency claims"
+      }
+    },
+    {
+      "check": "isolation_thresholds_resolved_by_intervals",
+      "passed": null,
+      "detail": [
+        {
+          "phase": "F2",
+          "arm": "VA_NVFP4_VB_FP64",
+          "sparsity": 0.8,
+          "point": 9.042690878669324,
+          "ci": [
+            6.617304120193928,
+            11.99001612303265
+          ]
+        },
+        {
+          "phase": "F2",
+          "arm": "VA_NVFP4_VB_FP64",
+          "sparsity": 0.9,
+          "point": 9.970410192530432,
+          "ci": [
+            8.168356733619037,
+            12.041690759963835
+          ]
+        },
+        {
+          "phase": "F2",
+          "arm": "VA_NVFP4_VB_FP64",
+          "sparsity": 0.95,
+          "point": 10.48574545663346,
+          "ci": [
+            8.679746844564086,
+            12.445539523973359
+          ]
+        }
+      ]
+    },
+    {
+      "check": "damage_thresholds_resolved_by_intervals",
+      "passed": true,
+      "detail": "every damage CI falls on one side of 1%"
+    }
+  ]
+}

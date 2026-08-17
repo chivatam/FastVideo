@@ -1,0 +1,165 @@
+{
+  "phase": "F3B/F3C",
+  "verdict": "GENERALIZES_ON_TOKEN_COUNT",
+  "labelling": "proxy generalization \u2014 this run uses the controlled proxy scorer (SCORER_PRECISION_ATTN), not VSA. Per F3B it must be labelled proxy generalization, not VSA generalization.",
+  "choice": "priority 1 \u2014 same model at a materially larger token count/resolution",
+  "sparsity": 0.9,
+  "token_count_ratio": 2.3076923076923075,
+  "shared_prompts": [
+    "p01",
+    "p02",
+    "p03",
+    "p04",
+    "p05"
+  ],
+  "criteria": {
+    "same_damaging_arms_as_baseline": true,
+    "damage_under_1pct_of_sparsification": true,
+    "isolation_above_5x": true
+  },
+  "f3c_metrics": [
+    {
+      "configuration": "baseline 480x832",
+      "labelling": "proxy generalization (controlled scorer, not VSA)",
+      "resolution": "480x832",
+      "frames": 81,
+      "token_count_padded_seq_len": 32760,
+      "block_geometry": "128x64-raster",
+      "n_k_blocks": 512,
+      "sparsity": 0.9,
+      "n_prompts": 10,
+      "n_rows": 518400,
+      "jaccard_median_R9": 0.8848849557522124,
+      "jaccard_median_R1": 0.9750741839762611,
+      "max_abs_wrong_mask_over_sparsification": 0.006999722357211184,
+      "min_isolation_ratio": 12.17662536571956,
+      "higher_precision_router_recovery_share": 0.0018977433313641667,
+      "damage_under_1pct": true,
+      "isolation_above_5x": true,
+      "arms_damaging_in_majority_of_cells": [
+        "R1",
+        "R3",
+        "R6",
+        "R7",
+        "R8",
+        "R9"
+      ]
+    },
+    {
+      "configuration": "baseline 480x832 (matched prompts)",
+      "labelling": "proxy generalization (controlled scorer, not VSA)",
+      "resolution": "480x832",
+      "frames": 81,
+      "token_count_padded_seq_len": 32760,
+      "block_geometry": "128x64-raster",
+      "n_k_blocks": 512,
+      "sparsity": 0.9,
+      "n_prompts": 5,
+      "n_rows": 259200,
+      "jaccard_median_R9": 0.8848849557522124,
+      "jaccard_median_R1": 0.9753672651728743,
+      "max_abs_wrong_mask_over_sparsification": 0.006671345394436331,
+      "min_isolation_ratio": 14.456933368223957,
+      "higher_precision_router_recovery_share": 0.0018315708485707478,
+      "damage_under_1pct": true,
+      "isolation_above_5x": true,
+      "arms_damaging_in_majority_of_cells": [
+        "R1",
+        "R3",
+        "R6",
+        "R7",
+        "R8",
+        "R9"
+      ]
+    },
+    {
+      "configuration": "generalization 720x1280",
+      "labelling": "proxy generalization (controlled scorer, not VSA)",
+      "resolution": "720x1280",
+      "frames": 81,
+      "token_count_padded_seq_len": 75600,
+      "block_geometry": "128x64-raster",
+      "n_k_blocks": 1182,
+      "sparsity": 0.9,
+      "n_prompts": 5,
+      "n_rows": 259200,
+      "jaccard_median_R9": 0.8902342332656928,
+      "jaccard_median_R1": 0.9778671466336689,
+      "max_abs_wrong_mask_over_sparsification": 0.005391229339200708,
+      "min_isolation_ratio": 13.67925615706766,
+      "higher_precision_router_recovery_share": 0.0012310982594887737,
+      "damage_under_1pct": true,
+      "isolation_above_5x": true,
+      "arms_damaging_in_majority_of_cells": [
+        "R1",
+        "R3",
+        "R6",
+        "R7",
+        "R8",
+        "R9"
+      ]
+    }
+  ],
+  "paired_arm_comparison": [
+    {
+      "arm": "R1",
+      "jaccard_baseline": 0.9753672651728743,
+      "jaccard_720p": 0.9778671466336689,
+      "damage_share_baseline": 0.0012993899386527805,
+      "damage_share_720p": 0.0008492817988312668,
+      "damage_share_ratio": 0.6536004116761209,
+      "isolation_baseline": 28.05924978687127,
+      "isolation_720p": 29.754954954954954
+    },
+    {
+      "arm": "R3",
+      "jaccard_baseline": 0.9753672651728743,
+      "jaccard_720p": 0.9778671466336689,
+      "damage_share_baseline": 0.0012997241132918893,
+      "damage_share_720p": 0.0008492817988312668,
+      "damage_share_ratio": 0.653432363180706,
+      "isolation_baseline": 27.91838474242182,
+      "isolation_720p": 30.167927927927927
+    },
+    {
+      "arm": "R6",
+      "jaccard_baseline": 0.9599528857479388,
+      "jaccard_720p": 0.9629619292173719,
+      "damage_share_baseline": 0.0015875382038397527,
+      "damage_share_720p": 0.000895175424708253,
+      "damage_share_ratio": 0.5638764613935632,
+      "isolation_baseline": 76.35563672588411,
+      "isolation_720p": 58.48660769901582
+    },
+    {
+      "arm": "R7",
+      "jaccard_baseline": 0.9534815467018857,
+      "jaccard_720p": 0.9567086318425263,
+      "damage_share_baseline": 0.001996747456709385,
+      "damage_share_720p": 0.0012873342866942692,
+      "damage_share_ratio": 0.6447156260891301,
+      "isolation_baseline": 29.234978661275832,
+      "isolation_720p": 30.212488015340366
+    },
+    {
+      "arm": "R8",
+      "jaccard_baseline": 0.8874237912944846,
+      "jaccard_720p": 0.8927269057390836,
+      "damage_share_baseline": 0.006206811607287646,
+      "damage_share_720p": 0.005083685116182379,
+      "damage_share_ratio": 0.8190493667011638,
+      "isolation_baseline": 16.89994860578245,
+      "isolation_720p": 14.943202108664229
+    },
+    {
+      "arm": "R9",
+      "jaccard_baseline": 0.8848849557522124,
+      "jaccard_720p": 0.8902342332656928,
+      "damage_share_baseline": 0.006671345394436331,
+      "damage_share_720p": 0.005391229339200708,
+      "damage_share_ratio": 0.8081172567825382,
+      "isolation_baseline": 14.456933368223957,
+      "isolation_720p": 13.67925615706766
+    }
+  ]
+}

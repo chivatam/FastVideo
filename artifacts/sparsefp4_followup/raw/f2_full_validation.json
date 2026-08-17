@@ -1,0 +1,276 @@
+{
+  "verdict": "PASS",
+  "shards": [
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p01_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p02_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p03_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p04_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p05_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p06_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p07_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p08_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p09_s1234.jsonl",
+    "/mnt/nvme/scratch/sparsefp4_followup/20260816-215059-6e886a9c-f2-full/p10_s1234.jsonl"
+  ],
+  "n_rows": 1166400,
+  "n_expected": 1166400,
+  "lattice": {
+    "arms": [
+      "V0",
+      "V0_FP64",
+      "VA_FP8",
+      "VA_NVFP4",
+      "VA_NVFP4_VB_FP64",
+      "VB_BF16_LOW",
+      "VB_FP32",
+      "VC_GATE_NVFP4",
+      "VD_TORCH_TOPK"
+    ],
+    "prompts": [
+      "p01",
+      "p02",
+      "p03",
+      "p04",
+      "p05",
+      "p06",
+      "p07",
+      "p08",
+      "p09",
+      "p10"
+    ],
+    "layers": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29
+    ],
+    "timesteps": [
+      0,
+      1,
+      10,
+      25,
+      40,
+      48
+    ],
+    "cfg_branches": [
+      "negative",
+      "positive"
+    ],
+    "heads": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "sparsities": [
+      0.8,
+      0.9,
+      0.95
+    ]
+  },
+  "kernel_budget_deviation": {
+    "total_violating_selector_rows": 5376,
+    "worst_row_violating_frac": 0.0006677350427350427,
+    "records_with_any_violation_by_arm": {
+      "V0": 456,
+      "VA_FP8": 480,
+      "VA_NVFP4": 300,
+      "VB_BF16_LOW": 2988,
+      "VC_GATE_NVFP4": 456
+    }
+  },
+  "n_checks": 17,
+  "n_failed": 0,
+  "checks": [
+    {
+      "check": "no_malformed_rows",
+      "passed": true,
+      "detail": "1166400 rows parsed"
+    },
+    {
+      "check": "lattice_complete",
+      "passed": true,
+      "detail": {
+        "expected": 1166400,
+        "observed": 1166400,
+        "n_holes": 0,
+        "example_holes": []
+      }
+    },
+    {
+      "check": "no_duplicate_cells",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "deployed_arm_is_exact_null",
+      "passed": true,
+      "detail": {
+        "n_rows": 129600,
+        "jaccards": [
+          1.0
+        ],
+        "excesses": [
+          0.0
+        ]
+      }
+    },
+    {
+      "check": "gate_quantization_cannot_move_the_mask",
+      "passed": true,
+      "detail": {
+        "n_rows": 129600,
+        "all_masks_identical_to_deployed": true,
+        "all_rows_actually_quantized_the_gate": true,
+        "gate_saturation_frac_range": [
+          0.0,
+          0.0
+        ],
+        "meaning": "falsifies VSA_GATE_MAP.md if it fails"
+      }
+    },
+    {
+      "check": "gate_declared_outside_selection_path",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "retained_k_identical_across_arms",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "kernel_budget_deviation_negligible",
+      "passed": true,
+      "detail": {
+        "worst_row_violating_frac": 0.0006677350427350427,
+        "threshold": 0.001,
+        "worst_cell": {
+          "arm": "VB_BF16_LOW",
+          "layer": 19,
+          "timestep": 40,
+          "cfg_branch": "negative",
+          "sparsity": 0.8
+        },
+        "records_with_any_violation": {
+          "V0": 456,
+          "VA_FP8": 480,
+          "VA_NVFP4": 300,
+          "VB_BF16_LOW": 2988,
+          "VC_GATE_NVFP4": 456
+        },
+        "total_violating_selector_rows": 5376,
+        "cause": "fused_topk_mask fp32 bisection cannot resolve a k-th-value tie",
+        "lesson": ".agents/lessons/vsa-fused-topk-mask-can-overselect-on-ties.md"
+      }
+    },
+    {
+      "check": "deployed_mask_shared_within_cell",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "matched_random_swap_count_equals_arm",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "fp64_shadow_ties_negligible",
+      "passed": true,
+      "detail": {
+        "total_ties": 0,
+        "denominator_query_blocks": 727833600,
+        "tie_rate": 0.0
+      }
+    },
+    {
+      "check": "trajectory_is_real_vsa",
+      "passed": true,
+      "detail": [
+        "VIDEO_SPARSE_ATTN (real, unmodified)"
+      ]
+    },
+    {
+      "check": "routing_interface_is_actual_vsa",
+      "passed": true,
+      "detail": [
+        "actual_vsa_fused_block_mean_plus_fused_topk_mask"
+      ]
+    },
+    {
+      "check": "exact_arm_is_fp64_end_to_end",
+      "passed": true,
+      "detail": {
+        "n_rows": 129600,
+        "pool_semantics": [
+          "pool=fp64_values_acc_fp64_valid_token_denominator"
+        ]
+      }
+    },
+    {
+      "check": "higher_precision_arms_do_not_use_the_bf16_kernel",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "no_nans_in_reportable_columns",
+      "passed": true,
+      "detail": {
+        "jaccard": 0,
+        "recall": 0,
+        "rel_l2_vs_dense": 0,
+        "sparsification_error": 0,
+        "wrong_mask_excess": 0,
+        "changed_pair_gap_fp64_median": 0,
+        "reference_margin_fp64_median": 0,
+        "spearman_rho_vs_exact": 0
+      }
+    },
+    {
+      "check": "ambient_autocast_state_recorded",
+      "passed": true,
+      "detail": {
+        "observed_states": [
+          [
+            true,
+            "torch.bfloat16"
+          ]
+        ]
+      }
+    }
+  ]
+}

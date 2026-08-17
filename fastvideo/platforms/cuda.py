@@ -248,6 +248,14 @@ class CudaPlatformBase(Platform):
         elif selected_backend == AttentionBackendEnum.SPARSEFP4_EXEC_ATTN:
             logger.info("Using SparseFP4 Phase 5 execution backend (the arm's attention is what the model consumes).")
             return "fastvideo.attention.backends.sparsefp4_exec_attn.SparseFP4ExecAttentionBackend"
+        elif selected_backend == AttentionBackendEnum.SCORER_PRECISION_ATTN:
+            logger.info(
+                "Using SparseFP4 F1 scorer-precision backend (dense BF16 compute + scorer arithmetic ablation).")
+            return "fastvideo.attention.backends.scorer_precision_attn.ScorerPrecisionAttentionBackend"
+        elif selected_backend == AttentionBackendEnum.VSA_PRECISION_PROBE_ATTN:
+            logger.info(
+                "Using SparseFP4 F2 VSA gate-precision probe backend (real VSA execution + gate interventions).")
+            return "fastvideo.attention.backends.vsa_precision_probe_attn.VSAPrecisionProbeAttentionBackend"
         elif selected_backend == AttentionBackendEnum.TORCH_SDPA:
             logger.info("Using Torch SDPA backend.")
             return "fastvideo.attention.backends.sdpa.SDPABackend"

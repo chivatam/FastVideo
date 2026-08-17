@@ -1,0 +1,38 @@
+{
+  "phase": "F3B",
+  "choice": "priority 1 — same model at a materially larger token count/resolution",
+  "why_this_choice": "Lowest-friction path already supported by the repo: no port, no new checkpoint, same attention plumbing, same probe. Priority 2/3 (second Wan-family model, second modality) would each require verifying probe reach and token geometry for no additional inferential value on the token-count axis.",
+  "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+  "model_revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+  "baseline_configuration": {
+    "resolution": "480x832",
+    "frames": 81,
+    "latent_grid_t_h_w": [21, 30, 52],
+    "token_count": 32760,
+    "raster_padded_seq_len": 33024,
+    "n_q_blocks_128": 258,
+    "n_k_blocks_64": 512
+  },
+  "generalization_configuration": {
+    "resolution": "720x1280",
+    "frames": 81,
+    "latent_grid_t_h_w": [21, 45, 80],
+    "token_count": 75600,
+    "raster_padded_seq_len": 75648,
+    "n_q_blocks_128": 591,
+    "n_k_blocks_64": 1182,
+    "token_count_ratio_vs_baseline": 2.3077,
+    "verified_by": "geometry logged by the probe; ratio recomputed by f3b_analyze.py from the records themselves"
+  },
+  "token_count_note": "Ratio is over actual token counts (32760 -> 75600). Do not confuse these with VSA's tile-padded length (39936 at 480p), which is a different padding for a different geometry and was mis-transcribed in an earlier draft of this file.",
+  "fp8_arm_caveat": "At 720p the key-block count is 1182, not a multiple of 16, so torch._scaled_mm has no native kernel and arms R6/R7 fall back to an fp32 dot on FP8-rounded inputs. The records label those arms native_or_simulated='simulated' with score_semantics ending _FALLBACK_no_native_fp8_gemm, so the substitution is recorded rather than silent. Their FP8 *representation* is still genuine; only the dot is emulated.",
+  "preserved": ["frames", "num_inference_steps", "guidance_scale", "seed", "prompts", "block geometry rule (128x64 raster)", "arm ladder", "measured timesteps", "layers"],
+  "changed": ["height", "width", "and therefore sequence length and block count"],
+  "uses_vsa": false,
+  "labelling": "proxy generalization — this run uses the controlled proxy scorer (SCORER_PRECISION_ATTN), not VSA. Per F3B it must be labelled proxy generalization, not VSA generalization.",
+  "prompts": 5,
+  "prompts_note": "5 first per F3B; expand to 10 only if clean",
+  "seed": 1234,
+  "sparsity": 0.9,
+  "metrics_required_by_F3C": ["sequence length/token count", "block geometry", "sparsity", "mask Jaccard", "wrong-mask excess / sparsification error", "matched-random isolation ratio", "higher-precision-router recovery"]
+}

@@ -625,8 +625,14 @@ class WanTransformer3DModel(BaseDiT):
         )
 
         # 3. Transformer blocks
+        # The VSA block carries the to_gate_compress projection and calls
+        # DistributedAttention_VSA, whose forward signature includes gate_compress.
+        # Research backends that wrap VSA need the same block, so select on the
+        # VSA-compatible set rather than one exact name.
         attn_backend = envs.FASTVIDEO_ATTENTION_BACKEND
-        transformer_block = WanTransformerBlock_VSA if attn_backend == "VIDEO_SPARSE_ATTN" else WanTransformerBlock
+        vsa_compatible_backends = ("VIDEO_SPARSE_ATTN", "VSA_PRECISION_PROBE_ATTN")
+        transformer_block = (WanTransformerBlock_VSA
+                             if attn_backend in vsa_compatible_backends else WanTransformerBlock)
         self.blocks = nn.ModuleList([
             transformer_block(inner_dim,
                               config.ffn_dim,

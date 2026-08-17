@@ -1,0 +1,276 @@
+{
+  "verdict": "PASS",
+  "n_checks": 28,
+  "n_failed": 0,
+  "checks": [
+    {
+      "check": "exact_fp32_scope_disables_tf32_and_restores",
+      "passed": true,
+      "detail": {
+        "ambient": {
+          "worker_allow_tf32_matmul": true,
+          "worker_allow_tf32_cudnn": true,
+          "worker_float32_matmul_precision": "high"
+        },
+        "inside_scope": {
+          "worker_allow_tf32_matmul": false,
+          "worker_allow_tf32_cudnn": false,
+          "worker_float32_matmul_precision": "highest"
+        }
+      }
+    },
+    {
+      "check": "fp32_scorer_is_tf32_invariant",
+      "passed": true,
+      "detail": {
+        "max_abs_diff": 0.0
+      }
+    },
+    {
+      "check": "tf32_disabled_so_fp32_arm_is_fp32",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "autocast_downcasts_unguarded_fp32_matmul",
+      "passed": true,
+      "detail": {
+        "unguarded_dtype": "torch.bfloat16",
+        "note": "this is the hazard the guards exist for"
+      }
+    },
+    {
+      "check": "declared_precision_arithmetic_restores_fp32",
+      "passed": true,
+      "detail": {
+        "guarded_dtype": "torch.float32"
+      }
+    },
+    {
+      "check": "fp32_scorer_is_autocast_invariant",
+      "passed": true,
+      "detail": {
+        "scorer_output_dtype": "torch.float64",
+        "note": "score_blocks_precision returns fp64-scaled scores; the matmul itself ran in fp32"
+      }
+    },
+    {
+      "check": "fp32_and_bf16_arms_differ_under_autocast",
+      "passed": true,
+      "detail": {
+        "max_abs_diff": 0.18436050415039062
+      }
+    },
+    {
+      "check": "pooling_bit_identical_to_study1",
+      "passed": true,
+      "detail": "pool=fp32_values_torch_sum_acc_fp32"
+    },
+    {
+      "check": "fp64_scores_bit_identical_to_study1",
+      "passed": true,
+      "detail": "score=fp64_values_torch_matmul_acc_fp64"
+    },
+    {
+      "check": "lower_arithmetic_changes_scores",
+      "passed": true,
+      "detail": {
+        "fp64": 0.0,
+        "fp32": 1.990645273843526e-07,
+        "bf16_acc_fp32": 0.0028829679397936576,
+        "bf16_acc_bf16": 0.02113043158663796,
+        "fp8": 0.03756968810206415
+      }
+    },
+    {
+      "check": "bf16_low_accumulation_differs_from_native",
+      "passed": true,
+      "detail": {
+        "acc_fp32_rel": 0.0028829679397936576,
+        "acc_bf16_rel": 0.02113043158663796
+      }
+    },
+    {
+      "check": "native_fp8_block_gemm_available",
+      "passed": true,
+      "detail": "score=fp8_e4m3_torch_scaled_mm_acc_fp32_native"
+    },
+    {
+      "check": "nvfp4_pooled_values_on_e2m1_grid",
+      "passed": true,
+      "detail": {
+        "max_distance_to_code": 0.0,
+        "saturation_frac": 0.11181640625,
+        "fp8_pooled_saturation_frac": 0.000244140625
+      }
+    },
+    {
+      "check": "every_arm_retains_exactly_k_blocks",
+      "passed": true,
+      "detail": {
+        "k": 6,
+        "observed": {
+          "fp64": [
+            6
+          ],
+          "fp32": [
+            6
+          ],
+          "bf16_acc_fp32": [
+            6
+          ],
+          "bf16_acc_bf16": [
+            6
+          ],
+          "fp8": [
+            6
+          ]
+        }
+      }
+    },
+    {
+      "check": "null_control_mask_identity",
+      "passed": true,
+      "detail": {
+        "intersection": 192,
+        "union": 192,
+        "selected_reference": 192,
+        "selected_candidate": 192,
+        "recall": 1.0,
+        "jaccard": 1.0,
+        "num_swaps": 0,
+        "swaps_per_query_block": 0.0,
+        "max_swaps_in_a_query_block": 0,
+        "frac_query_blocks_changed": 0.0,
+        "frac_decisions_changed": 0.0,
+        "budget_mismatch_rows": 0,
+        "budget_mismatch_frac": 0.0,
+        "budget_excess_blocks": 0
+      }
+    },
+    {
+      "check": "mask_hash_stable",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "unequal_budget_raises",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "matched_random_changes_equal_count_per_query_block",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "zero_swap_random_control_is_identity",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "spearman_identity_is_one",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "spearman_reversal_is_minus_one",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "spearman_handles_ties_without_error",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "spearman_matches_scipy_incl_ties",
+      "passed": true,
+      "detail": {
+        "continuous": 3.469446951953614e-18,
+        "ties_both_sides": 6.938893903907228e-18,
+        "ties_one_side": 0.0,
+        "two_level_max_ties": 2.220446049250313e-16
+      }
+    },
+    {
+      "check": "boundary_pair_gap_matches_per_row_loop",
+      "passed": true,
+      "detail": {
+        "vectorized_median": 0.00457573225675248,
+        "loop_median": 0.00457573225675248,
+        "vectorized_max": 0.00982301310508529,
+        "loop_max": 0.00982301310508529,
+        "n_rows_vectorized": 7,
+        "n_rows_loop": 7
+      }
+    },
+    {
+      "check": "fp64_shadow_has_zero_exact_ties",
+      "passed": true,
+      "detail": {
+        "reference_margin_fp64_median": 0.0004113494495944364,
+        "reference_margin_fp64_min": 5.040084385038446e-05,
+        "reference_margin_norm_fp64_median": 0.00881278845449445,
+        "exact_ties_fp64": 0,
+        "tie_denominator_query_blocks": 32,
+        "changed_pair_gap_fp64_median": 0.00457573225675248,
+        "changed_pair_gap_fp64_p90": 0.009308464315504096,
+        "changed_pair_gap_fp64_max": 0.00982301310508529,
+        "n_query_blocks_with_swap": 7
+      }
+    },
+    {
+      "check": "deployed_tie_counts_recorded",
+      "passed": true,
+      "detail": {
+        "fp64": 0,
+        "fp32": 0,
+        "bf16_acc_fp32": 0,
+        "bf16_acc_bf16": 3,
+        "fp8": 0
+      }
+    },
+    {
+      "check": "arm_ids_unique",
+      "passed": true,
+      "detail": [
+        "R0",
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R4L",
+        "R5L",
+        "R6",
+        "R7",
+        "R8",
+        "R9"
+      ]
+    },
+    {
+      "check": "arm_labels_state_both_axes",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "config": {
+    "seq_len": 4096,
+    "heads": 4,
+    "head_dim": 128,
+    "block_q": 128,
+    "sparsity": 0.9,
+    "k": 6,
+    "n_k_blocks": 64,
+    "n_q_blocks": 32
+  },
+  "score_relative_deviation_vs_fp64": {
+    "fp64": 0.0,
+    "fp32": 1.990645273843526e-07,
+    "bf16_acc_fp32": 0.0028829679397936576,
+    "bf16_acc_bf16": 0.02113043158663796,
+    "fp8": 0.03756968810206415
+  },
+  "native_fp8_semantics": "score=fp8_e4m3_torch_scaled_mm_acc_fp32_native"
+}

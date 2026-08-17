@@ -1,0 +1,130 @@
+{
+  "verdict": "PASS",
+  "n_checks": 13,
+  "n_failed": 0,
+  "checks": [
+    {
+      "check": "tile_buffer_pads_with_zeros",
+      "passed": true,
+      "detail": {
+        "n_pad_slots": 7176,
+        "why_it_matters": "fused_block_mean has no validity mask; correctness depends on zero padding"
+      }
+    },
+    {
+      "check": "wan_geometry_is_ragged",
+      "passed": true,
+      "detail": {
+        "n_blocks": 624,
+        "seq_len_padded": 39936,
+        "distinct_block_sizes": [
+          8,
+          16,
+          32,
+          64
+        ],
+        "min_block_size": 8,
+        "topk": 63
+      }
+    },
+    {
+      "check": "probe_pooling_is_kernel_pooling",
+      "passed": true,
+      "detail": "pool=kernel_fused_block_mean_bf16_read_fp32_acc_bf16_write"
+    },
+    {
+      "check": "probe_scores_equal_kernel_scores",
+      "passed": true,
+      "detail": "score=kernel_bf16_torch_matmul_acc_fp32_bf16_out"
+    },
+    {
+      "check": "probe_V0_mask_equals_kernel_mask",
+      "passed": true,
+      "detail": "select=kernel_fused_topk_mask_fp32_bisect_index_order_ties"
+    },
+    {
+      "check": "exact_index_order_reproduces_kernel_tiebreak",
+      "passed": true,
+      "detail": "select=exact_stable_sort_index_order_ties_at_bfloat16"
+    },
+    {
+      "check": "kernel_mask_retains_exactly_topk",
+      "passed": true,
+      "detail": {
+        "topk": 63,
+        "observed": [
+          63
+        ]
+      }
+    },
+    {
+      "check": "gate_scales_compression_branch_linearly",
+      "passed": true,
+      "detail": {
+        "observed_ratio": 8.998977661132812,
+        "expected": 9.0,
+        "interpretation": "confirms out = out_s + out_c * gate"
+      }
+    },
+    {
+      "check": "gate_cannot_change_selected_mask",
+      "passed": true,
+      "detail": {
+        "reason": "gate_compress reaches the kernel as compress_attn_weight and is applied after fused_topk_mask; see VSA_GATE_MAP.md. The mask below is computed from Q/K only.",
+        "mask_hash_invariant": true
+      }
+    },
+    {
+      "check": "kernel_pooling_is_bf16_of_fp32_accumulated_mean",
+      "passed": true,
+      "detail": "deployed VSA selector == F1's R4 condition (bf16 values, fp32 accumulation)"
+    },
+    {
+      "check": "ragged_tiles_use_valid_token_denominator",
+      "passed": true,
+      "detail": {
+        "n_edge_blocks": 169,
+        "note": "dividing by 64 instead of the valid count would dilute edge tiles"
+      }
+    },
+    {
+      "check": "selector_arithmetic_axis_is_non_degenerate",
+      "passed": true,
+      "detail": {
+        "fp32": 2.0581438973969995e-07,
+        "bf16_low": 0.01719715499569533,
+        "kernel_bf16": 0.0033232303730733655
+      }
+    },
+    {
+      "check": "deployed_and_exact_selectors_differ",
+      "passed": true,
+      "detail": {
+        "n_differing_decisions": 3524,
+        "total_decisions": 4672512,
+        "frac": 0.0007541981700635547
+      }
+    }
+  ],
+  "geometry": {
+    "dit_seq_shape": [
+      21,
+      30,
+      52
+    ],
+    "tile_size": [
+      4,
+      4,
+      4
+    ],
+    "n_blocks": 624,
+    "seq_len_padded": 39936,
+    "topk": 63,
+    "sparsity": 0.9
+  },
+  "score_relative_deviation_vs_fp64": {
+    "fp32": 2.0581438973969995e-07,
+    "bf16_low": 0.01719715499569533,
+    "kernel_bf16": 0.0033232303730733655
+  }
+}
