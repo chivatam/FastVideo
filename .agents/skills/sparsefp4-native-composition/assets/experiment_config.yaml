@@ -1,0 +1,48 @@
+study:
+  output_root: artifacts/sparsefp4_native
+  model: Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+  primary_resolution: [480, 832]
+  secondary_resolution: [720, 1280]
+  frames: 81
+  steps: 50
+  seed: 1234
+  primary_sparsity: 0.90
+  sparsities: [0.80, 0.90, 0.95]
+
+operator_matrix:
+  A0: {name: DENSE-BF16, sparse: false, qk: bf16, pv: bf16, native: true}
+  B0: {name: DENSE-NVFP4, sparse: false, qk: nvfp4, pv: bf16, native: true}
+  C0: {name: SPARSE-BF16, sparse: true, qk: bf16, pv: bf16, mask: frozen_vsa}
+  D0:
+    name: SPARSE-NVFP4
+    sparse: true
+    qk: nvfp4
+    pv: bf16
+    mask: same_as_C0
+    native: true
+    forbid_dequant_before_qk: true
+
+production_matrix:
+  P0: dense_bf16
+  P1: dense_native_nvfp4
+  P2: deployed_vsa_bf16
+  P3: deployed_vsa_native_sparse_nvfp4
+
+quality:
+  development_prompts: 10
+  paper_protocol: vbench_official_or_repo_integrated
+  metrics: [vbench, psnr, ssim, lpips]
+  paired: true
+
+operator_metrics: [mse, relative_l2, cosine, snr]
+
+performance:
+  kernel_warmup: 10
+  kernel_repetitions: 50
+  e2e_warmup: 1
+  e2e_repetitions: 5
+  measure: [attention_kernel_latency, dit_step_latency, e2e_generation_latency, peak_gpu_memory]
+
+diagnostics:
+  custom_routing_metrics_default: false
+  trigger_only_if_joint_error_bad: true

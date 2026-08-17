@@ -1,0 +1,229 @@
+{
+  "runtime_receipt": {
+    "gpu": "NVIDIA B200",
+    "capability": [
+      10,
+      0
+    ],
+    "shape": {
+      "B": 1,
+      "S": 39936,
+      "H": 12,
+      "D": 128
+    },
+    "q_fp4": {
+      "dtype": "torch.float4_e2m1fn_x2",
+      "shape": [
+        1,
+        39936,
+        12,
+        64
+      ],
+      "stride": [
+        30670848,
+        768,
+        64,
+        1
+      ]
+    },
+    "k_fp4": {
+      "dtype": "torch.float4_e2m1fn_x2",
+      "shape": [
+        1,
+        39936,
+        12,
+        64
+      ],
+      "stride": [
+        30670848,
+        768,
+        64,
+        1
+      ]
+    },
+    "sfq": {
+      "dtype": "torch.uint8",
+      "shape": [
+        32,
+        4,
+        312,
+        4,
+        2,
+        12,
+        1
+      ],
+      "stride": [
+        16,
+        4,
+        1024,
+        1,
+        512,
+        319488,
+        3833856
+      ],
+      "semantics": "E4M3 per-16-element scale factors, FA4 MMA layout"
+    },
+    "sfk": {
+      "dtype": "torch.uint8",
+      "shape": [
+        32,
+        4,
+        312,
+        4,
+        2,
+        12,
+        1
+      ],
+      "stride": [
+        16,
+        4,
+        1024,
+        1,
+        512,
+        319488,
+        3833856
+      ]
+    },
+    "v": {
+      "dtype": "torch.bfloat16",
+      "shape": [
+        1,
+        39936,
+        12,
+        128
+      ]
+    },
+    "note_no_bf16_materialization": "The sparse call consumes qf4/kf4 (torch.float4_e2m1fn_x2) directly; interface.py builds cute pointers of type Float4E2M1FN from their data_ptr (fp4_qk branch). No dequantized Q/K tensor exists in the call path.",
+    "sparse_semantics": "full_block_idx/count lists per (batch, head, 256-token Q row) of retained 128-token K blocks; kernel iterates only listed blocks (produce_block_sparse_loads_sm100 -> load_block_list_sm100), loading K/V tiles AND their scale-factor tiles by block index."
+  },
+  "profiler": [
+    {
+      "tag": "D0_sparse_fp4_retained10",
+      "kernels": [
+        {
+          "name": "kernel_cutlass_kernel_flash_attncuteflash_fwd_sm100_fp4FlashAttentionForwardSm100_object_at__tensor0000o11101213_tensor0000o11101213_tensor0000o10111213_tensor0000o11101213_None_None_None_0",
+          "cuda_time_us": 598.627,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "tag": "B0_dense_fp4",
+      "kernels": [
+        {
+          "name": "kernel_cutlass_kernel_flash_attncuteflash_fwd_sm100_fp4FlashAttentionForwardSm100_object_at__tensor0000o11101213_tensor0000o11101213_tensor0000o10111213_tensor0000o11101213_None_None_None_0",
+          "cuda_time_us": 5332.546,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "tag": "C0_sparse_bf16_retained10",
+      "kernels": [
+        {
+          "name": "kernel_cutlass_kernel_flash_attncuteflash_fwd_sm100FlashAttentionForwardSm100_object_at__tensor0000o11101213_tensor0000o11101213_tensor0000o10111213_tensor0000o11101213_None_None_None_Non_0",
+          "cuda_time_us": 695.1139999999999,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "tag": "A0_dense_bf16",
+      "kernels": [
+        {
+          "name": "kernel_cutlass_kernel_flash_attncuteflash_fwd_sm100FlashAttentionForwardSm100_object_at__tensor0000o11101213_tensor0000o11101213_tensor0000o10111213_tensor0000o11101213_None_None_None_Non_0",
+          "cuda_time_us": 6467.571,
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "work_scaling": [
+    {
+      "arm": "A0_dense_bf16_kernel",
+      "median_ms": 7.414271831512451,
+      "p10_ms": 7.285312175750732,
+      "p90_ms": 7.445631980895996,
+      "n": 50
+    },
+    {
+      "arm": "B0_dense_fp4_kernel",
+      "median_ms": 6.017375946044922,
+      "p10_ms": 5.9402241706848145,
+      "p90_ms": 6.297408103942871,
+      "n": 50
+    },
+    {
+      "arm": "D0_sparse_fp4",
+      "retained": 1.0,
+      "realized": 1.0,
+      "median_ms": 6.009535789489746,
+      "p10_ms": 5.973919868469238,
+      "p90_ms": 6.069119930267334,
+      "n": 50
+    },
+    {
+      "arm": "C0_sparse_bf16",
+      "retained": 1.0,
+      "realized": 1.0,
+      "median_ms": 7.59116792678833,
+      "p10_ms": 7.545567989349365,
+      "p90_ms": 7.790016174316406,
+      "n": 50
+    },
+    {
+      "arm": "D0_sparse_fp4",
+      "retained": 0.5,
+      "realized": 0.5,
+      "median_ms": 3.0743680000305176,
+      "p10_ms": 2.9783360958099365,
+      "p90_ms": 3.3125760555267334,
+      "n": 50
+    },
+    {
+      "arm": "C0_sparse_bf16",
+      "retained": 0.5,
+      "realized": 0.5,
+      "median_ms": 3.815200090408325,
+      "p10_ms": 3.7727038860321045,
+      "p90_ms": 4.1348161697387695,
+      "n": 50
+    },
+    {
+      "arm": "D0_sparse_fp4",
+      "retained": 0.25,
+      "realized": 0.25,
+      "median_ms": 1.6540800333023071,
+      "p10_ms": 1.602112054824829,
+      "p90_ms": 1.7506239414215088,
+      "n": 50
+    },
+    {
+      "arm": "C0_sparse_bf16",
+      "retained": 0.25,
+      "realized": 0.25,
+      "median_ms": 1.8139840364456177,
+      "p10_ms": 1.7776639461517334,
+      "p90_ms": 2.0413119792938232,
+      "n": 50
+    },
+    {
+      "arm": "D0_sparse_fp4",
+      "retained": 0.1,
+      "realized": 0.09935897588729858,
+      "median_ms": 0.8000320196151733,
+      "p10_ms": 0.7956479787826538,
+      "p90_ms": 0.807968020439148,
+      "n": 50
+    },
+    {
+      "arm": "C0_sparse_bf16",
+      "retained": 0.1,
+      "realized": 0.09935897588729858,
+      "median_ms": 0.8297920227050781,
+      "p10_ms": 0.8229119777679443,
+      "p90_ms": 0.8369920253753662,
+      "n": 50
+    }
+  ]
+}

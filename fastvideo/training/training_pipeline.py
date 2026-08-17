@@ -348,7 +348,7 @@ class TrainingPipeline(LoRAPipeline, ABC):
         current_vsa_sparsity = training_batch.current_vsa_sparsity
         assert latents_shape is not None
         assert training_batch.timesteps is not None
-        if envs.FASTVIDEO_ATTENTION_BACKEND == "VIDEO_SPARSE_ATTN":
+        if envs.FASTVIDEO_ATTENTION_BACKEND in ("VIDEO_SPARSE_ATTN", "SPARSEFP4_QAT_VSA_ATTN"):
             if not vsa_available:
                 raise ImportError("FASTVIDEO_ATTENTION_BACKEND is set to VIDEO_SPARSE_ATTN, "
                                   "but fastvideo_kernel is not correctly installed or detected. "
@@ -389,7 +389,9 @@ class TrainingPipeline(LoRAPipeline, ABC):
         return training_batch
 
     def _transformer_forward_and_compute_loss(self, training_batch: TrainingBatch) -> TrainingBatch:
-        if vsa_available and envs.FASTVIDEO_ATTENTION_BACKEND == "VIDEO_SPARSE_ATTN" or vmoba_available and envs.FASTVIDEO_ATTENTION_BACKEND == "VMOBA_ATTN":
+        if vsa_available and envs.FASTVIDEO_ATTENTION_BACKEND in (
+                "VIDEO_SPARSE_ATTN",
+                "SPARSEFP4_QAT_VSA_ATTN") or vmoba_available and envs.FASTVIDEO_ATTENTION_BACKEND == "VMOBA_ATTN":
             assert training_batch.attn_metadata is not None
         else:
             assert training_batch.attn_metadata is None

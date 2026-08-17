@@ -29,6 +29,10 @@ class AttentionBackendEnum(enum.Enum):
     SPARSEFP4_EXEC_ATTN = enum.auto()
     SCORER_PRECISION_ATTN = enum.auto()
     VSA_PRECISION_PROBE_ATTN = enum.auto()
+    SPARSEFP4_CAPTURE_ATTN = enum.auto()
+    SPARSEFP4_NATIVE_VSA_ATTN = enum.auto()
+    SPARSEFP4_VSA256_FA4_ATTN = enum.auto()
+    SPARSEFP4_QAT_VSA_ATTN = enum.auto()
     NO_ATTENTION = enum.auto()
 
 

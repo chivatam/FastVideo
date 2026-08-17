@@ -256,6 +256,21 @@ class CudaPlatformBase(Platform):
             logger.info(
                 "Using SparseFP4 F2 VSA gate-precision probe backend (real VSA execution + gate interventions).")
             return "fastvideo.attention.backends.vsa_precision_probe_attn.VSAPrecisionProbeAttentionBackend"
+        elif selected_backend == AttentionBackendEnum.SPARSEFP4_CAPTURE_ATTN:
+            logger.info("Using SparseFP4 native-composition capture backend (real VSA execution + QKV/mask dump).")
+            return "fastvideo.attention.backends.sparsefp4_capture_attn.SparseFP4CaptureAttentionBackend"
+        elif selected_backend == AttentionBackendEnum.SPARSEFP4_NATIVE_VSA_ATTN:
+            logger.info("Using SparseFP4 native-VSA backend (deployed selector/coarse branch + FA4 sparse fine "
+                        "branch, FASTVIDEO_SPARSEFP4_FINE controls nvfp4|bf16 QK).")
+            return "fastvideo.attention.backends.sparsefp4_native_vsa.SparseFP4NativeVSABackend"
+        elif selected_backend == AttentionBackendEnum.SPARSEFP4_VSA256_FA4_ATTN:
+            logger.info("Using SparseFP4 VSA256-FA4 backend (256-token tile selector, exact FA4 sparse mapping, "
+                        "FASTVIDEO_SPARSEFP4_FINE controls nvfp4|bf16 QK).")
+            return "fastvideo.attention.backends.sparsefp4_vsa256_fa4.SparseFP4VSA256FA4Backend"
+        elif selected_backend == AttentionBackendEnum.SPARSEFP4_QAT_VSA_ATTN:
+            logger.info("Using SparseFP4 QAT-VSA backend (fake-quant NVFP4 fine branch with STE, for recovery "
+                        "training).")
+            return "fastvideo.attention.backends.sparsefp4_qat_vsa.SparseFP4QATVSABackend"
         elif selected_backend == AttentionBackendEnum.TORCH_SDPA:
             logger.info("Using Torch SDPA backend.")
             return "fastvideo.attention.backends.sdpa.SDPABackend"

@@ -25,7 +25,9 @@ class DiTArchConfig(ArchConfig):
         AttentionBackendEnum.ATTN_QAT_INFER, AttentionBackendEnum.ATTN_QAT_TRAIN, AttentionBackendEnum.SLA_ATTN,
         AttentionBackendEnum.SAGE_SLA_ATTN, AttentionBackendEnum.ROUTING_PROBE_ATTN,
         AttentionBackendEnum.PRECISION_SPARSE_ATTN, AttentionBackendEnum.SPARSEFP4_EXEC_ATTN,
-        AttentionBackendEnum.SCORER_PRECISION_ATTN, AttentionBackendEnum.VSA_PRECISION_PROBE_ATTN)
+        AttentionBackendEnum.SCORER_PRECISION_ATTN, AttentionBackendEnum.VSA_PRECISION_PROBE_ATTN,
+        AttentionBackendEnum.SPARSEFP4_CAPTURE_ATTN, AttentionBackendEnum.SPARSEFP4_NATIVE_VSA_ATTN,
+        AttentionBackendEnum.SPARSEFP4_VSA256_FA4_ATTN, AttentionBackendEnum.SPARSEFP4_QAT_VSA_ATTN)
 
     hidden_size: int = 0
     num_attention_heads: int = 0
