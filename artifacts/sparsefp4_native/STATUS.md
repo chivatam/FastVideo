@@ -1,6 +1,6 @@
 # SparseFP4 Native Composition — STATUS
 
-_Last updated: 2026-08-17 03:25 ET. Re-audit (V2) in progress (older incremental notes
+_Last updated: 2026-08-17 09:12 ET. Re-audit (V2) in progress (older incremental notes
 superseded; history in git)._
 
 ## Verdict (final, documented)
@@ -24,7 +24,10 @@ sparsity-family quality loss to dense level at feasibility scale.
   (preallocated quantize workspace) still worth adding.
 - **Priority 2:** VSA256 exact-10% captures running (480p 5/25+, 720p
   queued, GPU1); offline A0/B0/C0_256/D0_256 runner staged.
-- **Priority 3:** paper-scale VBench protocol verification queued.
+- **Priority 3: generation COMPLETE** — 1,630 videos (326 official VBench
+  prompts x 5 arms, paired, unified allocator config; one transient shard
+  failure backfilled). Scoring (VBench dims + paired metrics + P4-P4G
+  bootstrap) running on all 8 GPUs.
 - Claim-language corrections (1.40x is P4G/BF16; 9.3x is sparsity not FP4;
   FP4 increment over sparse BF16 ~1.04x at 10%; no QuantSparse-contradiction
   claim; QAT supplementary-only) will land in REPORT_V2/RESULTS_DECISION_V2/
