@@ -23,10 +23,20 @@ Differences from serving, by necessity:
 a frozen teacher instance with ``fine_qat=False`` is exactly the P4G operator
 up to fine-kernel numerics. Toggle with :func:`set_fine_qat`.
 
+``FASTVIDEO_DQVSA_NAIVE_BWD=1`` selects the *naive* QAT baseline (T2 arm of
+the recovery matrix): forward still sees the fake-quantized output, but
+gradients flow through the BF16 fine path via an output-level STE —
+i.e. the backward attention probabilities are computed from UNquantized
+Q/K, the approximation Attn-QAT (arXiv:2603.00040 §3.2) warns against.
+Default (T3 semantics): backward recomputes from the saved fake-quantized
+Q/K.
+
 Enable with ``FASTVIDEO_ATTENTION_BACKEND=SPARSEFP4_QAT_VSA256_ATTN``.
 """
 
 from __future__ import annotations
+
+import os
 
 import torch
 
@@ -73,6 +83,7 @@ class SparseFP4QATVSA256Impl(SparseFP4VSA256FA4Impl):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.fine_qat = True
+        self.naive_bwd = os.environ.get("FASTVIDEO_DQVSA_NAIVE_BWD", "0") == "1"
         self._logged: bool = False
 
     def forward(  # type: ignore[override]
@@ -107,20 +118,29 @@ class SparseFP4QATVSA256Impl(SparseFP4VSA256FA4Impl):
             mask256 = fused_topk_mask(scores.detach(), topk)  # [B,H,n_tiles,n_tiles]
 
         # ---- fine branch: production fake-quant NVFP4 QK (STE), BF16 PV ----
-        if self.fine_qat:
-            q_f = nvfp4_fake_quant_ste(query)
-            k_f = nvfp4_fake_quant_ste(key)
-        else:  # teacher mode: P4G operator (BF16 fine QK, same mask policy)
-            q_f, k_f = query, key
-        out_s, _ = block_sparse_attn_256(
-            q_f.transpose(1, 2).contiguous(),
-            k_f.transpose(1, 2).contiguous(), v_bhsd, mask256, block_sizes)
+        if self.fine_qat and self.naive_bwd:
+            # T2 semantics: fake-quant forward VALUE, BF16 backward PATH.
+            out_bf16, _ = block_sparse_attn_256(q_bhsd, k_bhsd, v_bhsd, mask256, block_sizes)
+            with torch.no_grad():
+                q_fq = nvfp4_fake_quant_ste(query).transpose(1, 2).contiguous()
+                k_fq = nvfp4_fake_quant_ste(key).transpose(1, 2).contiguous()
+                out_fq, _ = block_sparse_attn_256(q_fq, k_fq, v_bhsd, mask256, block_sizes)
+            out_s = out_bf16 + (out_fq - out_bf16).detach()
+        else:
+            if self.fine_qat:
+                q_f = nvfp4_fake_quant_ste(query)
+                k_f = nvfp4_fake_quant_ste(key)
+            else:  # teacher mode: P4G operator (BF16 fine QK, same mask policy)
+                q_f, k_f = query, key
+            out_s, _ = block_sparse_attn_256(
+                q_f.transpose(1, 2).contiguous(),
+                k_f.transpose(1, 2).contiguous(), v_bhsd, mask256, block_sizes)
         out_s = out_s.transpose(1, 2)
 
         if not self._logged:
             logger.info(
-                "sparsefp4 DQ-VSA256: fine_qat=%s, tiles=%d x 256 tokens, keep256=%.4f "
-                "(autograd Triton route-A fine kernel)", self.fine_qat, n_tiles,
+                "sparsefp4 DQ-VSA256: fine_qat=%s, naive_bwd=%s, tiles=%d x 256 tokens, "
+                "keep256=%.4f (autograd Triton route-A fine kernel)", self.fine_qat, self.naive_bwd, n_tiles,
                 mask256.float().mean().item())
             self._logged = True
 
