@@ -1,6 +1,6 @@
 # SparseFP4 Native Composition — STATUS
 
-_Last updated: 2026-08-17 03:12 ET. Re-audit (V2) in progress (older incremental notes
+_Last updated: 2026-08-17 03:25 ET. Re-audit (V2) in progress (older incremental notes
 superseded; history in git)._
 
 ## Verdict (final, documented)
