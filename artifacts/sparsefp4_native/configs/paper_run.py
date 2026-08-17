@@ -36,6 +36,10 @@ def main() -> int:
     ap.add_argument("--sparsity", type=float, default=0.90)
     ap.add_argument("--out-root", type=Path,
                     default=Path("/mnt/nvme/scratch/sparsefp4_native/paper_videos"))
+    ap.add_argument("--model-path", default=MODEL_ID,
+                    help="pipeline dir override (e.g. DQ-VSA trained checkpoint)")
+    ap.add_argument("--arm-label", default=None,
+                    help="output subdir name (defaults to --arm)")
     args = ap.parse_args()
 
     spec = ARMS[args.arm]
@@ -57,7 +61,7 @@ def main() -> int:
 
     prompts = list(VBenchPromptDataset(dimensions=DIMS))
     mine = [(i, p) for i, p in enumerate(prompts) if i % args.num_shards == args.shard]
-    out_dir = args.out_root / args.run_id / args.arm
+    out_dir = args.out_root / args.run_id / (args.arm_label or args.arm)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     init_kwargs = dict(num_gpus=1, use_fsdp_inference=False, dit_cpu_offload=False,
@@ -65,7 +69,7 @@ def main() -> int:
                        pin_cpu_memory=True)
     if spec["sparse"]:
         init_kwargs["VSA_sparsity"] = args.sparsity
-    gen = VideoGenerator.from_pretrained(MODEL_ID, **init_kwargs)
+    gen = VideoGenerator.from_pretrained(args.model_path, **init_kwargs)
 
     sp = SamplingParam.from_pretrained(MODEL_ID)
     sp.num_inference_steps = args.steps

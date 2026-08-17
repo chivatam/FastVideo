@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import statistics
 from pathlib import Path
 
@@ -21,7 +22,7 @@ import torch
 
 DIMS = ["subject_consistency", "background_consistency", "temporal_flickering",
         "motion_smoothness", "dynamic_degree", "imaging_quality", "aesthetic_quality"]
-ARMS = ("P0", "P1", "P2", "P4G", "P4")
+ARMS = tuple(os.environ.get("PAPER_SCORE_ARMS", "P0,P1,P2,P4G,P4").split(","))
 
 
 def load_frames(path: Path) -> torch.Tensor:
@@ -165,7 +166,7 @@ def main():
         score_vbench(args.videos, args.out_dir / args.out_tag, args.shard,
                      args.num_shards, metrics=args.metrics)
     elif args.what == "paired":
-        score_paired(args.videos, args.out_dir / "paper_paired", args.shard, args.num_shards)
+        score_paired(args.videos, args.out_dir / args.out_tag, args.shard, args.num_shards)
     else:
         aggregate(args.videos, args.out_dir)
 
