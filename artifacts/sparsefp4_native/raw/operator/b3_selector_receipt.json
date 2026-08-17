@@ -1,0 +1,27 @@
+[
+  {
+    "cell": "cell_step000_layer000_positive.pt",
+    "mask_agreement": 0.9950395226478577,
+    "kept_block_flip_rate": 0.02456629019129019
+  },
+  {
+    "cell": "cell_step012_layer000_positive.pt",
+    "mask_agreement": 0.9954512715339661,
+    "kept_block_flip_rate": 0.022527048568715236
+  },
+  {
+    "cell": "cell_step025_layer000_positive.pt",
+    "mask_agreement": 0.9955154657363892,
+    "kept_block_flip_rate": 0.022209079500746166
+  },
+  {
+    "cell": "cell_step037_layer000_positive.pt",
+    "mask_agreement": 0.9954701066017151,
+    "kept_block_flip_rate": 0.022433777642110974
+  },
+  {
+    "cell": "cell_step049_layer000_positive.pt",
+    "mask_agreement": 0.9950382113456726,
+    "kept_block_flip_rate": 0.024572649572649572
+  }
+]
