@@ -348,13 +348,20 @@ class TrainingPipeline(LoRAPipeline, ABC):
         current_vsa_sparsity = training_batch.current_vsa_sparsity
         assert latents_shape is not None
         assert training_batch.timesteps is not None
-        if envs.FASTVIDEO_ATTENTION_BACKEND in ("VIDEO_SPARSE_ATTN", "SPARSEFP4_QAT_VSA_ATTN"):
+        if envs.FASTVIDEO_ATTENTION_BACKEND in ("VIDEO_SPARSE_ATTN", "SPARSEFP4_QAT_VSA_ATTN",
+                                                "SPARSEFP4_QAT_VSA256_ATTN"):
             if not vsa_available:
                 raise ImportError("FASTVIDEO_ATTENTION_BACKEND is set to VIDEO_SPARSE_ATTN, "
                                   "but fastvideo_kernel is not correctly installed or detected. "
                                   "Please ensure fastvideo-kernel is installed.")
-            training_batch.attn_metadata = VideoSparseAttentionMetadataBuilder(  # type: ignore
-            ).build(  # type: ignore
+            if envs.FASTVIDEO_ATTENTION_BACKEND == "SPARSEFP4_QAT_VSA256_ATTN":
+                # DQ-VSA trains at the (4,8,8)=256-token tile geometry of the
+                # P4/P4G serving arms, not the deployed 64-token VSA tiles.
+                from fastvideo.attention.backends.sparsefp4_vsa256_fa4 import (SparseFP4VSA256FA4MetadataBuilder)
+                builder: Any = SparseFP4VSA256FA4MetadataBuilder()
+            else:
+                builder = VideoSparseAttentionMetadataBuilder()
+            training_batch.attn_metadata = builder.build(  # type: ignore
                 raw_latent_shape=latents_shape[2:5],
                 current_timestep=training_batch.timesteps,
                 patch_size=patch_size,
@@ -390,8 +397,8 @@ class TrainingPipeline(LoRAPipeline, ABC):
 
     def _transformer_forward_and_compute_loss(self, training_batch: TrainingBatch) -> TrainingBatch:
         if vsa_available and envs.FASTVIDEO_ATTENTION_BACKEND in (
-                "VIDEO_SPARSE_ATTN",
-                "SPARSEFP4_QAT_VSA_ATTN") or vmoba_available and envs.FASTVIDEO_ATTENTION_BACKEND == "VMOBA_ATTN":
+                "VIDEO_SPARSE_ATTN", "SPARSEFP4_QAT_VSA_ATTN",
+                "SPARSEFP4_QAT_VSA256_ATTN") or vmoba_available and envs.FASTVIDEO_ATTENTION_BACKEND == "VMOBA_ATTN":
             assert training_batch.attn_metadata is not None
         else:
             assert training_batch.attn_metadata is None

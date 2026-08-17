@@ -33,6 +33,7 @@ class AttentionBackendEnum(enum.Enum):
     SPARSEFP4_NATIVE_VSA_ATTN = enum.auto()
     SPARSEFP4_VSA256_FA4_ATTN = enum.auto()
     SPARSEFP4_QAT_VSA_ATTN = enum.auto()
+    SPARSEFP4_QAT_VSA256_ATTN = enum.auto()
     NO_ATTENTION = enum.auto()
 
 

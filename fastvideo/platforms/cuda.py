@@ -271,6 +271,10 @@ class CudaPlatformBase(Platform):
             logger.info("Using SparseFP4 QAT-VSA backend (fake-quant NVFP4 fine branch with STE, for recovery "
                         "training).")
             return "fastvideo.attention.backends.sparsefp4_qat_vsa.SparseFP4QATVSABackend"
+        elif selected_backend == AttentionBackendEnum.SPARSEFP4_QAT_VSA256_ATTN:
+            logger.info("Using SparseFP4 DQ-VSA256 training backend (VSA256 geometry, fake-quant NVFP4 fine QK "
+                        "with STE, autograd fine kernel).")
+            return "fastvideo.attention.backends.sparsefp4_qat_vsa256.SparseFP4QATVSA256Backend"
         elif selected_backend == AttentionBackendEnum.TORCH_SDPA:
             logger.info("Using Torch SDPA backend.")
             return "fastvideo.attention.backends.sdpa.SDPABackend"

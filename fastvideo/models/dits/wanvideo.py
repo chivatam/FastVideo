@@ -632,7 +632,7 @@ class WanTransformer3DModel(BaseDiT):
         attn_backend = envs.FASTVIDEO_ATTENTION_BACKEND
         vsa_compatible_backends = ("VIDEO_SPARSE_ATTN", "VSA_PRECISION_PROBE_ATTN", "SPARSEFP4_CAPTURE_ATTN",
                                    "SPARSEFP4_NATIVE_VSA_ATTN", "SPARSEFP4_VSA256_FA4_ATTN",
-                                   "SPARSEFP4_QAT_VSA_ATTN")
+                                   "SPARSEFP4_QAT_VSA_ATTN", "SPARSEFP4_QAT_VSA256_ATTN")
         transformer_block = (WanTransformerBlock_VSA
                              if attn_backend in vsa_compatible_backends else WanTransformerBlock)
         self.blocks = nn.ModuleList([
