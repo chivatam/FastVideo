@@ -1,6 +1,6 @@
 # SparseFP4 Native Composition — STATUS
 
-_Last updated: 2026-08-17 01:02 ET (updates every ~10 min while work is active)_
+_Last updated: 2026-08-17 01:42 ET (updates every ~10 min while work is active)_
 
 ## Live state
 
@@ -11,7 +11,7 @@ _Last updated: 2026-08-17 01:02 ET (updates every ~10 min while work is active)_
   positional-slot skew (2 more fork commits), and fork FA4 backward kernels
   failing MLIR verification under dsl-4.5 — resolved with an opt-in exact
   SDPA-recompute backward (`FASTVIDEO_FA4_BWD_FALLBACK`).
-- **P4 quality:** P4 10/10 done; P4G 8/10, last 2 in flight; QAT training 152/400 steps (~29 min left).
+- **P4 quality:** P4 10/10 done; P4G 8/10, last 2 in flight; QAT training COMPLETE (400/400, rc=0); recovered-checkpoint eval generating P3/P4 x 10 prompts on GPUs 0-3.
 - **720p COMPLETE:** P0 148.8 | P1 135.8 | P2 131.7 | **P4G 106.1 s = 1.40x
   vs dense, 1.24x vs deployed VSA** | P4 250.9 s (localized: FP4 sparse
   kernel itself is 6.1 ms vs BF16 2.95 ms at 720p geometry — persistent-

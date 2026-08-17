@@ -62,6 +62,8 @@ def main() -> int:
     ap.add_argument("--height", type=int, default=0)
     ap.add_argument("--width", type=int, default=0)
     ap.add_argument("--perf-reps", type=int, default=0)
+    ap.add_argument("--model-path", default=MODEL_ID,
+                    help="pipeline dir override (e.g. QAT-recovered checkpoint)")
     ap.add_argument("--video-root", type=Path,
                     default=Path("/mnt/nvme/scratch/sparsefp4_native/videos"))
     ap.add_argument("--raw-root", type=Path,
@@ -101,10 +103,10 @@ def main() -> int:
                        pin_cpu_memory=True)
     if spec["sparse"]:
         init_kwargs["VSA_sparsity"] = args.sparsity
-    generator = VideoGenerator.from_pretrained(MODEL_ID, **init_kwargs)
+    generator = VideoGenerator.from_pretrained(args.model_path, **init_kwargs)
     load_s = time.time() - t0
 
-    sp = SamplingParam.from_pretrained(MODEL_ID)
+    sp = SamplingParam.from_pretrained(MODEL_ID)  # sampling preset stays canonical
     sp.num_inference_steps = args.steps
     sp.seed = args.seed
     if args.height:

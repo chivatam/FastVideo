@@ -1,0 +1,70 @@
+{"prompt": "p00", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
+{"prompt": "p00", "arm": "P1", "error": "missing frames"}
+{"prompt": "p00", "arm": "P2", "error": "missing frames"}
+{"prompt": "p00", "arm": "P2G", "error": "missing frames"}
+{"prompt": "p00", "arm": "P3", "psnr_db": 10.050097465515137, "ssim": 0.26331374049186707, "lpips": 0.7016262412071228, "mean_abs_pixel": 0.2676740288734436, "max_abs_pixel": 0.962890625}
+{"prompt": "p00", "arm": "P4G", "error": "missing frames"}
+{"prompt": "p00", "arm": "P4", "psnr_db": 10.050521850585938, "ssim": 0.2652628421783447, "lpips": 0.7017940878868103, "mean_abs_pixel": 0.26646795868873596, "max_abs_pixel": 0.970703125}
+{"prompt": "p01", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
+{"prompt": "p01", "arm": "P1", "error": "missing frames"}
+{"prompt": "p01", "arm": "P2", "error": "missing frames"}
+{"prompt": "p01", "arm": "P2G", "error": "missing frames"}
+{"prompt": "p01", "arm": "P3", "psnr_db": 11.798336029052734, "ssim": 0.45272931456565857, "lpips": 0.7116276621818542, "mean_abs_pixel": 0.1705247014760971, "max_abs_pixel": 1.0}
+{"prompt": "p01", "arm": "P4G", "error": "missing frames"}
+{"prompt": "p01", "arm": "P4", "psnr_db": 11.571481704711914, "ssim": 0.46575936675071716, "lpips": 0.6810680627822876, "mean_abs_pixel": 0.172333762049675, "max_abs_pixel": 1.0}
+{"prompt": "p02", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
+{"prompt": "p02", "arm": "P1", "error": "missing frames"}
+{"prompt": "p02", "arm": "P2", "error": "missing frames"}
+{"prompt": "p02", "arm": "P2G", "error": "missing frames"}
+{"prompt": "p02", "arm": "P3", "psnr_db": 13.012776374816895, "ssim": 0.3349756598472595, "lpips": 0.6603227853775024, "mean_abs_pixel": 0.14292645454406738, "max_abs_pixel": 1.0}
+{"prompt": "p02", "arm": "P4G", "error": "missing frames"}
+{"prompt": "p02", "arm": "P4", "psnr_db": 12.92464542388916, "ssim": 0.34989985823631287, "lpips": 0.5984839200973511, "mean_abs_pixel": 0.14120768010616302, "max_abs_pixel": 1.0}
+{"prompt": "p03", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
+{"prompt": "p03", "arm": "P1", "error": "missing frames"}
+{"prompt": "p03", "arm": "P2", "error": "missing frames"}
+{"prompt": "p03", "arm": "P2G", "error": "missing frames"}
+{"prompt": "p03", "arm": "P3", "psnr_db": 6.988659381866455, "ssim": 0.48968327045440674, "lpips": 0.6611313819885254, "mean_abs_pixel": 0.37832894921302795, "max_abs_pixel": 1.0}
+{"prompt": "p03", "arm": "P4G", "error": "missing frames"}
+{"prompt": "p03", "arm": "P4", "psnr_db": 7.517123222351074, "ssim": 0.5137059092521667, "lpips": 0.6325217485427856, "mean_abs_pixel": 0.3484191298484802, "max_abs_pixel": 1.0}
+{"prompt": "p04", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
+{"prompt": "p04", "arm": "P1", "error": "missing frames"}
+{"prompt": "p04", "arm": "P2", "error": "missing frames"}
+{"prompt": "p04", "arm": "P2G", "error": "missing frames"}
+{"prompt": "p04", "arm": "P3", "psnr_db": 8.732964515686035, "ssim": 0.2480231374502182, "lpips": 0.7379939556121826, "mean_abs_pixel": 0.28781628608703613, "max_abs_pixel": 1.0}
+{"prompt": "p04", "arm": "P4G", "error": "missing frames"}
+{"prompt": "p04", "arm": "P4", "psnr_db": 9.034342765808105, "ssim": 0.26475149393081665, "lpips": 0.6961773633956909, "mean_abs_pixel": 0.2744225859642029, "max_abs_pixel": 1.0}
+{"prompt": "p05", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
+{"prompt": "p05", "arm": "P1", "error": "missing frames"}
+{"prompt": "p05", "arm": "P2", "error": "missing frames"}
+{"prompt": "p05", "arm": "P2G", "error": "missing frames"}
+{"prompt": "p05", "arm": "P3", "psnr_db": 8.566726684570312, "ssim": 0.3414584696292877, "lpips": 0.6618131399154663, "mean_abs_pixel": 0.2957720458507538, "max_abs_pixel": 1.0}
+{"prompt": "p05", "arm": "P4G", "error": "missing frames"}
+{"prompt": "p05", "arm": "P4", "psnr_db": 8.76400375366211, "ssim": 0.3319462239742279, "lpips": 0.6659089922904968, "mean_abs_pixel": 0.28230375051498413, "max_abs_pixel": 1.0}
+{"prompt": "p06", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
+{"prompt": "p06", "arm": "P1", "error": "missing frames"}
+{"prompt": "p06", "arm": "P2", "error": "missing frames"}
+{"prompt": "p06", "arm": "P2G", "error": "missing frames"}
+{"prompt": "p06", "arm": "P3", "psnr_db": 12.957561492919922, "ssim": 0.18350717425346375, "lpips": 0.7296263575553894, "mean_abs_pixel": 0.1567215621471405, "max_abs_pixel": 0.998046875}
+{"prompt": "p06", "arm": "P4G", "error": "missing frames"}
+{"prompt": "p06", "arm": "P4", "psnr_db": 12.951838493347168, "ssim": 0.18313264846801758, "lpips": 0.6901597380638123, "mean_abs_pixel": 0.1561979204416275, "max_abs_pixel": 1.0}
+{"prompt": "p07", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
+{"prompt": "p07", "arm": "P1", "error": "missing frames"}
+{"prompt": "p07", "arm": "P2", "error": "missing frames"}
+{"prompt": "p07", "arm": "P2G", "error": "missing frames"}
+{"prompt": "p07", "arm": "P3", "psnr_db": 7.884117126464844, "ssim": 0.552111804485321, "lpips": 0.6482399702072144, "mean_abs_pixel": 0.32251453399658203, "max_abs_pixel": 0.9765625}
+{"prompt": "p07", "arm": "P4G", "error": "missing frames"}
+{"prompt": "p07", "arm": "P4", "psnr_db": 7.711210250854492, "ssim": 0.5227235555648804, "lpips": 0.6583111882209778, "mean_abs_pixel": 0.3193208575248718, "max_abs_pixel": 0.978515625}
+{"prompt": "p08", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
+{"prompt": "p08", "arm": "P1", "error": "missing frames"}
+{"prompt": "p08", "arm": "P2", "error": "missing frames"}
+{"prompt": "p08", "arm": "P2G", "error": "missing frames"}
+{"prompt": "p08", "arm": "P3", "psnr_db": 13.837311744689941, "ssim": 0.3130043148994446, "lpips": 0.7506129741668701, "mean_abs_pixel": 0.1549225002527237, "max_abs_pixel": 0.98828125}
+{"prompt": "p08", "arm": "P4G", "error": "missing frames"}
+{"prompt": "p08", "arm": "P4", "psnr_db": 13.859577178955078, "ssim": 0.319871187210083, "lpips": 0.7633188366889954, "mean_abs_pixel": 0.15243516862392426, "max_abs_pixel": 1.0}
+{"prompt": "p09", "arm": "P0", "psnr_db": 100.0, "ssim": 1.0, "lpips": 0.0, "mean_abs_pixel": 0.0, "max_abs_pixel": 0.0}
+{"prompt": "p09", "arm": "P1", "error": "missing frames"}
+{"prompt": "p09", "arm": "P2", "error": "missing frames"}
+{"prompt": "p09", "arm": "P2G", "error": "missing frames"}
+{"prompt": "p09", "arm": "P3", "psnr_db": 11.910003662109375, "ssim": 0.28244131803512573, "lpips": 0.6980563402175903, "mean_abs_pixel": 0.2007213979959488, "max_abs_pixel": 1.0}
+{"prompt": "p09", "arm": "P4G", "error": "missing frames"}
+{"prompt": "p09", "arm": "P4", "psnr_db": 11.858322143554688, "ssim": 0.28426221013069153, "lpips": 0.7172827124595642, "mean_abs_pixel": 0.19985349476337433, "max_abs_pixel": 1.0}
