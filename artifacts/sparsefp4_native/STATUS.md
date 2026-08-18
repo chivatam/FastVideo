@@ -1,7 +1,29 @@
 # SparseFP4 Native Composition — STATUS
 
-_Last updated: 2026-08-17 15:10 ET — V3 (paper-validation pass) COMPLETE.
-V2 notes below are historical; V3 receipts supersede where they differ._
+_Last updated: 2026-08-17 22:00 ET — **PROGRAM CLOSED (V5).** All
+experiments complete; next step is paper writing._
+
+## Final chain of results
+
+1. **V2/V3** — native block-sparse NVFP4 attention proven; operator
+   composition clean; bottleneck migration #1 (FP4 attention); geometry
+   alignment = 1.40x; four Holm-corrected quality contrasts + factorial
+   interaction; primary-source lit review.
+2. **V4** — DQ-VSA recovery at paper scale: B0 = T3-c500 (all criteria,
+   "substantial recovery with a small residual gap"); T2-c250 =
+   max-target alternative; task-loss QAT fails by teacher drift; naive
+   backward suffices; serving/latency unchanged (receipts).
+3. **V5** — W4A4 gate: linears 63-78% of FLOPs but 11% of time (22-24%
+   after torch.compile 1.34-1.39x); native W4A4 E2E-negative everywhere;
+   **STOP FULL-DQ-VSA — AMDAHL-LIMITED IN THIS SERVING STACK**
+   (`w4a4_gate/FULL_DQVSA_GATE_DECISION.md`). Bottleneck migration #2.
+
+Key docs: `REPORT_V5.md`, `PAPER_UPDATE_V5.md`,
+`RESULTS_DECISION_V4.md`, `w4a4_gate/`, `full_dqvsa/`, `tables/`.
+
+---
+
+# Historical (V3 pass) status below
 
 ## V3 pass (this session) — all deliverables landed
 
