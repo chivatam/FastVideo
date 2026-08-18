@@ -1,5 +1,10 @@
 # PAPER_UPDATE_V3 — framing after the paper-validation pass
 
+> **HISTORICAL — superseded by `PAPER_UPDATE_V4.md` (canonical, paper
+> frozen at V4).** Note: V3's "QAT/DQ-VSA recovery: future work /
+> supplementary" guardrail is OBSOLETE — DQ-VSA is an established V4 main
+> result.
+
 Supersedes PAPER_UPDATE_V2.md. Incorporates the unified-allocator
 performance rerun, the four-contrast Holm-corrected statistics, the
 primary-source literature audit, and the DQ-VSA recovery design.

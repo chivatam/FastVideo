@@ -1,3 +1,5 @@
+> **SUPPLEMENTARY / NOT PART OF MAIN PAPER CLAIMS.** Canonical paper state: REPORT_V4.md (see REPORT_CANONICAL.md). Human-readable summaries: supplementary/w4a4_gate/.
+
 # FULL_DQVSA_GATE_DECISION — final systems gate (with AMDAHL_ANALYSIS)
 
 ## Required figure/table: FLOP share vs eager time vs optimized time
@@ -66,20 +68,18 @@ o_proj/QKV GEMMs (K=1536, memory-bound) gain nothing or lose.
 
 **STOP FULL-DQ-VSA — AMDAHL-LIMITED IN THIS SERVING STACK**
 
-The negative systems result, stated for the paper: linear GEMMs dominate
-nominal DiT FLOPs (63-78%) but are not the latency bottleneck in the
-measured SparseFP4 serving regime — 11% of GPU time eager, 22-24% after
-torch.compile — because sparse-attention integration machinery
+The negative systems result, for the supplementary section: linear GEMMs
+dominate nominal DiT FLOPs (63-78%) but are not the latency bottleneck in
+the measured SparseFP4 serving regime — 11% of GPU time eager, 22-24%
+after torch.compile — because sparse-attention integration machinery
 (tiling/scatter/copies/quantize, ~38-40%) and norm/elementwise work
 dominate. Native W4A4 NVFP4 GEMMs, despite genuine 1.5-2x FFN kernel
 speedups, produce end-to-end slowdowns once per-call activation
-quantization and integration overheads are paid. This is the second
-independent bottleneck-migration example in this project (the first:
-sparse+FP4 attention, where FP4's MMA advantage was consumed by
-softmax/predicate/allocator costs), supporting the central systems
-conclusion: **arithmetic-intensity reduction does not guarantee
-proportional end-to-end acceleration in video DiTs, because each
-optimization shifts the bottleneck composition.**
+quantization and integration overheads are paid. This is consistent with
+(and boundary evidence for) the MAIN paper's narrowly-scoped
+sparse-attention bottleneck-composition claim; it must NOT be promoted
+into a universal "FLOPs are not latency" thesis or into the paper's
+contribution set (see PAPER_CLAIMS_FINAL.md).
 
 Caveats bounding the claim: single GPU (B200), single model (Wan2.1-1.3B),
 flashinfer-0.6.17 cudnn `mm_fp4` path with unfused activation quant; a

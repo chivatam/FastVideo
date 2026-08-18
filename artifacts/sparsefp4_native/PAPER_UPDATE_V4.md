@@ -1,5 +1,10 @@
 # PAPER_UPDATE_V4 — framing after the DQ-VSA recovery result
 
+> **CANONICAL PAPER FRAMING (paper frozen at V4).** PAPER_UPDATE_V5 does
+> NOT supersede this file; it is a supplementary appendix note for the
+> gated-off W4A4 exploration. Title, abstract, thesis, and contribution
+> bullets come from THIS file + `PAPER_CLAIMS_FINAL.md`.
+
 Supersedes PAPER_UPDATE_V3.md; V3 guardrails remain binding except where
 explicitly upgraded here.
 
@@ -72,5 +77,6 @@ DQ-VSA as the constructive final act)
 5. Paper-scale quality: four contrasts + factorial interaction.
 6. DQ-VSA: method, T-matrix, paper-scale recovery, ablations.
 7. Related work (from `SOTA_RECOVERY_LIT_REVIEW.md`, primary sources).
-8. Limitations (REPORT_V4 §5) + Full-DQ-VSA as staged future work (V5 if
-   the final experiment lands in time).
+8. Limitations (REPORT_V4 §5) + one optional Discussion paragraph on the
+   supplementary W4A4 exploration (gated off; appendix material only —
+   wording in `supplementary/w4a4_gate/W4A4_EXPLORATORY_STUDY.md`).

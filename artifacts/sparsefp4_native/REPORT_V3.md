@@ -1,5 +1,9 @@
 # REPORT_V3 — SparseFP4 Native Composition (paper-validation pass)
 
+> **HISTORICAL — superseded by `REPORT_V4.md` (the canonical paper state,
+> frozen at V4).** V3's DQ-VSA section describes the recovery as pending;
+> it has since been experimentally established (V4 main result).
+
 Supersedes REPORT_V2.md where they differ. All numbers trace to receipts
 under `raw/`, `tables/`, `logs/`; environment in `env/`. Model
 Wan2.1-T2V-1.3B, VSA sparsity 0.90, seed 1234, 50 steps, 8x B200 (sm_100),

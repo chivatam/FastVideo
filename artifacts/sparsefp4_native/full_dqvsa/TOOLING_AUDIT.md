@@ -1,3 +1,5 @@
+> **SUPPLEMENTARY / NOT PART OF MAIN PAPER CLAIMS.** Canonical paper state: REPORT_V4.md (see REPORT_CANONICAL.md). Human-readable summaries: supplementary/w4a4_gate/.
+
 # Full-DQ-VSA — native W4A4 NVFP4 linear-GEMM tooling audit
 
 Date: 2026-08-17. Environment: pinned V3 canonical venv

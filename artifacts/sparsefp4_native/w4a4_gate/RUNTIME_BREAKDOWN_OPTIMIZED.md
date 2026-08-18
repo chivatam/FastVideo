@@ -1,3 +1,5 @@
+> **SUPPLEMENTARY / NOT PART OF MAIN PAPER CLAIMS.** Canonical paper state: REPORT_V4.md (see REPORT_CANONICAL.md). Human-readable summaries: supplementary/w4a4_gate/.
+
 # RUNTIME_BREAKDOWN_OPTIMIZED — D1 component decomposition (Phase 3)
 
 Same methodology as `RUNTIME_BREAKDOWN_EAGER.md`; kernel-trace

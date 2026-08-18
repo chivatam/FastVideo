@@ -1,15 +1,25 @@
-# REPORT_V5 — final: the W4A4 gate study closes the experimental program
+# REPORT_V5 — HISTORICAL / EXPLORATORY — NOT CANONICAL
 
-Supersedes REPORT_V4.md only by addition; V4's DQ-VSA recovery results are
-unchanged. Tags: [E] experimental, [S] statistical, [L] literature, [H]
-hypothesis. Receipts: `w4a4_gate/`, `full_dqvsa/`.
+> **This report is NOT the canonical paper state and does NOT supersede
+> REPORT_V4.md.** The paper is frozen at V4: see `REPORT_V4.md`,
+> `RESULTS_DECISION_V4.md`, `PAPER_UPDATE_V4.md` (and
+> `REPORT_CANONICAL.md` for the artifact map). This file records the
+> supplementary W4A4 gate exploration only
+> (`supplementary/w4a4_gate/`). Its former framing of a "second
+> centerpiece" / broadened central thesis is WITHDRAWN; the main paper's
+> bottleneck claim stays narrowly scoped to the sparse-attention
+> composition study (V4 wording).
 
-## 1. What V5 adds
+V4's DQ-VSA recovery results are unchanged and canonical. Tags: [E]
+experimental, [S] statistical, [L] literature, [H] hypothesis. Receipts:
+`w4a4_gate/`, `full_dqvsa/`.
 
-The final gate experiment asked whether extending the system to W4A4 NVFP4
+## 1. What this exploration was
+
+The gate experiment asked whether extending the system to W4A4 NVFP4
 linear GEMMs ("Full-DQ-VSA") is justified. The answer is a clean,
-quantified NO for this serving stack — and it yields the paper's second
-bottleneck-migration result.
+quantified NO for this serving stack. This is supplementary boundary
+evidence; it is not a paper contribution.
 
 ## 2. Findings [E]
 
@@ -39,38 +49,31 @@ bottleneck-migration result.
    FULL-DQ-VSA — AMDAHL-LIMITED IN THIS SERVING STACK.** No W4A4
    QAT/distillation, no 326-prompt W4A4 evaluation.
 
-## 3. The paper's central systems thesis, now doubly evidenced [E+S]
+## 3. Relation to the main paper's systems claim (do not broaden)
 
-Two independent bottleneck migrations in one system:
+The MAIN paper's bottleneck claim remains narrowly about the
+sparse-attention composition study (REPORT_V4/PAPER_UPDATE_V4 wording):
+sparsification changes the attention kernel's bottleneck composition, so
+FP4's arithmetic advantage does not automatically compound with sparsity
+at E2E. The W4A4 observation (GEMMs dominate FLOPs but not measured time
+in this stack) is CONSISTENT supporting context for a Discussion paragraph
+but must not be promoted into a universal "FLOPs are not latency" thesis —
+it does not support claims beyond this serving stack.
 
-1. **Sparse + FP4 attention** (V2-V3): FP4's QK MMA advantage (1.26x dense)
-   shrinks to ~1.04x at 10% retention and is consumed E2E by softmax-unit
-   predicates, quantization, and allocator behavior.
-2. **W4A4 linears** (V5): GEMMs dominate FLOPs but not time; real 1.5-2x
-   FFN kernels produce negative E2E once activation-quant and integration
-   overheads are paid; even infinite GEMM speed caps at 1.28-1.31x on the
-   optimized stack.
+## 4. State of claims
 
-Conclusion (binding wording): *arithmetic-intensity reduction does not
-guarantee proportional end-to-end acceleration in video DiTs, because each
-optimization changes the bottleneck composition.* The productive levers in
-this system were, in measured order: selector-geometry alignment (1.40x),
-serving-stack compilation (1.34-1.39x forward), and teacher-preserving
-distillation for quality (V4) — not further arithmetic compression.
-
-## 4. Final state of claims
-
-- V4 claims 1-6 stand (native SparseFP4, composition, geometry, quality
-  cost + interaction, DQ-VSA recovery with B0=T3-c500, backward ablation).
-- New [E]: the FLOP-vs-time decomposition and the measured-negative W4A4
-  result above.
-- [H] left explicitly open (future work, not run): fused norm->NVFP4-quant
-  epilogues + CUDA-graph-safe sparse attention could shift the calculus;
-  attention integration machinery (~40% of time) is the largest single
-  optimization target.
+- V4 claims stand unchanged and canonical (native SparseFP4, composition,
+  geometry, quality cost + interaction, DQ-VSA recovery with B0=T3-c500,
+  backward ablation).
+- Supplementary [E]: the FLOP-vs-time decomposition and the
+  measured-negative W4A4 result above (appendix material).
+- [H] recorded for completeness (not proposed work): fused
+  norm->NVFP4-quant epilogues + CUDA-graph-safe sparse attention could
+  shift the calculus; attention integration machinery (~40% of time) is
+  the largest single optimization target in this stack.
 
 ## 5. Program status
 
-All experiments are closed per the stop conditions (V4 recovery study
-complete; V5 gate negative). Remaining work is paper writing
-(`PAPER_UPDATE_V5.md` skeleton).
+All experiments are closed. The paper is frozen at V4
+(`REPORT_CANONICAL.md`); this exploration feeds at most one appendix
+section (`supplementary/w4a4_gate/`).

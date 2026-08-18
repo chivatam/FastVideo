@@ -1,46 +1,52 @@
-# PAPER_UPDATE_V5 — final framing (experiments closed)
+# PAPER_UPDATE_V5 — supplementary exploratory W4A4 study
 
-Supersedes PAPER_UPDATE_V4 by addition. All V3/V4 guardrails stand.
+> **STATUS: This file does NOT supersede PAPER_UPDATE_V4.**
+> **PAPER_UPDATE_V4 is the canonical paper framing (paper frozen at V4).**
+> V5 records an exploratory extension that was stopped after the systems
+> gate failed. This experiment is excluded from the main contribution set
+> and should appear, if space allows, as an appendix or a short discussion
+> paragraph (wording in
+> `supplementary/w4a4_gate/W4A4_EXPLORATORY_STUDY.md`).
+> Do not source title, abstract, thesis, or contribution bullets from this
+> file.
 
-## Title direction (final)
+## Supplementary framing only
 
-"FLOPs Are Not Latency: Composing Sparsity, FP4 Attention, and FP4 GEMMs
-in Video Diffusion on Blackwell"
-(alt: keep V4's "Geometry, Bottlenecks, and Recovery" and fold the W4A4
-gate into the bottleneck section)
+The W4A4 material below is appendix/discussion material. The former V5
+title proposal ("FLOPs Are Not Latency: …") is WITHDRAWN from canonical
+title recommendations — title direction returns to PAPER_UPDATE_V4
+("Geometry, Bottlenecks, and Recovery: Composing Block-Sparse and NVFP4
+Attention for Video Diffusion on Blackwell"). W4A4 GEMMs must not appear
+in the title.
 
-## Final narrative arc
+## Supplementary appendix content (NOT main-paper narrative)
 
-1. Native block-sparse NVFP4 attention on B200 (guarded first-ness).
-2. Operator-level composition is numerically clean (exact-geometry 2x2).
-3. **Bottleneck migration #1**: FP4 attention's arithmetic win is consumed
-   by softmax predicates/quantization/allocator E2E; geometry alignment is
-   the dominant speed lever (P4G 1.40x).
-4. Quality: NVFP4 QK costs imaging/dynamics (Holm-significant), sparsity
-   does not amplify it (factorial interaction).
-5. **DQ-VSA recovers the quality** (V4): <=500-step teacher-preserving
-   velocity distillation, serving operator unchanged; task-loss QAT fails
-   by teacher drift; naive backward suffices vs Attn-QAT backward
-   (QK-only/BF16-PV regime).
-6. **Bottleneck migration #2 (the W4A4 gate, V5)**: linears are 63-78% of
-   FLOPs but 11% of time (22-24% after compile); native W4A4 with real
-   1.5-2x FFN kernels is E2E-negative; Amdahl panel + gate decision =
-   principled STOP. FLOPs-vs-time table + Amdahl panel are main-paper
-   material (`w4a4_gate/FULL_DQVSA_GATE_DECISION.md`).
-7. Thesis: arithmetic-intensity reduction does not guarantee proportional
-   E2E acceleration; optimization changes the bottleneck composition. The
-   measured winning levers: geometry alignment, compilation, distillation.
+The study shows, for this serving stack only:
 
-## Main figures/tables (V5 additions)
+1. Linears are 63-78% of nominal FLOPs but 11% of measured GPU time
+   (22-24% after torch.compile).
+2. Native W4A4 with real 1.5-2x FFN kernel wins is E2E-negative in every
+   configuration; Amdahl panel + gate audit -> principled STOP
+   (`supplementary/w4a4_gate/W4A4_NEGATIVE_RESULT.md`,
+   `W4A4_AMDAHL_ANALYSIS.md`).
+3. Maximum main-paper exposure: the single Discussion/Limitations
+   paragraph in `supplementary/w4a4_gate/W4A4_EXPLORATORY_STUDY.md`.
 
-- T6: FLOP share vs eager time vs optimized time (three-column component
+The MAIN paper's bottleneck claim stays narrowly scoped to the
+sparse-attention composition study (PAPER_UPDATE_V4 wording); the W4A4
+study must not be used to broaden it into universal "FLOPs are not
+latency" claims.
+
+## Appendix figures/tables (if space allows)
+
+- A1: FLOP share vs eager time vs optimized time (three-column component
   table, both resolutions).
-- T7/F4: Amdahl panel — theoretical ceiling vs realistic ceiling vs
-  measured W4A4 E2E (the measured points sit BELOW 1.0x).
-- Sidebar: W4A4 engineering receipts (backend layout matrix, PDL deadlock)
-  as reproducibility notes.
+- A2: Amdahl panel — theoretical ceiling vs realistic ceiling vs measured
+  W4A4 E2E (the measured points sit BELOW 1.0x).
+- A3 (optional): W4A4 engineering receipts (backend layout matrix, PDL
+  deadlock) as reproducibility notes.
 
-## Wording guardrails (V5)
+## Wording guardrails (supplementary scope)
 
 - "W4A4 is slower" is a claim about THIS serving stack + flashinfer-0.6.17
   cudnn path with unfused activation quant; state the caveat and the
@@ -51,12 +57,11 @@ gate into the bottleneck section)
   paper (attention QK: NVFP4; everything else BF16/FP32).
 - No quality claims for W4A4 PTQ (triage intentionally skipped; per-GEMM
   rel-L2 0.134 only).
-- The two bottleneck-migration examples must each cite their own profiler
-  receipts; no generalization beyond video DiTs of this class.
+- No generalization beyond video DiTs of this class; each profiler claim
+  cites its own receipts.
 
-## Paper writing order (next work, no experiments)
+## Paper writing (see PAPER_UPDATE_V4 + PAPER_ARTIFACT_MAP.md)
 
-1. Results section from V4+V5 tables (all exist).
-2. Method section: native kernel + DQ-VSA (exists in REPORT_V2..V4).
-3. Related work from `SOTA_RECOVERY_LIT_REVIEW.md`.
-4. Limitations: REPORT_V4 §5 + V5 §4 caveats.
+Canonical sources: `PAPER_CLAIMS_FINAL.md` (claims),
+`PAPER_ARTIFACT_MAP.md` (section -> source). This file feeds the appendix
+only.

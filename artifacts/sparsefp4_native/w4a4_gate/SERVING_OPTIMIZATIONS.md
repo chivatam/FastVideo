@@ -1,3 +1,5 @@
+> **SUPPLEMENTARY / NOT PART OF MAIN PAPER CLAIMS.** Canonical paper state: REPORT_V4.md (see REPORT_CANONICAL.md). Human-readable summaries: supplementary/w4a4_gate/.
+
 # SERVING_OPTIMIZATIONS — D1 definition (Phase 2)
 
 Goal: reduce serving-stack overhead WITHOUT changing model math, weights,

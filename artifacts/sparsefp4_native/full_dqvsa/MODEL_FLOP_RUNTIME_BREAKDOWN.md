@@ -1,3 +1,5 @@
+> **SUPPLEMENTARY / NOT PART OF MAIN PAPER CLAIMS.** Canonical paper state: REPORT_V4.md (see REPORT_CANONICAL.md). Human-readable summaries: supplementary/w4a4_gate/.
+
 # MODEL_FLOP_RUNTIME_BREAKDOWN — Wan2.1-1.3B at the P4/B0 operating point
 
 Required first measurement for Full-DQ-VSA (do not assume the "~2/3 of DiT

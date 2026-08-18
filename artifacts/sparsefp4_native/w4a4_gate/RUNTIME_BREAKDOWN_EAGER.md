@@ -1,3 +1,5 @@
+> **SUPPLEMENTARY / NOT PART OF MAIN PAPER CLAIMS.** Canonical paper state: REPORT_V4.md (see REPORT_CANONICAL.md). Human-readable summaries: supplementary/w4a4_gate/.
+
 # RUNTIME_BREAKDOWN_EAGER — D0 component decomposition (Phase 1)
 
 D0 = B0 (DQ-VSA T3-c500) through the native P4 operator, eager FastVideo

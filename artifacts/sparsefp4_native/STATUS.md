@@ -1,9 +1,36 @@
 # SparseFP4 Native Composition — STATUS
 
-_Last updated: 2026-08-17 22:00 ET — **PROGRAM CLOSED (V5).** All
-experiments complete; next step is paper writing._
+## PAPER STATE: FROZEN AT V4
 
-## Final chain of results
+**Main paper (canonical):**
+
+- `REPORT_V4.md`
+- `RESULTS_DECISION_V4.md`
+- `PAPER_UPDATE_V4.md`
+- Claim manifest: `PAPER_CLAIMS_FINAL.md` · Artifact map: `PAPER_ARTIFACT_MAP.md` · Pointer: `REPORT_CANONICAL.md`
+
+**V5:** exploratory W4A4 extension; performance gate failed; **supplementary
+only** (`supplementary/w4a4_gate/`); does **not** supersede V4.
+
+**V1/V2/V3:** historical experimental progression (superseded banners in
+each file).
+
+**DQ-VSA is an established main result (not future work):** training-free
+native SparseFP4 exhibits measurable quality degradation; a short
+teacher-preserving quantization-aware velocity-distillation stage
+substantially recovers it while leaving sparsity, geometry, and native
+NVFP4 inference unchanged (B0 = T3-c500, criteria-clean; T2-c250 =
+max-target alternative).
+
+All experiments are closed. Next step: paper writing from
+`PAPER_ARTIFACT_MAP.md`.
+
+---
+
+_Historical status below (2026-08-17 22:00 ET note, then the V3-pass
+note, then the V2 record)._
+
+## Final chain of results (historical note; see banner above for semantics)
 
 1. **V2/V3** — native block-sparse NVFP4 attention proven; operator
    composition clean; bottleneck migration #1 (FP4 attention); geometry
@@ -13,13 +40,14 @@ experiments complete; next step is paper writing._
    "substantial recovery with a small residual gap"); T2-c250 =
    max-target alternative; task-loss QAT fails by teacher drift; naive
    backward suffices; serving/latency unchanged (receipts).
-3. **V5** — W4A4 gate: linears 63-78% of FLOPs but 11% of time (22-24%
-   after torch.compile 1.34-1.39x); native W4A4 E2E-negative everywhere;
-   **STOP FULL-DQ-VSA — AMDAHL-LIMITED IN THIS SERVING STACK**
-   (`w4a4_gate/FULL_DQVSA_GATE_DECISION.md`). Bottleneck migration #2.
+3. **V5** — W4A4 gate (SUPPLEMENTARY): linears 63-78% of FLOPs but 11% of
+   time (22-24% after torch.compile 1.34-1.39x); native W4A4 E2E-negative
+   everywhere; gate failed -> stopped
+   (`supplementary/w4a4_gate/W4A4_NEGATIVE_RESULT.md`). Not a paper
+   contribution.
 
-Key docs: `REPORT_V5.md`, `PAPER_UPDATE_V5.md`,
-`RESULTS_DECISION_V4.md`, `w4a4_gate/`, `full_dqvsa/`, `tables/`.
+Key docs: `REPORT_V4.md`, `RESULTS_DECISION_V4.md`, `PAPER_UPDATE_V4.md`
+(canonical); `supplementary/w4a4_gate/`, `tables/`.
 
 ---
 

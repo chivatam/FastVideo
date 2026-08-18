@@ -1,3 +1,5 @@
+> **SUPPLEMENTARY / NOT PART OF MAIN PAPER CLAIMS.** Canonical paper state: REPORT_V4.md (see REPORT_CANONICAL.md). Human-readable summaries: supplementary/w4a4_gate/.
+
 # W4A4_PTQ_PERFORMANCE + THROUGHPUT/MEMORY + NATIVE PROOF (Phases 4-5, condensed)
 
 All runs: B0 weights, native P4 attention operator, 1x B200,

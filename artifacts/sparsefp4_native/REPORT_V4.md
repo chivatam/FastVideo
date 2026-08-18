@@ -1,5 +1,12 @@
 # REPORT_V4 — SparseFP4 Native Composition + DQ-VSA Recovery
 
+> **CANONICAL PAPER STATE (paper frozen at V4).** Together with
+> `RESULTS_DECISION_V4.md` and `PAPER_UPDATE_V4.md`, this document defines
+> the paper. V1-V3 are the historical progression; V5/W4A4 material is
+> supplementary only (`supplementary/w4a4_gate/`) and does not supersede
+> anything here. Claim manifest: `PAPER_CLAIMS_FINAL.md`; artifact map:
+> `PAPER_ARTIFACT_MAP.md`.
+
 Supersedes REPORT_V3.md where they differ; V3 history preserved. All
 numbers trace to receipts under `raw/`, `tables/`, `logs/`; environment in
 `env/`. Model Wan2.1-T2V-1.3B, VSA sparsity 0.90, seed 1234, 50 steps,
@@ -139,8 +146,12 @@ serving operator byte-identical.
 4. [S] The Attn-QAT-consistent backward provides no measurable benefit
    over naive STE backward for QK-only NVFP4 with BF16 PV (matched-budget
    comparison; caveats in §2.4).
-5. [H] Full-DQ-VSA (W4A4 NVFP4 linears + this recovery recipe) is the
-   remaining compute opportunity — staged, gated, not yet run.
+5. [E, supplementary] A W4A4 linear-GEMM extension ("Full-DQ-VSA") was
+   subsequently explored and gated OFF on measured serving economics
+   (`supplementary/w4a4_gate/W4A4_NEGATIVE_RESULT.md`): linears dominate
+   nominal FLOPs but not measured time in this stack, and native W4A4 was
+   E2E-negative. It is boundary evidence only — not a contribution, not an
+   active direction.
 
 ## 5. Limitations
 

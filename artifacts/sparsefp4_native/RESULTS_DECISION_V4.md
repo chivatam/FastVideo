@@ -1,5 +1,8 @@
 # RESULTS_DECISION_V4 — DQ-VSA training recovery at paper scale
 
+> **CANONICAL PAPER STATE (paper frozen at V4).** V5/W4A4 is supplementary
+> only and does not supersede this decision.
+
 ## Verdict: **STRONG RECOVERY (Outcome A, with honest residual-gap wording)**
 
 A short (<=500-step) teacher-preserving quantization-aware velocity
