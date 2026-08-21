@@ -1,0 +1,86 @@
+{
+  "n_pairs": 2332800,
+  "K": 144,
+  "decomposition_median_abs": {
+    "shared": 103.0,
+    "q0_private": 41.0,
+    "q1_private": 41.0,
+    "union": 185.0
+  },
+  "traffic": {
+    "kv_bytes_per_block": 32768,
+    "total_bytes_baseline": 22015063097344.0,
+    "total_bytes_union": 14492699131904.0,
+    "total_pct_saved": 0.3416916831979252,
+    "per_pair_pct_saved": {
+      "mean": 0.3416916835635507,
+      "median": 0.3576388888888889,
+      "p10": 0.2152777777777778,
+      "p25": 0.28125,
+      "p50": 0.3576388888888889,
+      "p75": 0.4166666666666667,
+      "p90": 0.4479166666666667,
+      "p99": 0.4791666666666667
+    },
+    "per_pair_traffic_reduction_ratio": {
+      "mean": 1.546976093078469,
+      "median": 1.5567567567567568,
+      "p10": 1.2743362831858407,
+      "p25": 1.391304347826087,
+      "p50": 1.5567567567567568,
+      "p75": 1.7142857142857142,
+      "p90": 1.8113207547169812,
+      "p99": 1.92
+    }
+  },
+  "mma": {
+    "flops_per_interaction_64x64x128": 2097152,
+    "interactions_baseline_total": 671846408.0,
+    "strategy_a_extra_flops_pct": 0.0,
+    "strategy_b1_extra_flops_pct": 0.0,
+    "strategy_b2_inflation": {
+      "mean": 0.31661663287289854,
+      "median": 0.2847222222222223,
+      "p10": 0.10416666666666674,
+      "p25": 0.16666666666666674,
+      "p50": 0.2847222222222223,
+      "p75": 0.4375,
+      "p90": 0.5694444444444444,
+      "p99": 0.8472222222222223
+    },
+    "strategy_b2_total_inflation": 0.3166166336041496
+  },
+  "relative_arithmetic_intensity": {
+    "baseline": 1.0,
+    "strategy_a": 1.5190450651721863,
+    "strategy_b1": 1.5190450651721863,
+    "strategy_b2": 2.0
+  },
+  "pipeline_iterations_per_qtile": {
+    "baseline_median": 36,
+    "A_median": 37,
+    "B2_median": 47,
+    "A_total_pct": 2.1,
+    "B2_total_pct": 32.7
+  },
+  "numerics_max_abs_err": {
+    "fp32": {
+      "A": 2.05e-08,
+      "B1": 0.0,
+      "B2": 0.0
+    },
+    "bf16": {
+      "A": 4.99e-05,
+      "B1": 0.0,
+      "B2": 0.0
+    }
+  },
+  "metadata_us_at_8640_pairs": {
+    "shared_private_searchsorted": 1167,
+    "union_membership_searchsorted": 950,
+    "existing_map_to_index_pass": 1100,
+    "sm100a_kernel_budget": 5516
+  },
+  "q2k_idx_sorted_ascending": true,
+  "decision": "GO-A (shared/private phased execution); B2 union-dense as first milestone"
+}

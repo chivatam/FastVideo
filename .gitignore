@@ -84,6 +84,7 @@ docs/distillation/examples/
 !comfyui/assets/**/*.gif
 # Research artifact plots (small, committed with their analysis)
 !artifacts/vsa_overlap_phase1/**/*.png
+!artifacts/vsa_local_reuse_phase2/**/*.png
 !assets/images/**/*.png
 !assets/images/**/*.jpg
 !assets/images/**/*.jpeg
