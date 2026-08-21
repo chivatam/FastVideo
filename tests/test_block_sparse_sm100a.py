@@ -249,6 +249,144 @@ def test_zero_count_rows(block):
         f"rc={proc.returncode}\nstdout: {proc.stdout[-2000:]}\nstderr: {proc.stderr[-2000:]}")
 
 
+# ---------------------------------------------------------------------------
+# Phase-3 pair-shared (local KV reuse) forward: Strategy B2 (union walk, every
+# K-tile dual-consumer) and Strategy A (shared prefix dual-consumer + baseline
+# private phase). Both must reproduce the baseline kernel's sparse semantics
+# on identical inputs; tolerances are bf16 reassociation only (the K-tile
+# segmentation of the online softmax changes when blocks regroup).
+# ---------------------------------------------------------------------------
+
+
+def make_pair_mask(num_blocks, topk, heads, overlap, seed=0, batch=1):
+    """Bool mask [B, H, Nq, Nk] whose CTA pairs share ~overlap*topk blocks."""
+    g = torch.Generator().manual_seed(seed)
+    mask = torch.zeros(batch, heads, num_blocks, num_blocks, dtype=torch.bool)
+    n_shared = int(round(overlap * topk))
+    for b in range(batch):
+        for h in range(heads):
+            for p in range(num_blocks // 2):
+                perm = torch.randperm(num_blocks, generator=g)
+                shared = perm[:n_shared]
+                pool = perm[n_shared:]
+                pr0 = pool[:topk - n_shared]
+                pr1 = pool[topk - n_shared:2 * (topk - n_shared)]
+                mask[b, h, 2 * p, torch.cat([shared, pr0])] = True
+                mask[b, h, 2 * p + 1, torch.cat([shared, pr1])] = True
+    return mask.cuda()
+
+
+def baseline_meta_from_mask(mask):
+    """Ascending idx/num rows, exactly what map_to_index produces."""
+    B, H, Nq, Nk = mask.shape
+    counts = mask.sum(-1).to(torch.int32).reshape(-1)
+    width = max(1, int(counts.max()))
+    ids = torch.arange(Nk, device=mask.device, dtype=torch.int32)
+    key = torch.where(mask, ids, torch.full_like(ids, Nk)).reshape(-1, Nk)
+    idx = key.sort(dim=-1).values[:, :width].contiguous()
+    idx = torch.where(torch.arange(width, device=mask.device) < counts[:, None], idx,
+                      torch.zeros_like(idx))
+    return idx, counts
+
+
+def run_pair_case(mode, num_blocks, topk, heads, overlap, ragged, seed=0,
+                  atol=0.025, lse_atol=0.05):
+    from fastvideo_kernel.pair_metadata import build_pair_metadata
+    torch.manual_seed(seed)
+    S = num_blocks * 64
+    shape = (1, heads, S, HEAD_DIM) if vsa.BHSD else (1, S, heads, HEAD_DIM)
+    q, k, v = (torch.randn(shape, device="cuda", dtype=torch.bfloat16) for _ in range(3))
+    if ragged:
+        vbs = torch.randint(32, 65, (num_blocks, ), dtype=torch.int32, device="cuda")
+    else:
+        vbs = torch.full((num_blocks, ), 64, dtype=torch.int32, device="cuda")
+
+    mask = make_pair_mask(num_blocks, topk, heads, overlap, seed=seed)
+    idx, num = baseline_meta_from_mask(mask)
+    base_o, base_lse = vsa.block_sparse_attn_sm100a(q, k, v, idx, num, vbs)
+
+    meta = build_pair_metadata(mask, vbs, mode=mode)
+    got_o, got_lse = vsa.block_sparse_attn_sm100a_pair(
+        q, k, v, meta.q2k_idx, meta.q2k_num, vbs, meta.pair_shared_tiles,
+        meta.block_thresholds)
+
+    diff = (got_o.float() - base_o.float()).abs().max().item()
+    lse_diff = (got_lse.float() - base_lse.float()).abs().max().item()
+    assert diff < atol, f"{mode} out vs baseline kernel: max |diff| = {diff:.5f}"
+    assert lse_diff < lse_atol, f"{mode} lse vs baseline kernel: max |diff| = {lse_diff:.5f}"
+    return diff, lse_diff
+
+
+PAIR_MODES = ["union", "shared-private"]
+
+
+@pytest.mark.parametrize("mode", PAIR_MODES)
+@pytest.mark.parametrize("overlap", [1.0, 0.0, 0.6])
+def test_pair_overlap_levels(mode, overlap):
+    run_pair_case(mode, num_blocks=16, topk=6, heads=4, overlap=overlap, ragged=False)
+
+
+@pytest.mark.parametrize("mode", PAIR_MODES)
+def test_pair_one_shared_block(mode):
+    run_pair_case(mode, num_blocks=16, topk=5, heads=4, overlap=1.0 / 5.0, ragged=False)
+
+
+@pytest.mark.parametrize("mode", PAIR_MODES)
+@pytest.mark.parametrize("overlap", [0.0, 0.6, 1.0])
+def test_pair_ragged_vbs(mode, overlap):
+    run_pair_case(mode, num_blocks=16, topk=6, heads=4, overlap=overlap, ragged=True)
+
+
+@pytest.mark.parametrize("mode", PAIR_MODES)
+@pytest.mark.parametrize("num_blocks", [4, 8, 32])
+def test_pair_sequence_lengths(mode, num_blocks):
+    run_pair_case(mode, num_blocks=num_blocks, topk=max(2, num_blocks // 4), heads=2,
+                  overlap=0.7, ragged=True)
+
+
+@pytest.mark.parametrize("mode", PAIR_MODES)
+def test_pair_realistic_k144(mode):
+    """720p-scale geometry (1440 blocks, K=144) vs the baseline kernel."""
+    run_pair_case(mode, num_blocks=1440, topk=144, heads=2, overlap=0.715, ragged=False)
+
+
+@pytest.mark.parametrize("mode", PAIR_MODES)
+def test_pair_real_captured_masks(mode):
+    """Real Phase-1 captured VSA rows (skips if the capture is not on disk)."""
+    sample = "/mnt/nvme/outputs/phase2_pairs/sample_pairs.pt"
+    if not os.path.exists(sample):
+        pytest.skip("Phase-1 sample pairs not available")
+    samples = torch.load(sample, weights_only=False)[:8]
+    nk = samples[0]["num_kv_blocks"]
+    heads = 2
+    nq = 16  # embed 8 real pairs as 16 query rows per head
+    mask = torch.zeros(1, heads, nq, nk, dtype=torch.bool)
+    for h in range(heads):
+        for i, s in enumerate(samples[h * (nq // 4):(h + 1) * (nq // 4)]):
+            mask[0, h, 2 * i, s["q0_idx"].long()] = True
+            mask[0, h, 2 * i + 1, s["q1_idx"].long()] = True
+    mask = mask.cuda()
+    torch.manual_seed(3)
+    S = nk * 64
+    shape = (1, heads, S, HEAD_DIM) if vsa.BHSD else (1, S, heads, HEAD_DIM)
+    q, k, v = (torch.randn(shape, device="cuda", dtype=torch.bfloat16) for _ in range(3))
+    # mask has only nq query rows; place them in the first nq blocks, rest empty
+    full = torch.zeros(1, heads, nk, nk, dtype=torch.bool, device="cuda")
+    full[:, :, :nq] = mask
+    vbs = torch.full((nk, ), 64, dtype=torch.int32, device="cuda")
+    idx, num = baseline_meta_from_mask(full)
+    base_o, base_lse = vsa.block_sparse_attn_sm100a(q, k, v, idx, num, vbs)
+    from fastvideo_kernel.pair_metadata import build_pair_metadata
+    meta = build_pair_metadata(full, vbs, mode=mode)
+    got_o, got_lse = vsa.block_sparse_attn_sm100a_pair(
+        q, k, v, meta.q2k_idx, meta.q2k_num, vbs, meta.pair_shared_tiles,
+        meta.block_thresholds)
+    diff = (got_o.float() - base_o.float()).abs().max().item()
+    assert diff < 0.025, f"{mode}: max |diff| = {diff:.5f}"
+    lse_diff = (got_lse.float() - base_lse.float()).abs()
+    assert lse_diff[torch.isfinite(base_lse)].max().item() < 0.05
+
+
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "--zero-count-case":
         _zero_count_case_main(int(sys.argv[2]))

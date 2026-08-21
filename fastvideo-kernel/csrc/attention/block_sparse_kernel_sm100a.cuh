@@ -154,11 +154,15 @@ struct WorkItem {
   // pre-fix kernel used q2k_num[global_mtile0] for BOTH tiles, silently
   // corrupting one tile of any pair whose rows have different counts.
   int num_kv_blocks_mt[2];
+  // PAIR_SHARED only: number of leading K-tiles that are DUAL-CONSUMER
+  // (one K/V fetch feeds both m-tiles). 0 in the baseline instantiation.
+  int shared_tiles;
 };
-template <bool Q_RASTER>
+template <bool Q_RASTER, bool PAIR_SHARED = false>
 __device__ __forceinline__ WorkItem decode_workitem(
     int workitem_id, int num_heads, int num_blocks, int packed_mtiles_per_seq,
-    unsigned long long magic0, unsigned long long magic1, unsigned long long magic2, const int* q2k_num) {
+    unsigned long long magic0, unsigned long long magic1, unsigned long long magic2, const int* q2k_num,
+    const int* pair_shared_tiles = nullptr) {
   WorkItem it;
   const int per_sample = num_heads * packed_mtiles_per_seq;
   it.sample = (int)fdiv((unsigned)workitem_id, magic0);
@@ -182,6 +186,14 @@ __device__ __forceinline__ WorkItem decode_workitem(
   // pipeline has a fixed per-iteration handshake); the per-tile counts mask
   // that K-tile completely, so such rows produce exactly-zero output.
   it.num_kv_blocks = max(max(it.num_kv_blocks_mt[0], it.num_kv_blocks_mt[1]), 1);
+  if constexpr (PAIR_SHARED) {
+    const int pair_id = (it.sample * num_heads + it.head) * packed_mtiles_per_seq + p;
+    // Clamp so a corrupt value can never exceed the trip count and desync roles.
+    const int nt = (it.num_kv_blocks + BLOCKS_PER_KTILE - 1) / BLOCKS_PER_KTILE;
+    it.shared_tiles = min(max(pair_shared_tiles[pair_id], 0), nt);
+  } else {
+    it.shared_tiles = 0;
+  }
   return it;
 }
 
@@ -189,7 +201,7 @@ template <int S_LD_COLS = 32, bool FULL_NAMED_BAR = false, bool EX2_EMU = false,
           bool SOFTMAX_THROTTLE = false, bool USE_CLC = true, bool Q_RASTER = true, bool MHA = true,
           int RESCALE_THRESHOLD = 8,
 
-          bool BHSD = false>
+          bool BHSD = false, bool PAIR_SHARED = false>
 __global__ void __cluster_dims__(1, 1, 1) __launch_bounds__(N_WARPS * 32, 1)
 fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     const __grid_constant__ CUtensorMap tmap_k, const __grid_constant__ CUtensorMap tmap_v_t,
@@ -200,7 +212,13 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     unsigned long long magic0, unsigned long long magic1, unsigned long long magic2,
     const int* __restrict__ q2k_idx, const int* __restrict__ q2k_num,
     const int* __restrict__ variable_block_sizes,
-      float* __restrict__ lse_out) {
+      float* __restrict__ lse_out,
+    // PAIR_SHARED only (nullptr otherwise): per-pair count of leading
+    // dual-consumer K-tiles, and per-(row, position) masking thresholds that
+    // replace the variable_block_sizes[q2k_idx[...]] lookup (0 = mask whole
+    // block: non-member in a union walk, or metadata padding).
+    const int* __restrict__ pair_shared_tiles = nullptr,
+    const int* __restrict__ block_thresholds = nullptr) {
 // Multi-arch builds: torch's cmake appends -gencode for EVERY entry of
 // TORCH_CUDA_ARCH_LIST to this TU on top of the pinned compute_100a pass, and
 // tcgen05/setmaxnreg do not exist outside sm_100a -- ptxas rejects the sm_120a
@@ -292,7 +310,7 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     [[maybe_unused]] uint32_t clc_phase = 0;
     int workitem_id = (int)blockIdx.x;
     while (true) {
-      const WorkItem it = decode_workitem<Q_RASTER>(workitem_id, num_heads, num_blocks, packed_mtiles_per_seq, magic0, magic1, magic2, q2k_num);
+      const WorkItem it = decode_workitem<Q_RASTER, PAIR_SHARED>(workitem_id, num_heads, num_blocks, packed_mtiles_per_seq, magic0, magic1, magic2, q2k_num, pair_shared_tiles);
       const int q_start = it.sample * seqlen;
       const int k_start = it.sample * seqlen;
       const int global_mtile[2]  = { it.global_mtile0, it.global_mtile1 };
@@ -405,6 +423,43 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
         if constexpr (!BLK128) load_v_oneslot(mtile_idx, ktile_idx, 1);
       };
 
+      if constexpr (PAIR_SHARED) {
+        // Dual-consumer schedule. A K-tile j < shared_tiles is fetched ONCE
+        // (from mtile0's row -- the metadata guarantees mtile1's row is
+        // identical over the shared prefix) and consumed by BOTH m-tiles'
+        // MMAs; a K-tile j >= shared_tiles keeps the baseline per-m-tile
+        // fetch order (V0, K0, V1, K1) exactly. The FIFO slot sequence
+        // produced here mirrors the MMA warp's consumption order below.
+        const int st = it.shared_tiles;
+        auto fetch_k = [&](int j) {
+          load_k(0, j);
+          if (j >= st) load_k(1, j);
+        };
+        if (0 < num_k_tiles) fetch_k(0);
+        #pragma unroll
+        for (int m = 0; m < M_TILES_PER_CTA; ++m) {
+          mbarrier_wait_parity_suspend(smem_ptr_u32(&empty_bar_q[m]), q_empty_ph.get_phase());
+          const int tok0 = q_start + mtile[m] * BLOCK;
+          if (elect_one_sync()) {
+            mbarrier_arrive_expect_tx(smem_ptr_u32(&full_bar_q[m]), Q_TILE_BYTES);
+            tma_load_4d(smem_ptr_u32(sQ[m]), &tmap_q, smem_ptr_u32(&full_bar_q[m]),
+                          0, BHSD ? it.sample * num_heads + it.head : it.head,
+                          BHSD ? tok0 - q_start : tok0, 0);
+          }
+        }
+        q_empty_ph.advance();
+        for (int ktile_idx = 0; ktile_idx + 1 < num_k_tiles; ++ktile_idx) {
+          if (ktile_idx < st) {
+            load_v(0, ktile_idx);
+            fetch_k(ktile_idx + 1);
+          } else {
+            load_v(0, ktile_idx); load_k(0, ktile_idx + 1);
+            load_v(1, ktile_idx); load_k(1, ktile_idx + 1);
+          }
+        }
+        load_v(0, num_k_tiles - 1);
+        if (num_k_tiles - 1 >= st) load_v(1, num_k_tiles - 1);
+      } else {
       load_k(0, 0); load_k(1, 0);
 
       #pragma unroll
@@ -425,6 +480,7 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
         load_v(1, ktile_idx); load_k(1, ktile_idx + 1);
       }
       load_v(0, num_k_tiles - 1); load_v(1, num_k_tiles - 1);
+      }
 
       if constexpr (USE_CLC) {
         ClcTileInfo next = clc_fetch_next_tile<1, 1, ClcRasterOrder::AlongN, 1, true>(
@@ -466,7 +522,7 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     [[maybe_unused]] uint32_t clc_phase = 0;
     int workitem_id = (int)blockIdx.x;
     while (true) {
-      const WorkItem it = decode_workitem<Q_RASTER>(workitem_id, num_heads, num_blocks, packed_mtiles_per_seq, magic0, magic1, magic2, q2k_num);
+      const WorkItem it = decode_workitem<Q_RASTER, PAIR_SHARED>(workitem_id, num_heads, num_blocks, packed_mtiles_per_seq, magic0, magic1, magic2, q2k_num, pair_shared_tiles);
       const int num_k_tiles = (it.num_kv_blocks + BLOCKS_PER_KTILE - 1) / BLOCKS_PER_KTILE;
 
       auto bmm1 = [&](int i) {
@@ -546,6 +602,120 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
         }
       };
 
+      // PAIR_SHARED (blk64 only): dual-consumer variants. One ring-slot wait
+      // feeds BOTH m-tiles' MMAs; empty_bar[slot] is committed only after the
+      // SECOND consumer's atoms are issued, so the load warp cannot recycle
+      // the slot while m-tile 1 still needs it.
+      auto bmm1_pair = [&]() {
+        if constexpr (PAIR_SHARED && !BLK128) {
+          #pragma unroll
+          for (int s = 0; s < Q_SUBTILES; ++s) {
+            const int slot = kv_ph.get_stage();
+            mbarrier_wait_parity(smem_ptr_u32(&full_bar[slot]), kv_ph.get_phase());
+            kv_ph.advance();
+            const uint64_t db = desc_kv0 + (uint64_t)slot * KV_DESC_DELTA;
+            #pragma unroll
+            for (int i = 0; i < M_TILES_PER_CTA; ++i) {
+              const uint32_t s_tmem_addr = tmem_base + (uint32_t)(i * S_COLS);
+              const uint64_t da = desc_q0 + (uint64_t)i * Q_MTILE_DESC_DELTA
+                                + (uint64_t)s * Q_SUB_DELTA;
+              #pragma unroll
+              for (int ki = 0; ki < K_ATOMS_PER_TILE; ++ki) {
+                const bool enable_d = (s != 0) || (ki != 0);
+                tcgen05_mma_ws_f16_ss_1sm_lead(lead, s_tmem_addr, da + 2 * ki, db + 2 * ki,
+                                               idesc_qk, enable_d);
+              }
+            }
+            tcgen05_commit1_lead(lead, smem_ptr_u32(&empty_bar[slot]));
+          }
+          #pragma unroll
+          for (int i = 0; i < M_TILES_PER_CTA; ++i)
+            tcgen05_commit1_lead(lead, smem_ptr_u32(&full_bar_spo[i]));
+        }
+      };
+      auto bmm2_pair = [&](bool first_ktile, auto last_c) {
+        if constexpr (PAIR_SHARED && !BLK128) {
+          constexpr bool last_ktile = decltype(last_c)::value;
+          #pragma unroll
+          for (int p = 0; p < V_SUBTILES; ++p) {
+            const int slot = kv_ph.get_stage();
+            mbarrier_wait_parity(smem_ptr_u32(&full_bar[slot]), kv_ph.get_phase());
+            kv_ph.advance();
+            #pragma unroll
+            for (int i = 0; i < M_TILES_PER_CTA; ++i) {
+              SmemDescPair desc_bv;
+              desc_bv.u64 = desc_v0;
+              desc_bv.w.x += (uint32_t)(slot * (int)KV_DESC_DELTA);
+              const uint32_t s_tmem_addr = tmem_base + (uint32_t)(i * S_COLS);
+              const uint32_t o_tmem_addr = tmem_base + (uint32_t)(2 * S_COLS + i * O_COLS);
+              #pragma unroll
+              for (int ki = 0; ki < K_ATOMS_PER_TILE; ++ki) {
+                const int a = p * K_ATOMS_PER_TILE + ki;
+                if constexpr (SPLIT_P) if (a == SPLIT_P_ATOM) {
+                  mbarrier_wait_parity(smem_ptr_u32(&full_bar_p_last[i]), spo_ph.get_phase());
+                }
+                const bool accumulate = (!first_ktile) || (a != 0);
+                tcgen05_mma_ws_f16_ts_1sm_lead(lead, o_tmem_addr, s_tmem_addr + (uint32_t)(a * 8),
+                                               desc_bv.u64, idesc_pv, accumulate);
+                desc_add_lo(desc_bv, PV_DESC_STEP);
+              }
+            }
+            tcgen05_commit1_lead(lead, smem_ptr_u32(&empty_bar[slot]));
+          }
+          if constexpr (last_ktile) {
+            #pragma unroll
+            for (int i = 0; i < M_TILES_PER_CTA; ++i)
+              tcgen05_commit1_lead(lead, smem_ptr_u32(&full_bar_o_acc[i]));
+          }
+        }
+      };
+
+      if constexpr (PAIR_SHARED) {
+        const int st = it.shared_tiles;
+        #pragma unroll
+        for (int i = 0; i < M_TILES_PER_CTA; ++i)
+          mbarrier_wait_parity(smem_ptr_u32(&full_bar_q[i]), q_ph.get_phase());
+        if (0 < st) { bmm1_pair(); } else { bmm1(0); bmm1(1); }
+
+        for (int k = 0; k + 1 < num_k_tiles; ++k) {
+          if (k < st) {
+            // Shared iteration: both P buffers must be free before the
+            // single V slot pass; K(k+1) may already be private (k+1 == st).
+            #pragma unroll
+            for (int i = 0; i < M_TILES_PER_CTA; ++i)
+              mbarrier_wait_parity(smem_ptr_u32(&empty_bar_spo[i]), spo_ph.get_phase());
+            bmm2_pair((k == 0), std::false_type{});
+            if (k + 1 < st) { bmm1_pair(); } else { bmm1(0); bmm1(1); }
+          } else {
+            #pragma unroll
+            for (int i = 0; i < M_TILES_PER_CTA; ++i) {
+              mbarrier_wait_parity(smem_ptr_u32(&empty_bar_spo[i]), spo_ph.get_phase());
+              bmm2(i, (k == 0), std::false_type{});
+              bmm1(i);
+            }
+          }
+          spo_ph.advance();
+        }
+
+        #pragma unroll
+        for (int i = 0; i < M_TILES_PER_CTA; ++i)
+          tcgen05_commit1_lead(lead, smem_ptr_u32(&empty_bar_q[i]));
+        q_ph.advance();
+
+        if (num_k_tiles - 1 < st) {
+          #pragma unroll
+          for (int i = 0; i < M_TILES_PER_CTA; ++i)
+            mbarrier_wait_parity(smem_ptr_u32(&empty_bar_spo[i]), spo_ph.get_phase());
+          bmm2_pair((num_k_tiles == 1), std::true_type{});
+        } else {
+          #pragma unroll
+          for (int i = 0; i < M_TILES_PER_CTA; ++i) {
+            mbarrier_wait_parity(smem_ptr_u32(&empty_bar_spo[i]), spo_ph.get_phase());
+            bmm2(i, (num_k_tiles == 1), std::true_type{});
+          }
+        }
+        spo_ph.advance();
+      } else {
       #pragma unroll
       for (int i = 0; i < M_TILES_PER_CTA; ++i) {
         mbarrier_wait_parity(smem_ptr_u32(&full_bar_q[i]), q_ph.get_phase());
@@ -575,6 +745,7 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
       }
 
       spo_ph.advance();
+      }
 
       if constexpr (USE_CLC) {
         ClcTileInfo next = clc_fetch_next_tile<1, 1, ClcRasterOrder::AlongN, 1, true>(
@@ -602,7 +773,7 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     [[maybe_unused]] uint32_t clc_phase = 0;
     int workitem_id = (int)blockIdx.x;
     while (true) {
-      const WorkItem it = decode_workitem<Q_RASTER>(workitem_id, num_heads, num_blocks, packed_mtiles_per_seq, magic0, magic1, magic2, q2k_num);
+      const WorkItem it = decode_workitem<Q_RASTER, PAIR_SHARED>(workitem_id, num_heads, num_blocks, packed_mtiles_per_seq, magic0, magic1, magic2, q2k_num, pair_shared_tiles);
       const int q_start = it.sample * seqlen;
       const int mtile[2] = { it.mtile0, it.mtile1 };
 
@@ -690,7 +861,7 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     [[maybe_unused]] uint32_t clc_phase = 0;
     int workitem_id = (int)blockIdx.x;
     while (true) {
-      const WorkItem it = decode_workitem<Q_RASTER>(workitem_id, num_heads, num_blocks, packed_mtiles_per_seq, magic0, magic1, magic2, q2k_num);
+      const WorkItem it = decode_workitem<Q_RASTER, PAIR_SHARED>(workitem_id, num_heads, num_blocks, packed_mtiles_per_seq, magic0, magic1, magic2, q2k_num, pair_shared_tiles);
       const int num_k_tiles = (it.num_kv_blocks + BLOCKS_PER_KTILE - 1) / BLOCKS_PER_KTILE;
 
       #pragma unroll
@@ -896,7 +1067,7 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
 
     int workitem_id = (int)blockIdx.x;
     while (true) {
-      const WorkItem it = decode_workitem<Q_RASTER>(workitem_id, num_heads, num_blocks, packed_mtiles_per_seq, magic0, magic1, magic2, q2k_num);
+      const WorkItem it = decode_workitem<Q_RASTER, PAIR_SHARED>(workitem_id, num_heads, num_blocks, packed_mtiles_per_seq, magic0, magic1, magic2, q2k_num, pair_shared_tiles);
       const int num_k_tiles = (it.num_kv_blocks + BLOCKS_PER_KTILE - 1) / BLOCKS_PER_KTILE;
 
       float m_run = -INFINITY, l_run = 0.f;
@@ -917,6 +1088,13 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
           if constexpr (BLK128) {
             thr_cache0 = (kk < cnt)
                        ? variable_block_sizes[q2k_idx[gqb_mt * max_kv + kk]] : 0;
+          } else if constexpr (PAIR_SHARED) {
+            // Pair modes: the per-(row, position) threshold table already
+            // encodes membership x vbs x padding (0 = whole block -> -inf),
+            // replacing the variable_block_sizes[q2k_idx[...]] lookup.
+            const int b0 = kk * BLOCKS_PER_KTILE + 2 * half;
+            thr_cache0 = (b0     < cnt) ? block_thresholds[(long)gqb_mt * max_kv + b0]     : 0;
+            thr_cache1 = (b0 + 1 < cnt) ? block_thresholds[(long)gqb_mt * max_kv + b0 + 1] : 0;
           } else {
             const int b0 = kk * BLOCKS_PER_KTILE + 2 * half;
             thr_cache0 = (b0     < cnt)

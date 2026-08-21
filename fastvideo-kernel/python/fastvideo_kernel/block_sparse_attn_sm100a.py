@@ -25,10 +25,12 @@ try:
         64: getattr(_C, "block_sparse_sm100a_fwd", None),
         128: getattr(_C, "block_sparse_sm100a_blk128_fwd", None),
     }
+    _PAIR_FWD = getattr(_C, "block_sparse_sm100a_pair_fwd", None)
     _HAS_VSA_SM100A = any(_FWD_BY_BLOCK.values())
 except ImportError:  # pragma: no cover - extension not built
     _C = None
     _FWD_BY_BLOCK = {}
+    _PAIR_FWD = None
     _HAS_VSA_SM100A = False
 
 _SM100 = (10, 0)
@@ -101,4 +103,33 @@ def block_sparse_attn_sm100a(
     sm_scale = 1.0 / (q.shape[-1]**0.5)
     res = fwd(q.contiguous(), k.contiguous(), v.contiguous(), None,
               idx, num, vbs, sm_scale, need_lse)
+    return (res[0], res[1]) if need_lse else (res[0], None)
+
+
+def block_sparse_attn_sm100a_pair(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    q2k_idx: torch.Tensor,
+    q2k_num: torch.Tensor,
+    variable_block_sizes: torch.Tensor,
+    pair_shared_tiles: torch.Tensor,
+    block_thresholds: torch.Tensor,
+    need_lse: bool = True,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Pair-shared (local KV reuse) forward, 64-token blocks only.
+
+    Metadata comes from ``fastvideo_kernel.pair_metadata.build_pair_metadata``
+    (mode "union" for B2, "shared-private" for A). Returns ``(out, lse)``.
+    """
+    if _PAIR_FWD is None:
+        raise RuntimeError("block_sparse_sm100a_pair_fwd is not available in this build")
+    idx = q2k_idx.to(torch.int32).contiguous()
+    num = q2k_num.to(torch.int32).contiguous()
+    vbs = variable_block_sizes.to(torch.int32).contiguous()
+    pst = pair_shared_tiles.to(torch.int32).contiguous()
+    thr = block_thresholds.to(torch.int32).contiguous()
+    sm_scale = 1.0 / (q.shape[-1]**0.5)
+    res = _PAIR_FWD(q.contiguous(), k.contiguous(), v.contiguous(), None,
+                    idx, num, vbs, pst, thr, sm_scale, need_lse)
     return (res[0], res[1]) if need_lse else (res[0], None)

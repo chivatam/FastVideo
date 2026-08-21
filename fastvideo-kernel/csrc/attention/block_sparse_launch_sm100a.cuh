@@ -28,6 +28,13 @@ struct BlockSparseVsaArgs {
   const int* q2k_num;              // [batch*num_heads*num_blocks] int32
   const int* variable_block_sizes; // [num_blocks] int32, valid tokens per block
 
+  // Pair-shared (local KV reuse) mode: BOTH null for the baseline path.
+  // pair_shared_tiles: [batch*num_heads*num_blocks/2] int32, leading dual-consumer K-tiles.
+  // block_thresholds:  [batch*num_heads*num_blocks, max_kv] int32 per-entry masking
+  //                    thresholds (membership x vbs x padding; 0 masks the block).
+  const int* pair_shared_tiles = nullptr;
+  const int* block_thresholds = nullptr;
+
   int batch;
   int num_heads;
   int seqlen;
@@ -50,6 +57,10 @@ __host__ inline cudaError_t block_sparse_supported(const BlockSparseVsaArgs& a) 
   if (a.variable_block_sizes == nullptr) return cudaErrorInvalidValue;
   // V is read MN-major at BOTH block sizes now, so no pre-transposed V_T is ever needed.
   if (a.v == nullptr) return cudaErrorInvalidValue;
+  // Pair-shared mode: both metadata tensors or neither; blk64 only.
+  if ((a.pair_shared_tiles == nullptr) != (a.block_thresholds == nullptr))
+    return cudaErrorInvalidValue;
+  if (a.pair_shared_tiles != nullptr && BLK128) return cudaErrorInvalidValue;
   return cudaSuccess;
 }
 
@@ -157,9 +168,19 @@ __host__ inline cudaError_t launch_block_sparse_sm100a(const BlockSparseVsaArgs&
   constexpr bool FULL_NAMED_BAR = VSA_NAMED_BAR, EX2_EMU = true, SPLIT_P = true,
                  SOFTMAX_THROTTLE = VSA_THROTTLE, USE_CLC = VSA_USE_CLC,
                  Q_RASTER = true, MHA = true;
-  auto kfn = &fmha_context_bf16_gen_kernel<32, FULL_NAMED_BAR, EX2_EMU, SPLIT_P,
+  const bool pair_mode = (a.pair_shared_tiles != nullptr);
+  auto kfn_base = &fmha_context_bf16_gen_kernel<32, FULL_NAMED_BAR, EX2_EMU, SPLIT_P,
                                            SOFTMAX_THROTTLE, USE_CLC, Q_RASTER, MHA,
-                                           /*RESCALE_THRESHOLD=*/8, /*BHSD=*/VSA_BHSD>;
+                                           /*RESCALE_THRESHOLD=*/8, /*BHSD=*/VSA_BHSD,
+                                           /*PAIR_SHARED=*/false>;
+  // blk128 rejects pair mode in block_sparse_supported(); don't instantiate an
+  // unreachable second kernel there (compile time + zero-risk).
+  auto kfn_pair = BLK128 ? kfn_base
+                : &fmha_context_bf16_gen_kernel<32, FULL_NAMED_BAR, EX2_EMU, SPLIT_P,
+                                           SOFTMAX_THROTTLE, USE_CLC, Q_RASTER, MHA,
+                                           /*RESCALE_THRESHOLD=*/8, /*BHSD=*/VSA_BHSD,
+                                           /*PAIR_SHARED=*/!BLK128>;
+  auto kfn = pair_mode ? kfn_pair : kfn_base;
   cudaError_t e = cudaFuncSetAttribute(kfn, cudaFuncAttributeMaxDynamicSharedMemorySize, (int)smem);
   if (e != cudaSuccess) return e;
 
@@ -184,11 +205,13 @@ __host__ inline cudaError_t launch_block_sparse_sm100a(const BlockSparseVsaArgs&
     cfg.attrs = cfgAttr; cfg.numAttrs = 1;
     return cudaLaunchKernelEx(&cfg, kfn, tq_, tk_, tvt_, tv_, to_, S, H, scale_log2, B,
                               num_blocks, packed_mtiles_per_seq, max_kv, magic0, magic1, magic2,
-                              a.q2k_idx, a.q2k_num, a.variable_block_sizes, a.lse);
+                              a.q2k_idx, a.q2k_num, a.variable_block_sizes, a.lse,
+                              a.pair_shared_tiles, a.block_thresholds);
   }
   kfn<<<grid, block, smem, stream>>>(tq_, tk_, tvt_, tv_, to_, S, H, scale_log2, B, num_blocks,
                                      packed_mtiles_per_seq, max_kv, magic0, magic1, magic2,
-                                     a.q2k_idx, a.q2k_num, a.variable_block_sizes, a.lse);
+                                     a.q2k_idx, a.q2k_num, a.variable_block_sizes, a.lse,
+                                     a.pair_shared_tiles, a.block_thresholds);
   return cudaGetLastError();
 }
 

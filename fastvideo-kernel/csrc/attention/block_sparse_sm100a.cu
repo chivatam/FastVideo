@@ -112,3 +112,76 @@ std::vector<torch::Tensor> BLOCK_SPARSE_SM100A_FWD(torch::Tensor q, torch::Tenso
   if (need_lse) return {out, lse};
   return {out};
 }
+
+#if !VSA_BLK128
+// Pair-shared (local KV reuse) forward: identical semantics per query row, but
+// each CTA's leading `pair_shared_tiles` K-tiles are fetched once and consumed
+// by BOTH query tiles. `block_thresholds` replaces the per-block
+// variable_block_sizes lookup (membership x vbs x padding; 0 masks a block).
+std::vector<torch::Tensor> block_sparse_sm100a_pair_fwd(
+    torch::Tensor q, torch::Tensor k, torch::Tensor v, c10::optional<torch::Tensor> v_t,
+    torch::Tensor q2k_idx, torch::Tensor q2k_num, torch::Tensor variable_block_sizes,
+    torch::Tensor pair_shared_tiles, torch::Tensor block_thresholds,
+    double sm_scale, bool need_lse) {
+  const at::cuda::OptionalCUDAGuard guard(device_of(q));
+
+  const int64_t B = q.size(0);
+  const int64_t H = VSA_BHSD ? q.size(1) : q.size(2);
+  const int64_t S = VSA_BHSD ? q.size(2) : q.size(1);
+  const int64_t D = q.size(3);
+
+  check_qkv(q, "q", B, H, S, D);
+  check_qkv(k, "k", B, H, S, D);
+  check_qkv(v, "v", B, H, S, D);
+  check_index(q2k_idx, "q2k_idx");
+  check_index(q2k_num, "q2k_num");
+  check_index(variable_block_sizes, "variable_block_sizes");
+  check_index(pair_shared_tiles, "pair_shared_tiles");
+  check_index(block_thresholds, "block_thresholds");
+
+  const int64_t num_blocks = variable_block_sizes.numel();
+  const int64_t max_kv = q2k_idx.size(-1);
+  TORCH_CHECK(S == num_blocks * BLOCK, "seqlen ", S, " must equal num_blocks (", num_blocks,
+              ") * ", BLOCK);
+  TORCH_CHECK(pair_shared_tiles.numel() == B * H * num_blocks / 2,
+              "pair_shared_tiles must have batch*heads*num_blocks/2 entries, got ",
+              pair_shared_tiles.numel());
+  TORCH_CHECK(block_thresholds.numel() == B * H * num_blocks * max_kv,
+              "block_thresholds must be [batch*heads*num_blocks, max_kv], got ",
+              block_thresholds.numel(), " elements for max_kv=", max_kv);
+
+  auto out = torch::empty_like(q);
+  torch::Tensor lse;
+  if (need_lse) lse = torch::empty({B, H, S}, q.options().dtype(torch::kFloat32));
+
+  BlockSparseVsaArgs a{};
+  a.q = reinterpret_cast<const __nv_bfloat16*>(q.data_ptr());
+  a.k = reinterpret_cast<const __nv_bfloat16*>(k.data_ptr());
+  a.v = reinterpret_cast<const __nv_bfloat16*>(v.data_ptr());
+  a.v_t = v_t.has_value() ? reinterpret_cast<const __nv_bfloat16*>(v_t->data_ptr()) : nullptr;
+  a.o = reinterpret_cast<__nv_bfloat16*>(out.data_ptr());
+  a.lse = need_lse ? lse.data_ptr<float>() : nullptr;
+  a.q2k_idx = q2k_idx.data_ptr<int>();
+  a.q2k_num = q2k_num.data_ptr<int>();
+  a.variable_block_sizes = variable_block_sizes.data_ptr<int>();
+  a.pair_shared_tiles = pair_shared_tiles.data_ptr<int>();
+  a.block_thresholds = block_thresholds.data_ptr<int>();
+  a.batch = (int)B;
+  a.num_heads = (int)H;
+  a.seqlen = (int)S;
+  a.head_dim = (int)D;
+  a.num_blocks = (int)num_blocks;
+  a.max_kv = (int)max_kv;
+  a.sm_scale = (float)sm_scale;
+
+  TORCH_CHECK(block_sparse_supported(a) == cudaSuccess,
+              "block_sparse_sm100a_pair: unsupported configuration");
+
+  const cudaError_t err = launch_block_sparse_sm100a(a, at::cuda::getCurrentCUDAStream());
+  TORCH_CHECK(err == cudaSuccess,
+              "block_sparse_sm100a_pair launch failed: ", cudaGetErrorString(err));
+
+  if (need_lse) return {out, lse};
+  return {out};
+}
+#endif  // !VSA_BLK128
