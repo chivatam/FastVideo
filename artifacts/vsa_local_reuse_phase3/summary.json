@@ -1,0 +1,49 @@
+{
+  "decision": "NO-GO: local cross-query KV reuse on B200 at VSA shapes",
+  "baseline_ms": {
+    "480p_h12": 0.977,
+    "720p_h12": 5.55,
+    "480p_h40_bench": 3.462,
+    "720p_h40_bench": 18.702
+  },
+  "real_720p_h12_ms": {
+    "baseline": 5.55,
+    "b2": 8.5,
+    "shared_private": 6.45
+  },
+  "speedup_vs_baseline": {
+    "b2": 0.65,
+    "shared_private": 0.86
+  },
+  "overlap_sweep_A_speedup": {
+    "0.0": 0.943,
+    "0.3": 0.831,
+    "0.6": 0.879,
+    "0.9": 0.897,
+    "1.0": 0.943
+  },
+  "correctness": {
+    "max_abs": 0.00098,
+    "rel_l2": 0.0034,
+    "cosine": 0.999994,
+    "lse_max": 6.7e-06,
+    "bit_exact": false,
+    "reason": "K-tile regrouping changes online-softmax segmentation"
+  },
+  "dual_consumer_ring_worked": true,
+  "l2_read_sectors": {
+    "baseline": 2521715067,
+    "shared_private": 1767569727,
+    "reduction_pct": 29.9
+  },
+  "l2_hit_rate_pct": {
+    "baseline": 97.32,
+    "shared_private": 95.6
+  },
+  "dram_read_gb": {
+    "baseline": 0.93,
+    "shared_private": 1.12
+  },
+  "why": "baseline already served ~99% of KV requests from L2; kernel is latency-bound (62% long-scoreboard, 1 CTA/SM), so removing L2 traffic buys nothing while the pair path adds threshold-table reads, wider metadata, and shared-slot serialization",
+  "tuning_3e": "deliberately skipped: profiling shows no headroom from this mechanism"
+}
