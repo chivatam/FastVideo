@@ -13,12 +13,18 @@ try:
     from fastvideo_kernel import video_sparse_attn_bshd
 except ImportError:
     video_sparse_attn_bshd = None
+try:
+    # Phase-1 KV-reuse overlap capture (opt-in, in-tree kernel builds only).
+    from fastvideo_kernel import vsa_capture as _vsa_capture
+except ImportError:
+    _vsa_capture = None
 
 from typing import Any
 
 from fastvideo.attention.backends.abstract import (AttentionBackend, AttentionImpl, AttentionMetadata,
                                                    AttentionMetadataBuilder)
 from fastvideo.distributed import get_sp_group
+from fastvideo.forward_context import get_forward_context
 from fastvideo.logger import init_logger
 
 logger = init_logger(__name__)
@@ -312,6 +318,21 @@ class VideoSparseAttentionImpl(AttentionImpl):
     ) -> torch.Tensor:
         block_elements = math.prod(VSA_TILE_SIZE)
         cur_topk = _compute_cur_topk(attn_metadata)
+
+        if _vsa_capture is not None and _vsa_capture.enabled():
+            # Push call-site metadata for the opt-in Phase-1 overlap capture.
+            # Guarded on enabled() so the disabled path is untouched.
+            forward_batch = get_forward_context().forward_batch
+            _vsa_capture.set_context(
+                layer_prefix=self.prefix,
+                timestep=int(attn_metadata.current_timestep),
+                is_cfg_negative=bool(getattr(forward_batch, "is_cfg_negative", False)),
+                dit_seq_shape=tuple(attn_metadata.dit_seq_shape),
+                num_tiles=tuple(attn_metadata.num_tiles),
+                tile_size=tuple(VSA_TILE_SIZE),
+                sparsity=float(attn_metadata.VSA_sparsity),
+                topk=cur_topk,
+            )
 
         # 256-element tiles auto-route to the FA4 CuTe BSHD fastpath, which
         # consumes [B, S, H, D] directly -- skip the transpose round-trip.
