@@ -1,0 +1,31 @@
+{
+  "baseline": {
+    "latency_720p_ms": 5.55,
+    "l2_hit_pct": 97.3,
+    "dram_read_gb": 0.93,
+    "long_sb_pct": 62.0,
+    "occupancy": "1 CTA/SM (smem AND regs AND TMEM all at limit)"
+  },
+  "occupancy_2cta_via_smem_only": "NO",
+  "long_sb_attribution_pct_of_all_samples": {
+    "softmax_wait_qk_scores_full_bar_spo": 23.3,
+    "correction_wait_alpha_and_l": 22.4,
+    "load_epi_sched_suspend_waits": 9.1,
+    "clc_scheduler": 5.5,
+    "mma_wait_softmax": 0.7,
+    "sparse_metadata_loads": "<=1.5"
+  },
+  "experiment_c_contiguous_vs_real_ms": {
+    "720p_real": 5.511,
+    "720p_random": 5.574,
+    "720p_contiguous": 5.383
+  },
+  "tma_pipeline": "consumer-paced (CASE B): load warp sleeps on empty_bar; full_bar waits <1%; NUM_KV_STAGES=4 sufficient",
+  "density_sweep_720p_ms": {
+    "0.05": 2.887,
+    "0.10": 5.53,
+    "0.25": 13.6,
+    "0.50": 27.36
+  },
+  "decision": "QK/SOFTMAX/PV pipeline redesign; metadata/TMA/occupancy directions rejected on evidence"
+}
