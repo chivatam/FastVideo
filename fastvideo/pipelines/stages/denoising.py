@@ -85,9 +85,7 @@ class DenoisingStage(PipelineStage):
                                           AttentionBackendEnum.VSA_PRECISION_PROBE_ATTN,
                                           AttentionBackendEnum.SPARSEFP4_CAPTURE_ATTN,
                                           AttentionBackendEnum.SPARSEFP4_NATIVE_VSA_ATTN,
-                                          AttentionBackendEnum.SPARSEFP4_VSA256_FA4_ATTN,
-                                          AttentionBackendEnum.SPARSEFP4_QAT_VSA_ATTN,
-                                          AttentionBackendEnum.SPARSEFP4_QAT_VSA256_ATTN),  # hack
+                                          AttentionBackendEnum.SPARSEFP4_VSA256_FA4_ATTN),  # hack
             # Build metadata for the backend this transformer actually resolved
             # instead of re-deriving it from the environment. The two agreed
             # only when the request arrived via the env var: a request passed as

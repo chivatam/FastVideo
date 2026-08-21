@@ -1,0 +1,54 @@
+{
+  "fig1_geometry_schematic": {
+    "source_data": [
+      "illustrative masks (synthetic); 2.4x inflation factor from P4_PERF_ROOT_CAUSE.md"
+    ],
+    "canonical_receipts": [
+      "tables/c8_performance_v2.md",
+      "tables/p4g_vs_p2_quality_bootstrap.md"
+    ],
+    "outputs": [
+      "fig1_geometry_schematic.png",
+      "fig1_geometry_schematic.pdf"
+    ]
+  },
+  "fig2_kernel_scaling": {
+    "source_data": [
+      "data/kernel_latency.csv"
+    ],
+    "canonical_receipts": [
+      "tables/c8_performance_v2.md",
+      "tables/p4g_vs_p2_quality_bootstrap.md"
+    ],
+    "outputs": [
+      "fig2_kernel_scaling.png",
+      "fig2_kernel_scaling.pdf"
+    ]
+  },
+  "fig3_e2e_performance": {
+    "source_data": [
+      "data/e2e_performance.csv"
+    ],
+    "canonical_receipts": [
+      "tables/c8_performance_v2.md",
+      "tables/p4g_vs_p2_quality_bootstrap.md"
+    ],
+    "outputs": [
+      "fig3_e2e_performance.png",
+      "fig3_e2e_performance.pdf"
+    ]
+  },
+  "fig4_quality_forest": {
+    "source_data": [
+      "data/quality_p4g_vs_p2.csv"
+    ],
+    "canonical_receipts": [
+      "tables/c8_performance_v2.md",
+      "tables/p4g_vs_p2_quality_bootstrap.md"
+    ],
+    "outputs": [
+      "fig4_quality_forest.png",
+      "fig4_quality_forest.pdf"
+    ]
+  }
+}
