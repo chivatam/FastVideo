@@ -35,6 +35,7 @@ from typing import Any
 import torch
 
 _ENV_DIR = "FASTVIDEO_VSA_CAPTURE_OVERLAP"
+_ENV_QK_DIR = "FASTVIDEO_VSA_CAPTURE_QK"
 _ENV_LAYERS = "FASTVIDEO_VSA_CAPTURE_LAYERS"
 _ENV_STEPS = "FASTVIDEO_VSA_CAPTURE_STEPS"
 
@@ -46,8 +47,8 @@ _call_counter = itertools.count()
 
 
 def enabled() -> bool:
-    """True iff capture mode is requested via the environment."""
-    return bool(os.environ.get(_ENV_DIR))
+    """True iff any capture mode is requested via the environment."""
+    return bool(os.environ.get(_ENV_DIR)) or bool(os.environ.get(_ENV_QK_DIR))
 
 
 def capture_dir() -> str | None:
@@ -149,4 +150,55 @@ def maybe_capture_topk_mask(
     branch = "neg" if _ctx.get("is_cfg_negative", False) else "pos"
     os.makedirs(out_dir, exist_ok=True)
     fname = f"cap_step{timestep:03d}_layer{layer_idx:02d}_{branch}_call{call_id:06d}.pt"
+    torch.save(payload, os.path.join(out_dir, fname))
+
+
+def maybe_capture_qk(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    mask: torch.Tensor,
+    topk: int,
+    variable_block_sizes: torch.Tensor | None = None,
+) -> None:
+    """Opt-in raw Q/K capture for numerics studies (Phase-0 certified softmax).
+
+    No-op unless ``FASTVIDEO_VSA_CAPTURE_QK`` is set. Stores the TILED
+    [B, H, S_pad, D] bf16 q/k exactly as the sparse kernel consumes them,
+    plus the same compact top-k indices as the overlap capture. Same
+    layer/step filters as the overlap capture. Never mutates inputs, never
+    touches the RNG.
+    """
+    out_dir = os.environ.get(_ENV_QK_DIR) or None
+    if out_dir is None:
+        return
+    layer_idx = _layer_index(_ctx.get("layer_prefix"))
+    timestep = int(_ctx.get("timestep", -1))
+    layer_filter = _parse_filter(_ENV_LAYERS)
+    step_filter = _parse_filter(_ENV_STEPS)
+    if layer_filter is not None and layer_idx not in layer_filter:
+        return
+    if step_filter is not None and timestep not in step_filter:
+        return
+
+    B, H, Nq, Nk = mask.shape
+    kk = min(topk, Nk)
+    if not bool((mask.sum(dim=-1) == kk).all().item()):
+        return  # rare top-k tie row; skip this call (sampling study)
+    idx = mask.nonzero(as_tuple=False)[:, 3].view(B, H, Nq, kk)
+    payload = {
+        "q": q.to(torch.bfloat16).cpu(),
+        "k": k.to(torch.bfloat16).cpu(),
+        "v": v.to(torch.bfloat16).cpu(),
+        "indices": idx.to(torch.int16).cpu(),
+        "topk": kk,
+        "num_kv_blocks": Nk,
+        "variable_block_sizes": (variable_block_sizes.cpu() if variable_block_sizes is not None else None),
+        "layer_index": layer_idx,
+        "context": dict(_ctx),
+    }
+    call_id = next(_call_counter)
+    branch = "neg" if _ctx.get("is_cfg_negative", False) else "pos"
+    os.makedirs(out_dir, exist_ok=True)
+    fname = f"qk_step{timestep:03d}_layer{layer_idx:02d}_{branch}_call{call_id:06d}.pt"
     torch.save(payload, os.path.join(out_dir, fname))

@@ -9,7 +9,7 @@ from .block_sparse_attn_256 import (
 )
 from .triton_kernels.st_attn_triton import sliding_tile_attention_triton
 from .triton_kernels.fused_compress_topk import fused_block_mean, fused_topk_mask
-from .vsa_capture import maybe_capture_topk_mask
+from .vsa_capture import maybe_capture_qk, maybe_capture_topk_mask
 
 # Try to load the C++ extension
 try:
@@ -124,6 +124,8 @@ def video_sparse_attn(
     mask = fused_topk_mask(scores, topk)
     # Opt-in Phase-1 overlap capture (no-op unless FASTVIDEO_VSA_CAPTURE_OVERLAP is set).
     maybe_capture_topk_mask(mask, topk, variable_block_sizes)
+    # Opt-in raw Q/K/V capture (no-op unless FASTVIDEO_VSA_CAPTURE_QK is set).
+    maybe_capture_qk(q, k, v, mask, topk, variable_block_sizes)
 
     if block_elements in (128, 256):
         attention = block_sparse_attn_128 if block_elements == 128 else block_sparse_attn_256
