@@ -20,6 +20,9 @@ class RuntimeCapture:
     attention_events: list[tuple[torch.cuda.Event, torch.cuda.Event]] = field(default_factory=list)
     rows: list[dict[str, Any]] = field(default_factory=list)
     effective_sparsities: set[float] = field(default_factory=set)
+    adaptive_decisions: list[tuple[str, int, Any, Any]] = field(
+        default_factory=list
+    )
 
 
 _CAPTURE = RuntimeCapture()
@@ -53,6 +56,7 @@ def begin_job(job_id: str) -> None:
     _CAPTURE.attention_events.clear()
     _CAPTURE.rows.clear()
     _CAPTURE.effective_sparsities.clear()
+    _CAPTURE.adaptive_decisions.clear()
 
 
 def record_effective_sparsity(value: float) -> None:
@@ -63,12 +67,34 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
     if _CAPTURE.attention_events:
         torch.cuda.synchronize()
     attention_ms = sum(start.elapsed_time(end) for start, end in _CAPTURE.attention_events)
+    if _CAPTURE.adaptive_decisions:
+        from research.adaptive_vsa_deadline.adaptive_attention import (
+            summarize_decision,
+        )
+
+        for prefix, timestep, policy, decision in _CAPTURE.adaptive_decisions:
+            decision_summary = summarize_decision(decision)
+            record_effective_sparsity(
+                decision_summary["effective_sparsity"]
+            )
+            _CAPTURE.rows.append(
+                {
+                    "event_type": "adaptive_policy",
+                    "job_id": _CAPTURE.job_id,
+                    "prefix": prefix,
+                    "layer": _layer_index(prefix),
+                    "timestep": timestep,
+                    **policy.as_dict(),
+                    **decision_summary,
+                }
+            )
     rows = list(_CAPTURE.rows)
     effective_sparsities = sorted(_CAPTURE.effective_sparsities)
     _CAPTURE.job_id = None
     _CAPTURE.attention_events.clear()
     _CAPTURE.rows.clear()
     _CAPTURE.effective_sparsities.clear()
+    _CAPTURE.adaptive_decisions.clear()
     return attention_ms, rows, effective_sparsities
 
 
@@ -227,7 +253,6 @@ def install_runtime_patches(mode: str) -> None:
             if mode == "adaptive_vsa":
                 from research.adaptive_vsa_deadline.adaptive_attention import (
                     adaptive_video_sparse_attn,
-                    summarize_decision,
                 )
 
                 if _ADAPTIVE_POLICY is None:
@@ -245,21 +270,14 @@ def install_runtime_patches(mode: str) -> None:
                         _ADAPTIVE_POLICY,
                     )
                 )
-                decision_summary = summarize_decision(decision)
-                record_effective_sparsity(
-                    decision_summary["effective_sparsity"]
-                )
                 if _CAPTURE.job_id is not None:
-                    _CAPTURE.rows.append(
-                        {
-                            "event_type": "adaptive_policy",
-                            "job_id": _CAPTURE.job_id,
-                            "prefix": self.prefix,
-                            "layer": _layer_index(self.prefix),
-                            "timestep": int(attn_metadata.current_timestep),
-                            **_ADAPTIVE_POLICY.as_dict(),
-                            **decision_summary,
-                        }
+                    _CAPTURE.adaptive_decisions.append(
+                        (
+                            self.prefix,
+                            int(attn_metadata.current_timestep),
+                            _ADAPTIVE_POLICY,
+                            decision,
+                        )
                     )
                 return output
 
