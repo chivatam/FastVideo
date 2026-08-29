@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from fastvideo.eval import create_evaluator
+from fastvideo.eval.io import as_video
 
 
 def main() -> None:
@@ -26,8 +27,10 @@ def main() -> None:
     evaluator = create_evaluator(metrics=[value.strip() for value in args.metrics.split(",")], num_gpus=args.num_gpus)
     samples = [
         {
-            "video": row.video_path,
+            "video": as_video(row.video_path),
+            "video_path": row.video_path,
             "prompt": row.prompt,
+            "text_prompt": row.prompt,
             "fps": args.fps,
         }
         for row in jobs.itertuples()
