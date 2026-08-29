@@ -908,7 +908,11 @@ Pure Fine8's overall p90 fidelity gain. The required threshold was 70%.
 def _write_manifest(root: Path, gate: dict[str, Any]) -> None:
     files = []
     for path in sorted(root.rglob("*")):
-        if not path.is_file() or "run/phase0" in path.as_posix():
+        if (
+            not path.is_file()
+            or path == root / "manifest.json"
+            or "run/phase0" in path.as_posix()
+        ):
             continue
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         files.append(
