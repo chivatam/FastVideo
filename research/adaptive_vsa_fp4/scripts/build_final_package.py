@@ -486,6 +486,7 @@ python -m research.adaptive_vsa_fp4.scripts.analyze_phase1 \
   --jobs artifacts/adaptive_vsa_fp4/phase1/jobs.parquet \
   --metrics artifacts/adaptive_vsa_fp4/phase1/vbench_metrics.csv \
   --output-dir artifacts/adaptive_vsa_fp4/phase1
+git checkout origin/research -- research/adaptive_vsa_fp4/scripts/build_final_package.py
 python -m research.adaptive_vsa_fp4.scripts.build_final_package
 """
     reproduction_path = final / "reproduction_commands.sh"
