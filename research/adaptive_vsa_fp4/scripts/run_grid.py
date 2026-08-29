@@ -26,6 +26,7 @@ MODE_PRECISION = {
     "anchored_fine_vsa_census": "bf16",
     "anchored_fine_vsa25": "bf16",
     "anchored_fine_vsa50": "bf16",
+    "hierarchical_vsa_census": "bf16",
     "dense_nvfp4_fa4": "nvfp4_qk",
     "sim_vsa_nvfp4": "sim_nvfp4_qk",
 }
@@ -96,6 +97,7 @@ def prepare_jobs(args: argparse.Namespace) -> int:
                 "anchored_fine_vsa_census",
                 "anchored_fine_vsa25",
                 "anchored_fine_vsa50",
+                "hierarchical_vsa_census",
             }
             else _mode_sparsities(
                 mode,

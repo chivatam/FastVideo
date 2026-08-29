@@ -298,6 +298,7 @@ def _configure_mode(mode: str) -> None:
         "anchored_fine_vsa_census",
         "anchored_fine_vsa25",
         "anchored_fine_vsa50",
+        "hierarchical_vsa_census",
     }:
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "VIDEO_SPARSE_ATTN"
         os.environ["FASTVIDEO_VSA_SM100A"] = "1"
@@ -450,6 +451,7 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "sim_vsa_nvfp4",
         "fine_vsa_census",
         "anchored_fine_vsa_census",
+        "hierarchical_vsa_census",
     } and effective_sparsities != [sparsity]:
         raise RuntimeError(f"Requested VSA sparsity {sparsity}, attention metadata observed {effective_sparsities!r}.")
     adaptive_rows = [row for row in stats_rows if row.get("event_type") == "adaptive_policy"]
@@ -622,6 +624,40 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
             raise RuntimeError(
                 "Anchored Fine-VSA violated its frozen support policy: "
                 f"{invalid_anchored_policy[:3]!r}"
+            )
+    hierarchical_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "hierarchical_vsa_error"
+    ]
+    hierarchical_benchmarks = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "hierarchical_scoring_benchmark"
+    ]
+    if mode == "hierarchical_vsa_census":
+        if not hierarchical_rows or not hierarchical_benchmarks:
+            raise RuntimeError(
+                "Hierarchical VSA census produced incomplete traces"
+            )
+        variants = {row["variant"] for row in hierarchical_rows}
+        if len(variants) != 74:
+            raise RuntimeError(
+                "Hierarchical VSA census did not evaluate all 72 "
+                "candidates plus two baselines"
+            )
+        invalid_hierarchical_budget = [
+            row
+            for row in hierarchical_rows
+            if (
+                float(row["actual_pair_budget_ratio"]) > 1.0 + 1e-6
+                or float(row["nominal_pair_budget_ratio"]) > 1.0 + 1e-9
+            )
+        ]
+        if invalid_hierarchical_budget:
+            raise RuntimeError(
+                "Hierarchical VSA exceeded native pair support: "
+                f"{invalid_hierarchical_budget[:3]!r}"
             )
     br_rows = [row for row in stats_rows if row.get("event_type") == "br_vsa_policy"]
     if mode == "br_vsa" and not br_rows:
