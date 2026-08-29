@@ -88,6 +88,7 @@ def prepare_jobs(args: argparse.Namespace) -> int:
             for prompt in prompts:
                 payload: dict[str, Any] = {
                     "phase": args.phase,
+                    "mode": mode,
                     "model": args.model,
                     "model_revision": model_revision,
                     "prompt_id": prompt["prompt_id"],
