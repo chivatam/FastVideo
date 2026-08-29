@@ -606,6 +606,16 @@ def load_model_from_full_model_state_dict(
                 )
                 continue
 
+            # Research-only dense baseline for a VSA checkpoint. Compression
+            # gate tensors have no consumer when the dense Wan block is
+            # instantiated, while every shared denoiser parameter remains
+            # strict-loaded. This opt-in is deliberately narrower than a
+            # non-strict load so unrelated checkpoint drift still fails.
+            if (os.environ.get("FASTVIDEO_RESEARCH_ALLOW_UNUSED_VSA_GATES") == "1"
+                    and ".to_gate_compress." in target_param_name):
+                logger.warning("Research dense baseline: skipping unused VSA gate tensor %s", target_param_name)
+                continue
+
             # For non-strict loads, treat this as an "unexpected key" and skip it
             # (mirrors torch.nn.Module.load_state_dict(strict=False)).
             if not strict:
