@@ -27,6 +27,9 @@ class RuntimeCapture:
     coretail_decisions: list[tuple[str, int, Any]] = field(
         default_factory=list
     )
+    fine_decisions: list[tuple[str, int, Any]] = field(
+        default_factory=list
+    )
 
 
 _CAPTURE = RuntimeCapture()
@@ -157,6 +160,7 @@ def begin_job(job_id: str) -> None:
     _CAPTURE.compressed_support_decisions.clear()
     _CAPTURE.br_decisions.clear()
     _CAPTURE.coretail_decisions.clear()
+    _CAPTURE.fine_decisions.clear()
     _CORETAIL_DENSE_LAYER_COUNTS.clear()
 
 
@@ -269,6 +273,22 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
                     **validation,
                 }
             )
+    if _CAPTURE.fine_decisions:
+        from research.fine_vsa.attention import (
+            summarize_fine_vsa_decision,
+        )
+
+        for prefix, timestep, decision in _CAPTURE.fine_decisions:
+            _CAPTURE.rows.append(
+                {
+                    "event_type": "fine_vsa_policy",
+                    "job_id": _CAPTURE.job_id,
+                    "prefix": prefix,
+                    "layer": _layer_index(prefix),
+                    "timestep": timestep,
+                    **summarize_fine_vsa_decision(decision),
+                }
+            )
     rows = list(_CAPTURE.rows)
     effective_sparsities = sorted(_CAPTURE.effective_sparsities)
     _CAPTURE.job_id = None
@@ -280,6 +300,7 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
     _CAPTURE.compressed_support_decisions.clear()
     _CAPTURE.br_decisions.clear()
     _CAPTURE.coretail_decisions.clear()
+    _CAPTURE.fine_decisions.clear()
     return attention_ms, rows, effective_sparsities
 
 
@@ -782,7 +803,6 @@ def install_runtime_patches(mode: str) -> None:
             if mode == "fine_vsa":
                 from research.fine_vsa.attention import (
                     fine_video_sparse_attn,
-                    summarize_fine_vsa_decision,
                 )
 
                 output, decision = _timed_call(
@@ -794,22 +814,19 @@ def install_runtime_patches(mode: str) -> None:
                         attn_metadata.variable_block_sizes,
                     )
                 )
-                decision_summary = summarize_fine_vsa_decision(decision)
                 record_effective_sparsity(
-                    decision_summary["nominal_effective_sparsity"]
+                    1.0
+                    - decision.selected_child_blocks
+                    * decision.child_width
+                    / (decision.parent_blocks * 64)
                 )
                 if _CAPTURE.job_id is not None:
-                    _CAPTURE.rows.append(
-                        {
-                            "event_type": "fine_vsa_policy",
-                            "job_id": _CAPTURE.job_id,
-                            "prefix": self.prefix,
-                            "layer": _layer_index(self.prefix),
-                            "timestep": int(
-                                attn_metadata.current_timestep
-                            ),
-                            **decision_summary,
-                        }
+                    _CAPTURE.fine_decisions.append(
+                        (
+                            self.prefix,
+                            int(attn_metadata.current_timestep),
+                            decision,
+                        )
                     )
                 return output
 

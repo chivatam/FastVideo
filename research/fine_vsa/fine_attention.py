@@ -6,6 +6,45 @@ import triton.language as tl
 
 
 @triton.jit
+def _fine_block_mean_kernel(
+    input_ptr,
+    block_size_ptr,
+    output_ptr,
+    stride_ib,
+    stride_ih,
+    stride_is,
+    stride_id,
+    stride_ob,
+    stride_oh,
+    stride_os,
+    stride_od,
+    num_heads: tl.constexpr,
+    head_dim: tl.constexpr,
+    block_width: tl.constexpr,
+):
+    block_index = tl.program_id(0)
+    batch_head = tl.program_id(1)
+    batch = batch_head // num_heads
+    head = batch_head % num_heads
+    block_size = tl.load(block_size_ptr + block_index).to(tl.int32)
+    token_offsets = tl.arange(0, block_width)
+    dim_offsets = tl.arange(0, head_dim)
+    valid = token_offsets < block_size
+    values = tl.load(
+        input_ptr + batch * stride_ib + head * stride_ih +
+        (block_index * block_width + token_offsets[:, None]) * stride_is + dim_offsets[None, :] * stride_id,
+        mask=valid[:, None],
+        other=0.0,
+    ).to(tl.float32)
+    denominator = tl.maximum(block_size, 1).to(tl.float32)
+    mean = tl.sum(values, axis=0) / denominator
+    tl.store(
+        output_ptr + batch * stride_ob + head * stride_oh + block_index * stride_os + dim_offsets * stride_od,
+        mean,
+    )
+
+
+@triton.jit
 def _fine_sparse_attention_kernel(
     query_ptr,
     key_ptr,
@@ -218,6 +257,41 @@ def fine_sparse_attention(
     return output, lse
 
 
+def fine_block_mean(
+    tensor_bhsd: torch.Tensor,
+    block_sizes: torch.Tensor,
+    block_width: int,
+) -> torch.Tensor:
+    """Stride-aware block mean without materializing a BHSD input copy."""
+    if tensor_bhsd.ndim != 4:
+        raise ValueError("tensor_bhsd must use [B,H,S,D]")
+    batch, heads, sequence, head_dim = tensor_bhsd.shape
+    if sequence != block_sizes.numel() * block_width:
+        raise ValueError("Tensor sequence and block metadata disagree")
+    block_sizes = block_sizes.to(
+        device=tensor_bhsd.device,
+        dtype=torch.int32,
+    ).contiguous()
+    output = torch.empty(
+        (batch, heads, block_sizes.numel(), head_dim),
+        device=tensor_bhsd.device,
+        dtype=tensor_bhsd.dtype,
+    )
+    _fine_block_mean_kernel[(block_sizes.numel(), batch * heads)](
+        tensor_bhsd,
+        block_sizes,
+        output,
+        *tensor_bhsd.stride(),
+        *output.stride(),
+        num_heads=heads,
+        head_dim=head_dim,
+        block_width=block_width,
+        num_warps=4,
+        num_stages=2,
+    )
+    return output
+
+
 def child_block_sizes(
     parent_sizes: torch.Tensor,
     child_width: int,
@@ -248,42 +322,4 @@ def child_block_mean(
         child_width,
         parent_width=parent_width,
     )
-    batch, heads, sequence, head_dim = tensor_bhsd.shape
-    if sequence != parent_sizes.numel() * parent_width:
-        raise ValueError("Tensor sequence and parent metadata disagree")
-    factor = parent_width // child_width
-    blocks = tensor_bhsd.view(
-        batch,
-        heads,
-        parent_sizes.numel(),
-        factor,
-        child_width,
-        head_dim,
-    )
-    valid = (torch.arange(
-        child_width,
-        device=tensor_bhsd.device,
-    )[None, None, None, None, :, None] < sizes.view(
-        1,
-        1,
-        parent_sizes.numel(),
-        factor,
-        1,
-        1,
-    ))
-    means = (blocks * valid).sum(dim=-2) / sizes.clamp_min(1).view(
-        1,
-        1,
-        parent_sizes.numel(),
-        factor,
-        1,
-    )
-    return (
-        means.reshape(
-            batch,
-            heads,
-            parent_sizes.numel() * factor,
-            head_dim,
-        ),
-        sizes,
-    )
+    return fine_block_mean(tensor_bhsd, sizes, child_width), sizes

@@ -7,14 +7,17 @@ from typing import Any
 import torch
 
 from research.fine_vsa.fine_attention import (
-    child_block_mean,
+    fine_block_mean,
     fine_sparse_attention,
 )
 from research.fine_vsa.replay import (
     NATIVE_PARENT_K,
     NOMINAL_KV_TOKENS,
     PARENT_WIDTH,
-    select_children_fixed_tokens,
+)
+from research.fine_vsa.selection import (
+    fine8_metadata,
+    select_fine8_fixed_tokens,
 )
 
 CHILD_WIDTH = 8
@@ -39,29 +42,26 @@ def fine_video_sparse_attn(
     gate_compress: torch.Tensor,
     parent_sizes: torch.Tensor,
 ) -> tuple[torch.Tensor, FineVSADecision]:
-    from fastvideo_kernel.triton_kernels.fused_compress_topk import (
-        fused_block_mean, )
-
-    query_bhsd = query.transpose(1, 2).contiguous()
-    key_bhsd = key.transpose(1, 2).contiguous()
-    value_bhsd = value.transpose(1, 2).contiguous()
-    gate_bhsd = gate_compress.transpose(1, 2).contiguous()
+    query_bhsd = query.transpose(1, 2)
+    key_bhsd = key.transpose(1, 2)
+    value_bhsd = value.transpose(1, 2)
+    gate_bhsd = gate_compress.transpose(1, 2)
     batch, heads, sequence, head_dim = query_bhsd.shape
     parent_blocks = int(parent_sizes.numel())
     if sequence != parent_blocks * PARENT_WIDTH:
         raise ValueError("Fine-VSA requires the native 64-token tiled Wan path")
 
-    query_coarse = fused_block_mean(
+    query_coarse = fine_block_mean(
         query_bhsd,
         parent_sizes,
         PARENT_WIDTH,
     )
-    key_parent = fused_block_mean(
+    key_parent = fine_block_mean(
         key_bhsd,
         parent_sizes,
         PARENT_WIDTH,
     )
-    value_parent = fused_block_mean(
+    value_parent = fine_block_mean(
         value_bhsd,
         parent_sizes,
         PARENT_WIDTH,
@@ -87,26 +87,29 @@ def fine_video_sparse_attn(
     ).indices
     native_actual_kv_tokens = parent_sizes[native_indices].sum(dim=-1)
 
-    child_key, child_sizes = child_block_mean(
-        key_bhsd,
+    metadata = fine8_metadata(
         parent_sizes,
+        child_width=CHILD_WIDTH,
+        parent_width=PARENT_WIDTH,
+    )
+    child_sizes = metadata.child_sizes
+    child_key = fine_block_mean(
+        key_bhsd,
+        child_sizes,
         CHILD_WIDTH,
     )
     child_scores = torch.matmul(
         query_coarse,
         child_key.transpose(-2, -1),
     ) / math.sqrt(head_dim)
-    selected_indices = select_children_fixed_tokens(
+    selected_indices, active_child_count = select_fine8_fixed_tokens(
         child_scores,
-        child_sizes,
+        metadata.valid_child_mask,
+        native_actual_kv_tokens,
         selected_blocks=SELECTED_CHILD_BLOCKS,
-        factor=PARENT_WIDTH // CHILD_WIDTH,
-        parent_scores=parent_scores,
-        parent_pool=None,
-        target_tokens=native_actual_kv_tokens,
         child_width=CHILD_WIDTH,
     )
-    selected_actual_kv_tokens = child_sizes[selected_indices.long()].sum(dim=-1)
+    selected_actual_kv_tokens = active_child_count * CHILD_WIDTH
     exact_output, _ = fine_sparse_attention(
         query_bhsd,
         key_bhsd,
@@ -114,7 +117,7 @@ def fine_video_sparse_attn(
         selected_indices,
         child_sizes,
         child_width=CHILD_WIDTH,
-        selected_counts=(selected_actual_kv_tokens // CHILD_WIDTH),
+        selected_counts=active_child_count,
     )
     output = exact_output + coarse_output * gate_bhsd
     decision = FineVSADecision(
@@ -122,7 +125,7 @@ def fine_video_sparse_attn(
         query_blocks=int(query_coarse.shape[-2]),
         child_width=CHILD_WIDTH,
         selected_child_blocks=SELECTED_CHILD_BLOCKS,
-        active_child_count=selected_actual_kv_tokens // CHILD_WIDTH,
+        active_child_count=active_child_count,
         native_actual_kv_tokens=native_actual_kv_tokens,
         selected_actual_kv_tokens=selected_actual_kv_tokens,
     )
