@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -517,8 +518,14 @@ def run_worker(
     os.environ["CUDA_VISIBLE_DEVICES"] = str(worker_id)
     os.environ.setdefault("HF_HOME", "/mnt/fastvideo-gpu0/hf-cache")
     os.environ.setdefault("HF_HUB_CACHE", "/mnt/fastvideo-gpu0/hf-cache/hub")
-    os.environ.setdefault("TRITON_CACHE_DIR", "/mnt/fastvideo-gpu0/jit-cache/triton")
-    os.environ.setdefault("CUTE_DSL_CACHE_DIR", "/mnt/fastvideo-gpu0/jit-cache/cute")
+    os.environ.setdefault(
+        "TRITON_CACHE_DIR",
+        f"/mnt/fastvideo-gpu0/jit-cache/triton/gpu-{worker_id}",
+    )
+    os.environ.setdefault(
+        "CUTE_DSL_CACHE_DIR",
+        f"/mnt/fastvideo-gpu0/jit-cache/cute/gpu-{worker_id}",
+    )
     conn = connect(db_path)
     generator = None
     loaded_model = None
@@ -559,6 +566,12 @@ def run_worker(
             finish_job(conn, job_id, "ok", str(result_path), None)
         except BaseException as exc:
             error = "".join(traceback.format_exception(exc))
+            if generator is not None:
+                with contextlib.suppress(BaseException):
+                    generator.shutdown()
+                generator = None
+                loaded_model = None
+                warmed = False
             attempts = conn.execute("SELECT attempts FROM jobs WHERE job_id=?", (job_id,)).fetchone()[0]
             if attempts < 2:
                 conn.execute(
