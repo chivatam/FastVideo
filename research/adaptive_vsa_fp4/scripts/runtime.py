@@ -31,6 +31,7 @@ _PATCHED = False
 _ADAPTIVE_POLICY = None
 _RESIDUAL_POLICY = None
 _BR_POLICY = None
+_FINE_NATIVE_VALIDATED = False
 _COMPRESSED_SUPPORT_DETAILED_TRACE = True
 _BR_CANDIDATE_K = (32, 64, 96, 125, 192, 250, 375, 624)
 
@@ -376,12 +377,92 @@ def install_runtime_patches(mode: str) -> None:
         "compressed_halo_vsa",
         "br_vsa_census",
         "br_vsa",
+        "fine_vsa_census",
+        "fine_vsa",
     }:
         from fastvideo.attention.backends.video_sparse_attn import VideoSparseAttentionImpl
 
         original_vsa = VideoSparseAttentionImpl.forward
 
         def vsa_forward(self, query, key, value, gate_compress, attn_metadata):
+            if mode == "fine_vsa":
+                from research.fine_vsa.attention import (
+                    fine_video_sparse_attn,
+                    summarize_fine_vsa_decision,
+                )
+
+                output, decision = _timed_call(
+                    lambda: fine_video_sparse_attn(
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata.variable_block_sizes,
+                    )
+                )
+                decision_summary = summarize_fine_vsa_decision(decision)
+                record_effective_sparsity(
+                    decision_summary["nominal_effective_sparsity"]
+                )
+                if _CAPTURE.job_id is not None:
+                    _CAPTURE.rows.append(
+                        {
+                            "event_type": "fine_vsa_policy",
+                            "job_id": _CAPTURE.job_id,
+                            "prefix": self.prefix,
+                            "layer": _layer_index(self.prefix),
+                            "timestep": int(
+                                attn_metadata.current_timestep
+                            ),
+                            **decision_summary,
+                        }
+                    )
+                return output
+
+            if mode == "fine_vsa_census":
+                global _FINE_NATIVE_VALIDATED
+
+                record_effective_sparsity(attn_metadata.VSA_sparsity)
+                output = _timed_call(
+                    lambda: original_vsa(
+                        self,
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata,
+                    )
+                )
+                if _CAPTURE.job_id is not None:
+                    from research.fine_vsa.replay import replay_fine_vsa
+
+                    replay = replay_fine_vsa(
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata.variable_block_sizes,
+                        attn_metadata.non_pad_index,
+                        validate_native_kernel=not _FINE_NATIVE_VALIDATED,
+                    )
+                    _FINE_NATIVE_VALIDATED = True
+                    timestep = int(attn_metadata.current_timestep)
+                    layer = _layer_index(self.prefix)
+                    common = {
+                        "job_id": _CAPTURE.job_id,
+                        "prefix": self.prefix,
+                        "layer": layer,
+                        "timestep": timestep,
+                        **replay.geometry,
+                    }
+                    for row in (
+                        replay.error_rows
+                        + replay.mass_rows
+                        + replay.kernel_rows
+                    ):
+                        _CAPTURE.rows.append({**common, **row})
+                return output
+
             if mode == "br_vsa":
                 from research.br_vsa.attention import (
                     budget_redistributed_video_sparse_attn,

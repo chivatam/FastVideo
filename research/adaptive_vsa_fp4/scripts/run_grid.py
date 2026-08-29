@@ -21,6 +21,8 @@ MODE_PRECISION = {
     "compressed_halo_vsa": "bf16",
     "br_vsa_census": "bf16",
     "br_vsa": "bf16",
+    "fine_vsa_census": "bf16",
+    "fine_vsa": "bf16",
     "dense_nvfp4_fa4": "nvfp4_qk",
     "sim_vsa_nvfp4": "sim_nvfp4_qk",
 }
@@ -80,7 +82,15 @@ def prepare_jobs(args: argparse.Namespace) -> int:
             else [args.ra_native_sparsity]
             if mode == "ra_vsa"
             else [0.8]
-            if mode in {"rectified_vsa", "compressed_halo_vsa", "br_vsa_census", "br_vsa"}
+            if mode
+            in {
+                "rectified_vsa",
+                "compressed_halo_vsa",
+                "br_vsa_census",
+                "br_vsa",
+                "fine_vsa_census",
+                "fine_vsa",
+            }
             else _mode_sparsities(
                 mode,
                 args.sparsities,

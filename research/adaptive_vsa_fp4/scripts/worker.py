@@ -293,6 +293,8 @@ def _configure_mode(mode: str) -> None:
         "compressed_halo_vsa",
         "br_vsa_census",
         "br_vsa",
+        "fine_vsa_census",
+        "fine_vsa",
     }:
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "VIDEO_SPARSE_ATTN"
         os.environ["FASTVIDEO_VSA_SM100A"] = "1"
@@ -440,7 +442,11 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
     attention_ms = float(capture["attention_ms"])
     stats_rows = capture["stats_rows"]
     effective_sparsities = [float(value) for value in capture["effective_sparsities"]]
-    if mode in {"vsa_bf16", "sim_vsa_nvfp4"} and effective_sparsities != [sparsity]:
+    if mode in {
+        "vsa_bf16",
+        "sim_vsa_nvfp4",
+        "fine_vsa_census",
+    } and effective_sparsities != [sparsity]:
         raise RuntimeError(f"Requested VSA sparsity {sparsity}, attention metadata observed {effective_sparsities!r}.")
     adaptive_rows = [row for row in stats_rows if row.get("event_type") == "adaptive_policy"]
     if mode == "adaptive_vsa" and not adaptive_rows:
@@ -473,6 +479,77 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
     ]
     if invalid_census_k:
         raise RuntimeError(f"BR-VSA census violated exact K: {invalid_census_k[:3]!r}")
+    fine_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "fine_vsa_error"
+    ]
+    fine_mass_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "native_block_internal_mass"
+    ]
+    fine_kernel_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "fine_vsa_kernel_validation"
+    ]
+    if mode == "fine_vsa_census":
+        if not fine_rows or not fine_mass_rows or not fine_kernel_rows:
+            raise RuntimeError(
+                "Fine-VSA census did not produce error, mass, and kernel "
+                "validation traces"
+            )
+        invalid_fine_budget = [
+            row
+            for row in fine_rows
+            if (
+                abs(float(row["nominal_pair_budget_ratio"]) - 1.0) > 1e-9
+                or abs(float(row["actual_pair_budget_ratio"]) - 1.0) > 1e-6
+            )
+        ]
+        if invalid_fine_budget:
+            raise RuntimeError(
+                "Fine-VSA violated the fixed nominal pair budget: "
+                f"{invalid_fine_budget[:3]!r}"
+            )
+        invalid_kernel = [
+            row
+            for row in fine_kernel_rows
+            if (
+                not bool(row["finite"])
+                or float(row["relative_L2"]) > 0.01
+            )
+        ]
+        if invalid_kernel:
+            raise RuntimeError(
+                "Fine-VSA kernel failed native-path validation: "
+                f"{invalid_kernel[:3]!r}"
+            )
+    fine_policy_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "fine_vsa_policy"
+    ]
+    if mode == "fine_vsa":
+        if not fine_policy_rows:
+            raise RuntimeError("Fine-VSA produced no fixed-policy traces")
+        invalid_fine_policy = [
+            row
+            for row in fine_policy_rows
+            if (
+                int(row["child_width"]) != 8
+                or int(row["selected_child_blocks"]) != 1000
+                or abs(float(row["nominal_pair_budget_ratio"]) - 1.0)
+                > 1e-9
+                or int(row["actual_kv_token_error_abs_max"]) != 0
+            )
+        ]
+        if invalid_fine_policy:
+            raise RuntimeError(
+                "Fine-VSA violated the frozen fixed-budget policy: "
+                f"{invalid_fine_policy[:3]!r}"
+            )
     br_rows = [row for row in stats_rows if row.get("event_type") == "br_vsa_policy"]
     if mode == "br_vsa" and not br_rows:
         raise RuntimeError("BR-VSA produced no fixed-policy trace rows")
