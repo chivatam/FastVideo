@@ -30,6 +30,9 @@ class CompressedSupportDecision:
     omitted_mass_mean: torch.Tensor | None = None
     gate_abs_mean: torch.Tensor | None = None
     gate_rms: torch.Tensor | None = None
+    coarse_score_abs_max: torch.Tensor | None = None
+    coarse_score_range_max: torch.Tensor | None = None
+    coarse_score_nonfinite_count: torch.Tensor | None = None
     correction_abs_mean: torch.Tensor | None = None
     correction_rms: torch.Tensor | None = None
     correction_relative_l2: torch.Tensor | None = None
@@ -58,6 +61,29 @@ def _sample_quantiles(
         torch.tensor([0.1, 0.5, 0.9], device=flat.device),
     )
     return quantiles[0], quantiles[1], quantiles[2]
+
+
+def rank_normalized_topk_mask(
+    scores: torch.Tensor,
+    topk: int,
+) -> torch.Tensor:
+    """Run the native fused selector after a rank-preserving affine map.
+
+    The fused selector uses fp32 bisection. Large row ranges can make the
+    bisection threshold land just below the K-th bf16 value, selecting K+1
+    entries. Mapping each row to [-1, 0] preserves ordering and exact ties
+    while keeping the numerical search range bounded.
+    """
+    from fastvideo_kernel.triton_kernels.fused_compress_topk import (
+        fused_topk_mask,
+    )
+
+    scores_float = scores.float()
+    row_max = scores_float.amax(dim=-1, keepdim=True)
+    row_min = scores_float.amin(dim=-1, keepdim=True)
+    row_span = (row_max - row_min).clamp_min(torch.finfo(torch.float32).tiny)
+    normalized_scores = (scores_float - row_max) / row_span
+    return fused_topk_mask(normalized_scores, topk)
 
 
 def rectified_output(
@@ -349,7 +375,6 @@ def compressed_support_video_sparse_attn(
     from fastvideo_kernel.block_sparse_attn import block_sparse_attn
     from fastvideo_kernel.triton_kernels.fused_compress_topk import (
         fused_block_mean,
-        fused_topk_mask,
     )
 
     query_bhsd = query.transpose(1, 2).contiguous()
@@ -408,13 +433,9 @@ def compressed_support_video_sparse_attn(
     coarse_events[1].record()
 
     selector_events[0].record()
-    native_mask = fused_topk_mask(coarse_scores, exact_k)
+    native_mask = rank_normalized_topk_mask(coarse_scores, exact_k)
     selected_counts = native_mask.sum(dim=-1)
     selector_events[1].record()
-    torch._assert_async(
-        (selected_counts == exact_k).all(),
-        "Native VSA Top-K did not select exactly K blocks",
-    )
 
     fine_events[0].record()
     exact_output, exact_lse = block_sparse_attn(
@@ -517,6 +538,15 @@ def compressed_support_video_sparse_attn(
         decision.omitted_mass_mean = 1.0 - retained_mean
         decision.gate_abs_mean = gate_bhsd.float().abs().mean()
         decision.gate_rms = gate_bhsd.float().square().mean().sqrt()
+        coarse_scores_float = coarse_scores.float()
+        decision.coarse_score_abs_max = coarse_scores_float.abs().max()
+        decision.coarse_score_range_max = (
+            coarse_scores_float.max(dim=-1).values
+            - coarse_scores_float.min(dim=-1).values
+        ).max()
+        decision.coarse_score_nonfinite_count = (
+            ~torch.isfinite(coarse_scores_float)
+        ).sum()
         correction_float = correction.float()
         native_float = native_output.float()
         contribution_float = contribution.float()
@@ -557,6 +587,13 @@ def summarize_compressed_support_decision(
         "omitted_mass_mean": scalar(decision.omitted_mass_mean),
         "gate_abs_mean": scalar(decision.gate_abs_mean),
         "gate_rms": scalar(decision.gate_rms),
+        "coarse_score_abs_max": scalar(decision.coarse_score_abs_max),
+        "coarse_score_range_max": scalar(decision.coarse_score_range_max),
+        "coarse_score_nonfinite_count": (
+            None
+            if decision.coarse_score_nonfinite_count is None
+            else int(decision.coarse_score_nonfinite_count.item())
+        ),
         "correction_abs_mean": scalar(decision.correction_abs_mean),
         "correction_rms": scalar(decision.correction_rms),
         "correction_relative_l2": scalar(decision.correction_relative_l2),

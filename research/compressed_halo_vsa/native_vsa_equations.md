@@ -68,6 +68,15 @@ The exact block set is:
 S_i = TopK(C[i,:], K=125)
 ```
 
+FastVideo's fused Top-K kernel finds its threshold with fp32 bisection. On
+real checkpoint rows with coarse-score ranges above 100, the unbounded
+search can place the threshold just below the K-th bf16 value and emit 126
+blocks. The experiment applies a per-row affine map to `[-1, 0]` before the
+same fused selector. This map preserves ordering and exact ties, changes no
+Top-K IDs, and makes the implemented mask match the intended `K=125`
+semantics exactly. The stabilized selector was verified against
+`torch.topk` and all runtime rows are asserted at job completion.
+
 The sparse kernel then computes fine-token attention only over tokens whose
 coarse KV block is in `S_i`:
 

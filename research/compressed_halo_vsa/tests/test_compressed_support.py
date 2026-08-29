@@ -8,6 +8,7 @@ import torch
 from research.compressed_halo_vsa.compressed_support import (
     compressed_halo_attention,
     merge_online_outputs,
+    rank_normalized_topk_mask,
     rectified_output,
 )
 
@@ -70,6 +71,34 @@ def test_online_merge_matches_concatenated_softmax() -> None:
         atol=1e-6,
         rtol=1e-6,
     )
+
+
+@pytest.mark.cuda
+def test_rank_normalized_topk_is_exact_and_order_preserving() -> None:
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA is required")
+    torch.manual_seed(11)
+    scores = torch.randn(
+        1,
+        2,
+        32,
+        624,
+        device="cuda",
+        dtype=torch.bfloat16,
+    )
+    scores[..., 0] = 21.0
+    scores[..., 1] = -12.0
+    topk = 125
+
+    mask = rank_normalized_topk_mask(scores, topk)
+    reference_indices = torch.topk(scores, topk, dim=-1).indices
+    reference_mask = torch.zeros_like(
+        scores,
+        dtype=torch.bool,
+    ).scatter_(-1, reference_indices, True)
+
+    assert torch.equal(mask.sum(dim=-1), torch.full_like(mask.sum(dim=-1), topk))
+    assert torch.equal(mask, reference_mask)
 
 
 @pytest.mark.cuda
