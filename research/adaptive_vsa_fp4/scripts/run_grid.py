@@ -15,6 +15,7 @@ DEFAULT_ARTIFACT_ROOT = Path("artifacts/adaptive_vsa_fp4")
 MODE_PRECISION = {
     "dense_bf16_fa4": "bf16",
     "vsa_bf16": "bf16",
+    "adaptive_vsa": "bf16",
     "dense_nvfp4_fa4": "nvfp4_qk",
     "sim_vsa_nvfp4": "sim_nvfp4_qk",
 }
@@ -51,7 +52,10 @@ def _init_db(path: Path) -> sqlite3.Connection:
     return conn
 
 
-def _mode_sparsities(mode: str, values: list[float]) -> list[float]:
+def _mode_sparsities(
+    mode: str,
+    values: list[float],
+) -> list[float]:
     return [0.0] if mode.startswith("dense_") else values
 
 
@@ -65,7 +69,15 @@ def prepare_jobs(args: argparse.Namespace) -> int:
     ordinal = conn.execute("SELECT COALESCE(MAX(ordinal), -1) + 1 FROM jobs").fetchone()[0]
     created = 0
     for mode in args.modes:
-        for sparsity in _mode_sparsities(mode, args.sparsities):
+        sparsities = (
+            [args.adaptive_floor_sparsity]
+            if mode == "adaptive_vsa"
+            else _mode_sparsities(
+                mode,
+                args.sparsities,
+            )
+        )
+        for sparsity in sparsities:
             for prompt in prompts:
                 payload: dict[str, Any] = {
                     "phase": args.phase,
@@ -77,6 +89,24 @@ def prepare_jobs(args: argparse.Namespace) -> int:
                     "sparsity": sparsity,
                     "topk": None,
                     "precision": MODE_PRECISION[mode],
+                    "adaptive_p": (
+                        args.adaptive_p if mode == "adaptive_vsa" else None
+                    ),
+                    "adaptive_floor_sparsity": (
+                        args.adaptive_floor_sparsity
+                        if mode == "adaptive_vsa"
+                        else None
+                    ),
+                    "adaptive_candidate_sparsities": (
+                        args.adaptive_candidate_sparsities
+                        if mode == "adaptive_vsa"
+                        else None
+                    ),
+                    "adaptive_native_sparsity": (
+                        args.adaptive_native_sparsity
+                        if mode == "adaptive_vsa"
+                        else None
+                    ),
                     "height": args.height,
                     "width": args.width,
                     "frames": args.frames,
@@ -182,6 +212,15 @@ def main() -> None:
         choices=MODE_PRECISION,
     )
     parser.add_argument("--sparsities", type=float, nargs="+", default=[0.0, 0.2, 0.4, 0.6, 0.7, 0.8])
+    parser.add_argument("--adaptive-p", type=float, default=0.97)
+    parser.add_argument("--adaptive-floor-sparsity", type=float, default=0.8)
+    parser.add_argument("--adaptive-native-sparsity", type=float, default=0.8)
+    parser.add_argument(
+        "--adaptive-candidate-sparsities",
+        type=float,
+        nargs="+",
+        default=[0.8, 0.7, 0.6, 0.4, 0.0],
+    )
     parser.add_argument("--limit", type=int)
     parser.add_argument("--seed", type=int, default=1024)
     parser.add_argument("--height", type=int, default=480)

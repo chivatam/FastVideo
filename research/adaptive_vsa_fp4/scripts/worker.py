@@ -26,31 +26,85 @@ def _rpc_begin_capture(
     job_id: str,
     mode: str,
     sparsity: float,
+    adaptive_p: float | None = None,
+    adaptive_floor_sparsity: float | None = None,
+    adaptive_candidate_sparsities: list[float] | None = None,
+    adaptive_native_sparsity: float | None = None,
 ) -> dict[str, Any]:
     import torch
 
-    from research.adaptive_vsa_fp4.scripts.runtime import begin_job, install_runtime_patches
+    from research.adaptive_vsa_fp4.scripts.runtime import (
+        begin_job,
+        configure_adaptive_policy,
+        install_runtime_patches,
+    )
 
     install_runtime_patches(mode)
     worker.fastvideo_args.VSA_sparsity = float(sparsity)
+    policy = None
+    if mode == "adaptive_vsa":
+        if adaptive_p is None or adaptive_floor_sparsity is None:
+            raise ValueError("Adaptive VSA requires p and floor sparsity")
+        policy = configure_adaptive_policy(
+            retained_mass_threshold=float(adaptive_p),
+            maximum_sparsity=float(adaptive_floor_sparsity),
+            candidate_sparsities=tuple(
+                adaptive_candidate_sparsities or [0.8, 0.7, 0.6, 0.4, 0.0]
+            ),
+            native_sparsity=float(
+                adaptive_native_sparsity
+                if adaptive_native_sparsity is not None
+                else adaptive_floor_sparsity
+            ),
+        )
     begin_job(job_id)
     torch.cuda.reset_peak_memory_stats()
     return {
         "status": "capture_started",
         "rank": worker.rpc_rank,
         "effective_sparsity": float(worker.fastvideo_args.VSA_sparsity),
+        "adaptive_policy": policy,
     }
 
 
-def _rpc_prepare_runtime(worker: Any, *, mode: str, sparsity: float) -> dict[str, Any]:
-    from research.adaptive_vsa_fp4.scripts.runtime import install_runtime_patches
+def _rpc_prepare_runtime(
+    worker: Any,
+    *,
+    mode: str,
+    sparsity: float,
+    adaptive_p: float | None = None,
+    adaptive_floor_sparsity: float | None = None,
+    adaptive_candidate_sparsities: list[float] | None = None,
+    adaptive_native_sparsity: float | None = None,
+) -> dict[str, Any]:
+    from research.adaptive_vsa_fp4.scripts.runtime import (
+        configure_adaptive_policy,
+        install_runtime_patches,
+    )
 
     install_runtime_patches(mode)
     worker.fastvideo_args.VSA_sparsity = float(sparsity)
+    policy = None
+    if mode == "adaptive_vsa":
+        if adaptive_p is None or adaptive_floor_sparsity is None:
+            raise ValueError("Adaptive VSA requires p and floor sparsity")
+        policy = configure_adaptive_policy(
+            retained_mass_threshold=float(adaptive_p),
+            maximum_sparsity=float(adaptive_floor_sparsity),
+            candidate_sparsities=tuple(
+                adaptive_candidate_sparsities or [0.8, 0.7, 0.6, 0.4, 0.0]
+            ),
+            native_sparsity=float(
+                adaptive_native_sparsity
+                if adaptive_native_sparsity is not None
+                else adaptive_floor_sparsity
+            ),
+        )
     return {
         "status": "runtime_prepared",
         "rank": worker.rpc_rank,
         "effective_sparsity": float(worker.fastvideo_args.VSA_sparsity),
+        "adaptive_policy": policy,
     }
 
 
@@ -159,7 +213,7 @@ def _configure_mode(mode: str) -> None:
     os.environ["FASTVIDEO_FA4"] = "1"
     os.environ["FASTVIDEO_STAGE_LOGGING"] = "1"
     os.environ["CUTE_DSL_ENABLE_TVM_FFI"] = "1"
-    if mode in {"vsa_bf16", "sim_vsa_nvfp4"}:
+    if mode in {"vsa_bf16", "sim_vsa_nvfp4", "adaptive_vsa"}:
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "VIDEO_SPARSE_ATTN"
         os.environ["FASTVIDEO_VSA_SM100A"] = "1"
         os.environ["FASTVIDEO_NVFP4_FA4"] = "0"
@@ -206,7 +260,20 @@ def _warm_generator(generator: Any, payload: dict[str, Any], mode: str) -> None:
     generator.fastvideo_args.VSA_sparsity = sparsity
     prepared = generator.executor.collective_rpc(
         _rpc_prepare_runtime,
-        kwargs={"mode": mode, "sparsity": sparsity},
+        kwargs={
+            "mode": mode,
+            "sparsity": sparsity,
+            "adaptive_p": payload.get("adaptive_p"),
+            "adaptive_floor_sparsity": payload.get(
+                "adaptive_floor_sparsity"
+            ),
+            "adaptive_candidate_sparsities": payload.get(
+                "adaptive_candidate_sparsities"
+            ),
+            "adaptive_native_sparsity": payload.get(
+                "adaptive_native_sparsity"
+            ),
+        },
     )
     _validate_effective_sparsity(prepared, sparsity, "runtime_prepared")
     generator.generate_video(
@@ -231,7 +298,21 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     capture_start = generator.executor.collective_rpc(
         _rpc_begin_capture,
-        kwargs={"job_id": job_id, "mode": mode, "sparsity": sparsity},
+        kwargs={
+            "job_id": job_id,
+            "mode": mode,
+            "sparsity": sparsity,
+            "adaptive_p": payload.get("adaptive_p"),
+            "adaptive_floor_sparsity": payload.get(
+                "adaptive_floor_sparsity"
+            ),
+            "adaptive_candidate_sparsities": payload.get(
+                "adaptive_candidate_sparsities"
+            ),
+            "adaptive_native_sparsity": payload.get(
+                "adaptive_native_sparsity"
+            ),
+        },
     )
     _validate_effective_sparsity(capture_start, sparsity, "capture_started")
     start = time.perf_counter()
@@ -259,6 +340,25 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         raise RuntimeError(
             f"Requested VSA sparsity {sparsity}, attention metadata observed {effective_sparsities!r}."
         )
+    adaptive_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "adaptive_policy"
+    ]
+    if mode == "adaptive_vsa" and not adaptive_rows:
+        raise RuntimeError("Adaptive VSA produced no policy trace rows")
+    if adaptive_rows:
+        total_rows = sum(int(row["num_query_rows"]) for row in adaptive_rows)
+        effective_sparsity = sum(
+            float(row["effective_sparsity"]) * int(row["num_query_rows"])
+            for row in adaptive_rows
+        ) / total_rows
+    else:
+        effective_sparsity = (
+            effective_sparsities[0]
+            if len(effective_sparsities) == 1
+            else (0.0 if mode.startswith("dense_") else None)
+        )
     component = _extract_component_times(result)
     stats_path = Path(payload["stats_path"])
     written_stats = write_stats(stats_rows, stats_path)
@@ -272,11 +372,7 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "prompt": payload["prompt"],
         "seed": payload["seed"],
         "sparsity": payload["sparsity"],
-        "effective_sparsity": (
-            effective_sparsities[0]
-            if len(effective_sparsities) == 1
-            else (0.0 if mode.startswith("dense_") else None)
-        ),
+        "effective_sparsity": effective_sparsity,
         "topk": payload.get("topk"),
         "precision": payload["precision"],
         "resolution": f"{payload['height']}x{payload['width']}",
@@ -285,6 +381,16 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "cfg": payload["cfg"],
         "attention_backend": os.environ["FASTVIDEO_ATTENTION_BACKEND"],
         "kernel_path": mode,
+        "adaptive_p": payload.get("adaptive_p"),
+        "adaptive_floor_sparsity": payload.get(
+            "adaptive_floor_sparsity"
+        ),
+        "adaptive_candidate_sparsities": payload.get(
+            "adaptive_candidate_sparsities"
+        ),
+        "adaptive_native_sparsity": payload.get(
+            "adaptive_native_sparsity"
+        ),
         "gpu_id": worker_id,
         "warm": True,
         "wall_ms": wall_ms,

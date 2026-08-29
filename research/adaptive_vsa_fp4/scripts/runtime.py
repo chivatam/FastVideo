@@ -24,6 +24,28 @@ class RuntimeCapture:
 
 _CAPTURE = RuntimeCapture()
 _PATCHED = False
+_ADAPTIVE_POLICY = None
+
+
+def configure_adaptive_policy(
+    *,
+    retained_mass_threshold: float,
+    maximum_sparsity: float,
+    candidate_sparsities: tuple[float, ...] = (0.8, 0.7, 0.6, 0.4, 0.0),
+    native_sparsity: float = 0.8,
+) -> dict[str, Any]:
+    global _ADAPTIVE_POLICY
+    from research.adaptive_vsa_deadline.adaptive_attention import (
+        AdaptiveVSAPolicy,
+    )
+
+    _ADAPTIVE_POLICY = AdaptiveVSAPolicy(
+        retained_mass_threshold=retained_mass_threshold,
+        maximum_sparsity=maximum_sparsity,
+        candidate_sparsities=candidate_sparsities,
+        native_sparsity=native_sparsity,
+    )
+    return _ADAPTIVE_POLICY.as_dict()
 
 
 def begin_job(job_id: str) -> None:
@@ -196,12 +218,51 @@ def install_runtime_patches(mode: str) -> None:
         return
     _PATCHED = True
 
-    if mode in {"vsa_bf16", "sim_vsa_nvfp4"}:
+    if mode in {"vsa_bf16", "sim_vsa_nvfp4", "adaptive_vsa"}:
         from fastvideo.attention.backends.video_sparse_attn import VideoSparseAttentionImpl
 
         original_vsa = VideoSparseAttentionImpl.forward
 
         def vsa_forward(self, query, key, value, gate_compress, attn_metadata):
+            if mode == "adaptive_vsa":
+                from research.adaptive_vsa_deadline.adaptive_attention import (
+                    adaptive_video_sparse_attn,
+                    summarize_decision,
+                )
+
+                if _ADAPTIVE_POLICY is None:
+                    raise RuntimeError(
+                        "Adaptive VSA policy was not configured before generation"
+                    )
+
+                output, decision = _timed_call(
+                    lambda: adaptive_video_sparse_attn(
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata.variable_block_sizes,
+                        _ADAPTIVE_POLICY,
+                    )
+                )
+                decision_summary = summarize_decision(decision)
+                record_effective_sparsity(
+                    decision_summary["effective_sparsity"]
+                )
+                if _CAPTURE.job_id is not None:
+                    _CAPTURE.rows.append(
+                        {
+                            "event_type": "adaptive_policy",
+                            "job_id": _CAPTURE.job_id,
+                            "prefix": self.prefix,
+                            "layer": _layer_index(self.prefix),
+                            "timestep": int(attn_metadata.current_timestep),
+                            **_ADAPTIVE_POLICY.as_dict(),
+                            **decision_summary,
+                        }
+                    )
+                return output
+
             record_effective_sparsity(attn_metadata.VSA_sparsity)
             runtime_query = query
             runtime_key = key
