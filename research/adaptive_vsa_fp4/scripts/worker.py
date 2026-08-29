@@ -299,6 +299,7 @@ def _configure_mode(mode: str) -> None:
         "anchored_fine_vsa25",
         "anchored_fine_vsa50",
         "hierarchical_vsa_census",
+        "cluster_vsa_census",
     }:
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "VIDEO_SPARSE_ATTN"
         os.environ["FASTVIDEO_VSA_SM100A"] = "1"
@@ -452,6 +453,7 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "fine_vsa_census",
         "anchored_fine_vsa_census",
         "hierarchical_vsa_census",
+        "cluster_vsa_census",
     } and effective_sparsities != [sparsity]:
         raise RuntimeError(f"Requested VSA sparsity {sparsity}, attention metadata observed {effective_sparsities!r}.")
     adaptive_rows = [row for row in stats_rows if row.get("event_type") == "adaptive_policy"]
@@ -658,6 +660,74 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
             raise RuntimeError(
                 "Hierarchical VSA exceeded native pair support: "
                 f"{invalid_hierarchical_budget[:3]!r}"
+            )
+    cluster_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "cluster_vsa_error"
+    ]
+    cluster_coherence = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "cluster_block_coherence"
+    ]
+    cluster_alignment = [
+        row
+        for row in stats_rows
+        if row.get("event_type")
+        == "cluster_coarse_true_mass_alignment"
+    ]
+    cluster_internal_mass = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "cluster_internal_mass"
+    ]
+    cluster_benchmarks = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "cluster_vsa_benchmark"
+    ]
+    cluster_assignments = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "cluster_assignment"
+    ]
+    if mode == "cluster_vsa_census":
+        if (
+            not cluster_rows
+            or not cluster_coherence
+            or not cluster_alignment
+            or not cluster_internal_mass
+            or not cluster_benchmarks
+            or not cluster_assignments
+        ):
+            raise RuntimeError(
+                "Cluster-VSA census produced incomplete traces"
+            )
+        variants = {row["variant"] for row in cluster_rows}
+        if variants != {
+            "native64_spatial",
+            "fine8_spatial",
+            "k_head_pca64",
+            "k_shared_pca64",
+        }:
+            raise RuntimeError(
+                f"Cluster-VSA census variants are incomplete: {variants!r}"
+            )
+        invalid_cluster_budget = [
+            row
+            for row in cluster_rows
+            if (
+                abs(float(row["nominal_pair_budget_ratio"]) - 1.0)
+                > 1e-9
+                or abs(float(row["actual_pair_budget_ratio"]) - 1.0)
+                > 1e-6
+            )
+        ]
+        if invalid_cluster_budget:
+            raise RuntimeError(
+                "Cluster-VSA violated native exact-pair accounting: "
+                f"{invalid_cluster_budget[:3]!r}"
             )
     br_rows = [row for row in stats_rows if row.get("event_type") == "br_vsa_policy"]
     if mode == "br_vsa" and not br_rows:

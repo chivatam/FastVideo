@@ -383,12 +383,61 @@ def install_runtime_patches(mode: str) -> None:
         "anchored_fine_vsa25",
         "anchored_fine_vsa50",
         "hierarchical_vsa_census",
+        "cluster_vsa_census",
     }:
         from fastvideo.attention.backends.video_sparse_attn import VideoSparseAttentionImpl
 
         original_vsa = VideoSparseAttentionImpl.forward
 
         def vsa_forward(self, query, key, value, gate_compress, attn_metadata):
+            if mode == "cluster_vsa_census":
+                record_effective_sparsity(attn_metadata.VSA_sparsity)
+                output = _timed_call(
+                    lambda: original_vsa(
+                        self,
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata,
+                    )
+                )
+                if _CAPTURE.job_id is not None:
+                    from research.cluster_vsa.replay import (
+                        replay_cluster_vsa,
+                    )
+
+                    capture_assignments = not any(
+                        row.get("event_type") == "cluster_assignment"
+                        for row in _CAPTURE.rows
+                    )
+                    replay = replay_cluster_vsa(
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata.variable_block_sizes,
+                        attn_metadata.non_pad_index,
+                        capture_assignments=capture_assignments,
+                    )
+                    common = {
+                        "job_id": _CAPTURE.job_id,
+                        "prefix": self.prefix,
+                        "layer": _layer_index(self.prefix),
+                        "timestep": int(
+                            attn_metadata.current_timestep
+                        ),
+                        **replay.geometry,
+                    }
+                    for row in (
+                        replay.error_rows
+                        + replay.analysis_rows
+                        + replay.benchmark_rows
+                        + replay.assignment_rows
+                    ):
+                        _CAPTURE.rows.append({**common, **row})
+                return output
+
             if mode == "hierarchical_vsa_census":
                 record_effective_sparsity(attn_metadata.VSA_sparsity)
                 output = _timed_call(
