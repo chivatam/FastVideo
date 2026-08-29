@@ -59,3 +59,33 @@ def test_pooled_key_heterogeneity_detects_cancellation() -> None:
 
     assert cancelled_risk.item() > coherent_risk.item()
 
+
+def test_forced_replacement_is_disjoint_from_entire_native_topk() -> None:
+    scores = torch.tensor(
+        [[[[10.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0]]]]
+    )
+    probabilities = torch.softmax(scores, dim=-1)
+    key_coarse = torch.ones(1, 1, 8, 4)
+    key_coarse[..., 6:, :] = 0.0
+    policy = ResidualAwareVSAPolicy(
+        native_fraction=0.5,
+        native_sparsity=0.5,
+        force_outside_native=True,
+    )
+
+    mask, decision = select_residual_mask(
+        scores,
+        probabilities,
+        key_coarse,
+        policy,
+    )
+
+    native = torch.zeros_like(mask)
+    native[..., :4] = True
+    rescue = mask & ~native
+    assert mask.sum().item() == 4
+    assert rescue.sum().item() == 2
+    assert not (rescue & native).any()
+    assert decision.replacement_count_min.item() == 2
+    assert decision.replacement_count_max.item() == 2
+    assert decision.replacement_fraction_mean.item() == 0.5

@@ -62,6 +62,7 @@ def configure_residual_policy(
     risk_formula: str = "coarse_mass_x_key_heterogeneity",
     instrument_splits: tuple[float, ...] = (),
     detailed_trace: bool = True,
+    force_outside_native: bool = False,
 ) -> dict[str, Any]:
     global _RESIDUAL_POLICY
     from research.ra_vsa_deadline.residual_attention import (
@@ -74,6 +75,7 @@ def configure_residual_policy(
         risk_formula=risk_formula,
         instrument_splits=instrument_splits,
         detailed_trace=detailed_trace,
+        force_outside_native=force_outside_native,
     )
     return _RESIDUAL_POLICY.as_dict()
 

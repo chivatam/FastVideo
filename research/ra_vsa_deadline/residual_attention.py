@@ -16,6 +16,7 @@ class ResidualAwareVSAPolicy:
     risk_formula: str = "coarse_mass_x_key_heterogeneity"
     instrument_splits: tuple[float, ...] = ()
     detailed_trace: bool = True
+    force_outside_native: bool = False
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.native_fraction <= 1.0:
@@ -52,6 +53,7 @@ class ResidualAwareVSAPolicy:
             "risk_formula": self.risk_formula,
             "instrument_splits": list(self.instrument_splits),
             "detailed_trace": self.detailed_trace,
+            "force_outside_native": self.force_outside_native,
         }
 
 
@@ -67,6 +69,11 @@ class ResidualDecision:
     replacement_fraction_mean: torch.Tensor
     replacement_fraction_min: torch.Tensor
     replacement_fraction_max: torch.Tensor
+    replacement_count_min: torch.Tensor
+    replacement_count_max: torch.Tensor
+    mask_jaccard_mean: torch.Tensor
+    mask_jaccard_min: torch.Tensor
+    mask_jaccard_max: torch.Tensor
     key_heterogeneity_mean: torch.Tensor
     key_heterogeneity_p50: torch.Tensor
     key_heterogeneity_p90: torch.Tensor
@@ -87,6 +94,8 @@ class ResidualDecision:
     example_key_heterogeneity: torch.Tensor | None = None
     coarse_events: tuple[torch.cuda.Event, torch.cuda.Event] | None = None
     selector_events: tuple[torch.cuda.Event, torch.cuda.Event] | None = None
+    heterogeneity_events: tuple[torch.cuda.Event, torch.cuda.Event] | None = None
+    rescue_selection_events: tuple[torch.cuda.Event, torch.cuda.Event] | None = None
     fine_events: tuple[torch.cuda.Event, torch.cuda.Event] | None = None
 
 
@@ -236,6 +245,9 @@ def _select_once(
     risk: torch.Tensor,
     total_slots: int,
     native_fraction: float,
+    *,
+    force_outside_native: bool = False,
+    full_native_mask: torch.Tensor | None = None,
 ) -> torch.Tensor:
     rescue_slots = min(
         total_slots,
@@ -245,7 +257,16 @@ def _select_once(
     native_mask = _topk_mask(scores, native_slots)
     if rescue_slots == 0:
         return native_mask
-    rescue_scores = risk.masked_fill(native_mask, float("-inf"))
+    if force_outside_native:
+        if full_native_mask is None:
+            full_native_mask = _topk_mask(scores, total_slots)
+        rescue_exclusion = full_native_mask
+    else:
+        rescue_exclusion = native_mask
+    rescue_scores = risk.masked_fill(
+        rescue_exclusion,
+        float("-inf"),
+    )
     rescue_mask = _topk_mask(rescue_scores, rescue_slots)
     return native_mask | rescue_mask
 
@@ -260,6 +281,7 @@ def select_residual_mask(
     key_bhsd: torch.Tensor | None = None,
     variable_block_sizes: torch.Tensor | None = None,
     block_elements: int = 64,
+    key_heterogeneity: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, ResidualDecision]:
     if scores.ndim != 4:
         raise ValueError(
@@ -267,36 +289,45 @@ def select_residual_mask(
         )
     num_blocks = scores.shape[-1]
     total_slots, native_slots, rescue_slots = policy.slots(num_blocks)
-    key_heterogeneity = key_heterogeneity_from_pooled(
-        key_coarse,
-        key_bhsd=key_bhsd,
-        variable_block_sizes=variable_block_sizes,
-        block_elements=block_elements,
-    )
+    if key_heterogeneity is None:
+        key_heterogeneity = key_heterogeneity_from_pooled(
+            key_coarse,
+            key_bhsd=key_bhsd,
+            variable_block_sizes=variable_block_sizes,
+            block_elements=block_elements,
+        )
     risk = coarse_attention * key_heterogeneity[:, None, None, :].to(
         coarse_attention.dtype
     )
 
+    needs_comparison = (
+        policy.force_outside_native
+        or policy.detailed_trace
+        or bool(policy.instrument_splits)
+    )
+    full_native_mask = (
+        _topk_mask(scores, total_slots)
+        if needs_comparison
+        else None
+    )
     final_mask = _select_once(
         scores,
         risk,
         total_slots,
         policy.native_fraction,
+        force_outside_native=policy.force_outside_native,
+        full_native_mask=full_native_mask,
     )
     selected_counts = final_mask.sum(dim=-1)
-    needs_comparison = policy.detailed_trace or bool(
-        policy.instrument_splits
-    )
     if needs_comparison:
-        full_native_mask = (
-            final_mask
-            if policy.native_fraction == 1.0
-            else _topk_mask(scores, total_slots)
-        )
+        assert full_native_mask is not None
         overlap = (final_mask & full_native_mask).sum(dim=-1)
-        replacement_fraction = (
-            (total_slots - overlap).float() / float(total_slots)
+        replacement_count = total_slots - overlap
+        replacement_fraction = replacement_count.float() / float(
+            total_slots
         )
+        union_count = 2 * total_slots - overlap
+        mask_jaccard = overlap.float() / union_count.float()
         uk_p50, uk_p90 = _sample_quantiles(key_heterogeneity)
         risk_p50, risk_p90 = _sample_quantiles(risk)
     else:
@@ -308,6 +339,13 @@ def select_residual_mask(
             dtype=torch.float32,
         )
         replacement_fraction = nan
+        replacement_count = torch.full(
+            (),
+            -1,
+            device=scores.device,
+            dtype=torch.long,
+        )
+        mask_jaccard = nan
         uk_p50 = uk_p90 = risk_p50 = risk_p90 = nan
     decision = ResidualDecision(
         num_blocks=num_blocks,
@@ -320,6 +358,11 @@ def select_residual_mask(
         replacement_fraction_mean=replacement_fraction.mean(),
         replacement_fraction_min=replacement_fraction.min(),
         replacement_fraction_max=replacement_fraction.max(),
+        replacement_count_min=replacement_count.min(),
+        replacement_count_max=replacement_count.max(),
+        mask_jaccard_mean=mask_jaccard.mean(),
+        mask_jaccard_min=mask_jaccard.min(),
+        mask_jaccard_max=mask_jaccard.max(),
         key_heterogeneity_mean=key_heterogeneity.mean(),
         key_heterogeneity_p50=uk_p50,
         key_heterogeneity_p90=uk_p90,
@@ -413,6 +456,10 @@ def residual_aware_video_sparse_attn(
     coarse_end = torch.cuda.Event(enable_timing=True)
     selector_start = torch.cuda.Event(enable_timing=True)
     selector_end = torch.cuda.Event(enable_timing=True)
+    heterogeneity_start = torch.cuda.Event(enable_timing=True)
+    heterogeneity_end = torch.cuda.Event(enable_timing=True)
+    rescue_start = torch.cuda.Event(enable_timing=True)
+    rescue_end = torch.cuda.Event(enable_timing=True)
     fine_start = torch.cuda.Event(enable_timing=True)
     fine_end = torch.cuda.Event(enable_timing=True)
 
@@ -446,6 +493,15 @@ def residual_aware_video_sparse_attn(
     coarse_end.record()
 
     selector_start.record()
+    heterogeneity_start.record()
+    key_heterogeneity = key_heterogeneity_from_pooled(
+        key_coarse,
+        key_bhsd=key_bhsd,
+        variable_block_sizes=variable_block_sizes,
+        block_elements=block_elements,
+    )
+    heterogeneity_end.record()
+    rescue_start.record()
     mask, decision = select_residual_mask(
         scores,
         coarse_attention,
@@ -455,7 +511,9 @@ def residual_aware_video_sparse_attn(
         key_bhsd=key_bhsd,
         variable_block_sizes=variable_block_sizes,
         block_elements=block_elements,
+        key_heterogeneity=key_heterogeneity,
     )
+    rescue_end.record()
     selector_end.record()
 
     fine_start.record()
@@ -475,6 +533,11 @@ def residual_aware_video_sparse_attn(
     )
     decision.coarse_events = (coarse_start, coarse_end)
     decision.selector_events = (selector_start, selector_end)
+    decision.heterogeneity_events = (
+        heterogeneity_start,
+        heterogeneity_end,
+    )
+    decision.rescue_selection_events = (rescue_start, rescue_end)
     decision.fine_events = (fine_start, fine_end)
     return output.transpose(1, 2), decision
 
@@ -502,6 +565,15 @@ def summarize_residual_decision(
         "replacement_fraction_max": scalar(
             decision.replacement_fraction_max
         ),
+        "replacement_count_min": int(
+            decision.replacement_count_min.item()
+        ),
+        "replacement_count_max": int(
+            decision.replacement_count_max.item()
+        ),
+        "mask_jaccard_mean": scalar(decision.mask_jaccard_mean),
+        "mask_jaccard_min": scalar(decision.mask_jaccard_min),
+        "mask_jaccard_max": scalar(decision.mask_jaccard_max),
         "key_heterogeneity_mean": scalar(
             decision.key_heterogeneity_mean
         ),
@@ -533,6 +605,16 @@ def summarize_residual_decision(
         result["metadata_selector_ms"] = decision.selector_events[
             0
         ].elapsed_time(decision.selector_events[1])
+    if decision.heterogeneity_events is not None:
+        result["heterogeneity_ms"] = decision.heterogeneity_events[
+            0
+        ].elapsed_time(decision.heterogeneity_events[1])
+    if decision.rescue_selection_events is not None:
+        result["rescue_selection_ms"] = (
+            decision.rescue_selection_events[0].elapsed_time(
+                decision.rescue_selection_events[1]
+            )
+        )
     if decision.fine_events is not None:
         result["fine_attention_ms"] = decision.fine_events[
             0
@@ -544,12 +626,37 @@ def summarize_residual_decision(
         scores = decision.example_scores.float().cpu()
         risk = decision.example_risk.float().cpu()
         uk = decision.example_key_heterogeneity.float().cpu()
+        native_ranks = torch.empty_like(scores, dtype=torch.long)
+        native_ids = torch.where(native)[0]
+        outside_ids = torch.where(~native)[0]
+        native_order = native_ids[
+            torch.argsort(scores[native_ids], descending=True)
+        ]
+        outside_order = outside_ids[
+            torch.argsort(scores[outside_ids], descending=True)
+        ]
+        native_ranks[native_order] = torch.arange(
+            1,
+            native_order.numel() + 1,
+            dtype=torch.long,
+        )
+        native_ranks[outside_order] = torch.arange(
+            native_order.numel() + 1,
+            scores.numel() + 1,
+            dtype=torch.long,
+        )
         removed = torch.where(native & ~final)[0]
         added = torch.where(final & ~native)[0]
         result.update(
             {
                 "example_removed_blocks": removed.tolist(),
                 "example_added_blocks": added.tolist(),
+                "example_removed_native_ranks": native_ranks[
+                    removed
+                ].tolist(),
+                "example_added_native_ranks": native_ranks[
+                    added
+                ].tolist(),
                 "example_removed_native_scores": scores[removed].tolist(),
                 "example_added_native_scores": scores[added].tolist(),
                 "example_removed_risk_scores": risk[removed].tolist(),

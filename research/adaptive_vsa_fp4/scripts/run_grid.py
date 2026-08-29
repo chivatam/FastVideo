@@ -135,6 +135,11 @@ def prepare_jobs(args: argparse.Namespace) -> int:
                         if mode == "ra_vsa"
                         else None
                     ),
+                    "ra_force_outside_native": (
+                        args.ra_force_outside_native
+                        if mode == "ra_vsa"
+                        else None
+                    ),
                     "height": args.height,
                     "width": args.width,
                     "frames": args.frames,
@@ -262,6 +267,10 @@ def main() -> None:
         default=[],
     )
     parser.add_argument("--ra-minimal-trace", action="store_true")
+    parser.add_argument(
+        "--ra-force-outside-native",
+        action="store_true",
+    )
     parser.add_argument("--limit", type=int)
     parser.add_argument("--seed", type=int, default=1024)
     parser.add_argument("--height", type=int, default=480)

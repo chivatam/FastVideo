@@ -35,6 +35,7 @@ def _rpc_begin_capture(
     ra_risk_formula: str | None = None,
     ra_instrument_splits: list[float] | None = None,
     ra_detailed_trace: bool = True,
+    ra_force_outside_native: bool = False,
 ) -> dict[str, Any]:
     import torch
 
@@ -79,6 +80,7 @@ def _rpc_begin_capture(
             ),
             instrument_splits=tuple(ra_instrument_splits or ()),
             detailed_trace=bool(ra_detailed_trace),
+            force_outside_native=bool(ra_force_outside_native),
         )
     begin_job(job_id)
     torch.cuda.reset_peak_memory_stats()
@@ -104,6 +106,7 @@ def _rpc_prepare_runtime(
     ra_risk_formula: str | None = None,
     ra_instrument_splits: list[float] | None = None,
     ra_detailed_trace: bool = True,
+    ra_force_outside_native: bool = False,
 ) -> dict[str, Any]:
     from research.adaptive_vsa_fp4.scripts.runtime import (
         configure_adaptive_policy,
@@ -145,6 +148,7 @@ def _rpc_prepare_runtime(
             ),
             instrument_splits=tuple(ra_instrument_splits or ()),
             detailed_trace=bool(ra_detailed_trace),
+            force_outside_native=bool(ra_force_outside_native),
         )
     return {
         "status": "runtime_prepared",
@@ -334,6 +338,10 @@ def _warm_generator(generator: Any, payload: dict[str, Any], mode: str) -> None:
                 "ra_detailed_trace",
                 True,
             ),
+            "ra_force_outside_native": payload.get(
+                "ra_force_outside_native",
+                False,
+            ),
         },
     )
     _validate_effective_sparsity(prepared, sparsity, "runtime_prepared")
@@ -382,6 +390,10 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
             "ra_detailed_trace": payload.get(
                 "ra_detailed_trace",
                 True,
+            ),
+            "ra_force_outside_native": payload.get(
+                "ra_force_outside_native",
+                False,
             ),
         },
     )
@@ -439,6 +451,26 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
                 "RA-VSA violated the fixed-K invariant in policy traces: "
                 f"{invalid_fixed_k[:3]!r}"
             )
+        forced_rows = [
+            row
+            for row in residual_rows
+            if bool(row.get("force_outside_native"))
+        ]
+        invalid_replacement = [
+            row
+            for row in forced_rows
+            if (
+                int(row["replacement_count_min"])
+                != int(row["rescue_slots"])
+                or int(row["replacement_count_max"])
+                != int(row["rescue_slots"])
+            )
+        ]
+        if invalid_replacement:
+            raise RuntimeError(
+                "Forced RA-VSA violated the exact replacement invariant: "
+                f"{invalid_replacement[:3]!r}"
+            )
     if adaptive_rows:
         total_rows = sum(int(row["num_query_rows"]) for row in adaptive_rows)
         effective_sparsity = sum(
@@ -488,6 +520,9 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "ra_risk_formula": payload.get("ra_risk_formula"),
         "ra_instrument_splits": payload.get("ra_instrument_splits"),
         "ra_detailed_trace": payload.get("ra_detailed_trace"),
+        "ra_force_outside_native": payload.get(
+            "ra_force_outside_native"
+        ),
         "gpu_id": worker_id,
         "warm": True,
         "wall_ms": wall_ms,
