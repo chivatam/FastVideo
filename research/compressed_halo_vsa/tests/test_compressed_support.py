@@ -7,6 +7,7 @@ import torch
 
 from research.compressed_halo_vsa.compressed_support import (
     compressed_halo_attention,
+    merge_core_halo_with_coarse,
     merge_online_outputs,
     rank_normalized_topk_mask,
     rectified_output,
@@ -99,6 +100,55 @@ def test_rank_normalized_topk_is_exact_and_order_preserving() -> None:
 
     assert torch.equal(mask.sum(dim=-1), torch.full_like(mask.sum(dim=-1), topk))
     assert torch.equal(mask, reference_mask)
+
+
+@pytest.mark.cuda
+def test_fused_core_halo_merge_matches_reference() -> None:
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA is required")
+    torch.manual_seed(19)
+    shape = (1, 2, 128, 128)
+    exact = torch.randn(
+        shape,
+        device="cuda",
+        dtype=torch.bfloat16,
+    )
+    halo = torch.randn_like(exact)
+    coarse = torch.randn_like(exact)
+    gate = torch.randn_like(exact) * 0.01
+    exact_lse = torch.randn(shape[:-1], device="cuda")
+    halo_lse = torch.randn(shape[:-1], device="cuda")
+
+    output, halo_fraction = merge_core_halo_with_coarse(
+        exact,
+        exact_lse,
+        halo,
+        halo_lse,
+        coarse,
+        gate,
+        return_halo_fraction=True,
+    )
+    expected_merge, expected_fraction = merge_online_outputs(
+        exact,
+        exact_lse,
+        halo,
+        halo_lse,
+    )
+    expected_output = expected_merge + coarse * gate
+
+    assert halo_fraction is not None
+    assert torch.allclose(
+        output,
+        expected_output,
+        atol=2e-2,
+        rtol=2e-2,
+    )
+    assert torch.allclose(
+        halo_fraction,
+        expected_fraction,
+        atol=1e-6,
+        rtol=1e-6,
+    )
 
 
 @pytest.mark.cuda

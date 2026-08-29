@@ -149,6 +149,203 @@ def merge_online_outputs(
 
 
 @triton.jit
+def _merge_core_halo_coarse_kernel(
+    exact_ptr,
+    exact_lse_ptr,
+    halo_ptr,
+    halo_lse_ptr,
+    coarse_ptr,
+    gate_ptr,
+    output_ptr,
+    halo_fraction_ptr,
+    stride_eb,
+    stride_eh,
+    stride_es,
+    stride_ed,
+    stride_elb,
+    stride_elh,
+    stride_els,
+    stride_hb,
+    stride_hh,
+    stride_hs,
+    stride_hd,
+    stride_hlb,
+    stride_hlh,
+    stride_hls,
+    stride_cb,
+    stride_ch,
+    stride_cs,
+    stride_cd,
+    stride_gb,
+    stride_gh,
+    stride_gs,
+    stride_gd,
+    stride_ob,
+    stride_oh,
+    stride_os,
+    stride_od,
+    stride_fb,
+    stride_fh,
+    stride_fs,
+    num_heads: tl.constexpr,
+    sequence: tl.constexpr,
+    head_dim: tl.constexpr,
+    block_m: tl.constexpr,
+    store_fraction: tl.constexpr,
+):
+    sequence_block = tl.program_id(0)
+    batch_head = tl.program_id(1)
+    batch = batch_head // num_heads
+    head = batch_head % num_heads
+    offsets_m = sequence_block * block_m + tl.arange(0, block_m)
+    offsets_d = tl.arange(0, head_dim)
+    valid_m = offsets_m < sequence
+
+    exact_lse = tl.load(
+        exact_lse_ptr
+        + batch * stride_elb
+        + head * stride_elh
+        + offsets_m * stride_els,
+        mask=valid_m,
+        other=-float("inf"),
+    )
+    halo_lse = tl.load(
+        halo_lse_ptr
+        + batch * stride_hlb
+        + head * stride_hlh
+        + offsets_m * stride_hls,
+        mask=valid_m,
+        other=-float("inf"),
+    )
+    maximum = tl.maximum(exact_lse, halo_lse)
+    exact_weight = tl.exp2(exact_lse - maximum)
+    halo_weight = tl.exp2(halo_lse - maximum)
+    denominator = exact_weight + halo_weight
+
+    tensor_mask = valid_m[:, None]
+    exact = tl.load(
+        exact_ptr
+        + batch * stride_eb
+        + head * stride_eh
+        + offsets_m[:, None] * stride_es
+        + offsets_d[None, :] * stride_ed,
+        mask=tensor_mask,
+        other=0.0,
+    )
+    halo = tl.load(
+        halo_ptr
+        + batch * stride_hb
+        + head * stride_hh
+        + offsets_m[:, None] * stride_hs
+        + offsets_d[None, :] * stride_hd,
+        mask=tensor_mask,
+        other=0.0,
+    )
+    coarse = tl.load(
+        coarse_ptr
+        + batch * stride_cb
+        + head * stride_ch
+        + offsets_m[:, None] * stride_cs
+        + offsets_d[None, :] * stride_cd,
+        mask=tensor_mask,
+        other=0.0,
+    )
+    gate = tl.load(
+        gate_ptr
+        + batch * stride_gb
+        + head * stride_gh
+        + offsets_m[:, None] * stride_gs
+        + offsets_d[None, :] * stride_gd,
+        mask=tensor_mask,
+        other=0.0,
+    )
+    merged = (
+        exact.to(tl.float32) * exact_weight[:, None]
+        + halo.to(tl.float32) * halo_weight[:, None]
+    ) / denominator[:, None]
+    output = merged + coarse.to(tl.float32) * gate.to(tl.float32)
+    tl.store(
+        output_ptr
+        + batch * stride_ob
+        + head * stride_oh
+        + offsets_m[:, None] * stride_os
+        + offsets_d[None, :] * stride_od,
+        output,
+        mask=tensor_mask,
+    )
+    if store_fraction:
+        tl.store(
+            halo_fraction_ptr
+            + batch * stride_fb
+            + head * stride_fh
+            + offsets_m * stride_fs,
+            halo_weight / denominator,
+            mask=valid_m,
+        )
+
+
+def merge_core_halo_with_coarse(
+    exact_output: torch.Tensor,
+    exact_lse_log2: torch.Tensor,
+    halo_output: torch.Tensor,
+    halo_lse_log2: torch.Tensor,
+    coarse_output: torch.Tensor,
+    gate: torch.Tensor,
+    *,
+    return_halo_fraction: bool,
+) -> tuple[torch.Tensor, torch.Tensor | None]:
+    """Fuse exact/halo normalization with the checkpoint's coarse residual."""
+    if not exact_output.is_cuda:
+        raise ValueError("merge_core_halo_with_coarse requires CUDA tensors")
+    if exact_output.shape != halo_output.shape:
+        raise ValueError("Exact and halo output shapes must match")
+    if exact_output.shape != coarse_output.shape or exact_output.shape != gate.shape:
+        raise ValueError("Exact, coarse, and gate shapes must match")
+    batch, heads, sequence, head_dim = exact_output.shape
+    if head_dim != 128:
+        raise ValueError(f"The optimized merge requires D=128, got {head_dim}")
+
+    output = torch.empty_like(exact_output)
+    halo_fraction = (
+        torch.empty_like(exact_lse_log2)
+        if return_halo_fraction
+        else None
+    )
+    fraction_storage = (
+        halo_fraction
+        if halo_fraction is not None
+        else exact_lse_log2
+    )
+    grid = (triton.cdiv(sequence, 64), batch * heads)
+    _merge_core_halo_coarse_kernel[grid](
+        exact_output,
+        exact_lse_log2,
+        halo_output,
+        halo_lse_log2,
+        coarse_output,
+        gate,
+        output,
+        fraction_storage,
+        *exact_output.stride(),
+        *exact_lse_log2.stride(),
+        *halo_output.stride(),
+        *halo_lse_log2.stride(),
+        *coarse_output.stride(),
+        *gate.stride(),
+        *output.stride(),
+        *fraction_storage.stride(),
+        num_heads=heads,
+        sequence=sequence,
+        head_dim=head_dim,
+        block_m=64,
+        store_fraction=return_halo_fraction,
+        num_warps=8,
+        num_stages=2,
+    )
+    return output, halo_fraction
+
+
+@triton.jit
 def _compressed_halo_forward_kernel(
     query_ptr,
     key_coarse_ptr,
@@ -487,13 +684,15 @@ def compressed_support_video_sparse_attn(
         )
         halo_events[1].record()
         merge_events[0].record()
-        merged_output, halo_fraction = merge_online_outputs(
+        output, halo_fraction = merge_core_halo_with_coarse(
             exact_output,
             exact_lse,
             halo_output,
             halo_lse,
+            coarse_output,
+            gate_bhsd,
+            return_halo_fraction=detailed_trace,
         )
-        output = merged_output + coarse_output * gate_bhsd
         merge_events[1].record()
         if detailed_trace:
             retained_mass = coarse_attention.masked_fill(
@@ -502,7 +701,7 @@ def compressed_support_video_sparse_attn(
             ).sum(dim=-1)
             native_output = exact_output + coarse_output * gate_bhsd
             correction = output - native_output
-            contribution = merged_output - exact_output
+            contribution = correction
     else:
         raise ValueError(f"Unsupported compressed-support mode: {mode}")
 
