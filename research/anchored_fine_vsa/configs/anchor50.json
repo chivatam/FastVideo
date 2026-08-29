@@ -1,0 +1,14 @@
+{
+  "anchor_child_descriptors": 496,
+  "anchor_parent_blocks": 62,
+  "anchor_ratio_nominal": 0.496,
+  "child_width": 8,
+  "exact_kv_tokens_per_query": 8000,
+  "fine_tail_child_descriptors": 504,
+  "fine_tail_excludes_anchor_parents": true,
+  "mode": "anchored_fine_vsa50",
+  "native_parent_k": 125,
+  "pair_budget_vs_vsa80": 1.0,
+  "scoring_rule": "frozen Fine-VSA8 pooled-child score",
+  "valid_token_matching": "exact per query block"
+}

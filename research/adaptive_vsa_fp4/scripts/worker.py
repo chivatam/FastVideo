@@ -295,6 +295,9 @@ def _configure_mode(mode: str) -> None:
         "br_vsa",
         "fine_vsa_census",
         "fine_vsa",
+        "anchored_fine_vsa_census",
+        "anchored_fine_vsa25",
+        "anchored_fine_vsa50",
     }:
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "VIDEO_SPARSE_ATTN"
         os.environ["FASTVIDEO_VSA_SM100A"] = "1"
@@ -446,6 +449,7 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "vsa_bf16",
         "sim_vsa_nvfp4",
         "fine_vsa_census",
+        "anchored_fine_vsa_census",
     } and effective_sparsities != [sparsity]:
         raise RuntimeError(f"Requested VSA sparsity {sparsity}, attention metadata observed {effective_sparsities!r}.")
     adaptive_rows = [row for row in stats_rows if row.get("event_type") == "adaptive_policy"]
@@ -549,6 +553,75 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
             raise RuntimeError(
                 "Fine-VSA violated the frozen fixed-budget policy: "
                 f"{invalid_fine_policy[:3]!r}"
+            )
+    support_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "anchored_support_overlap"
+    ]
+    if mode == "anchored_fine_vsa_census":
+        if not support_rows:
+            raise RuntimeError(
+                "Anchored Fine-VSA census produced no support rows"
+            )
+        invalid_support = [
+            row
+            for row in support_rows
+            if (
+                float(row["anchor25_token_error_abs_max"]) != 0.0
+                or float(row["anchor50_token_error_abs_max"]) != 0.0
+                or float(
+                    row[
+                        "anchor25_fine_tail_anchor_overlap_tokens_max"
+                    ]
+                )
+                != 0.0
+                or float(
+                    row[
+                        "anchor50_fine_tail_anchor_overlap_tokens_max"
+                    ]
+                )
+                != 0.0
+            )
+        ]
+        if invalid_support:
+            raise RuntimeError(
+                "Anchored Fine-VSA census violated support invariants: "
+                f"{invalid_support[:3]!r}"
+            )
+    anchored_policy_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "anchored_fine_vsa_policy"
+    ]
+    if mode in {"anchored_fine_vsa25", "anchored_fine_vsa50"}:
+        if not anchored_policy_rows:
+            raise RuntimeError(
+                "Anchored Fine-VSA produced no fixed-policy traces"
+            )
+        expected_anchor = (
+            31 if mode == "anchored_fine_vsa25" else 62
+        )
+        invalid_anchored_policy = [
+            row
+            for row in anchored_policy_rows
+            if (
+                int(row["anchor_parent_blocks"]) != expected_anchor
+                or int(row["child_width"]) != 8
+                or int(row["selected_child_blocks"]) != 1000
+                or abs(float(row["nominal_pair_budget_ratio"]) - 1.0)
+                > 1e-9
+                or int(row["actual_kv_token_error_abs_max"]) != 0
+                or int(
+                    row["fine_tail_anchor_overlap_tokens_max"]
+                )
+                != 0
+            )
+        ]
+        if invalid_anchored_policy:
+            raise RuntimeError(
+                "Anchored Fine-VSA violated its frozen support policy: "
+                f"{invalid_anchored_policy[:3]!r}"
             )
     br_rows = [row for row in stats_rows if row.get("event_type") == "br_vsa_policy"]
     if mode == "br_vsa" and not br_rows:

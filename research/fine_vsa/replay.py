@@ -217,13 +217,22 @@ def select_children_fixed_tokens(
     parent_pool: int | None,
     target_tokens: torch.Tensor,
     child_width: int,
+    candidate_mask: torch.Tensor | None = None,
 ) -> torch.Tensor:
     if target_tokens.max().item() > selected_blocks * child_width:
         raise RuntimeError("Fine-VSA target exceeds the fixed descriptor budget")
     if target_tokens.remainder(8).any():
         raise RuntimeError("Fine-VSA token targets must follow 8-token tiling")
 
-    candidate = torch.ones_like(child_scores, dtype=torch.bool)
+    candidate = (
+        torch.ones_like(child_scores, dtype=torch.bool)
+        if candidate_mask is None
+        else candidate_mask.to(dtype=torch.bool)
+    )
+    if candidate.shape != child_scores.shape:
+        raise ValueError(
+            "Fine-VSA candidate mask must match child-score shape"
+        )
     if parent_pool is not None:
         parent_indices = torch.topk(
             parent_scores,
@@ -232,27 +241,23 @@ def select_children_fixed_tokens(
         ).indices
         parent_candidate = torch.zeros_like(parent_scores, dtype=torch.bool)
         parent_candidate.scatter_(-1, parent_indices, True)
-        candidate = parent_candidate.repeat_interleave(factor, dim=-1)
+        candidate &= parent_candidate.repeat_interleave(factor, dim=-1)
 
     flat_scores = child_scores.flatten(0, -2)
     flat_candidate = candidate.flatten(0, -2)
     flat_target = target_tokens.flatten()
     rows = flat_scores.shape[0]
-    zero_indices = torch.nonzero(
-        child_sizes.eq(0),
-        as_tuple=False,
-    ).flatten()
-    if not zero_indices.numel():
+    zero_candidate = (
+        child_sizes.view(1, -1).eq(0)
+        & flat_candidate
+    )
+    if not zero_candidate.any(dim=-1).all():
         raise RuntimeError(
-            "Fine-VSA valid-token matching requires padded child descriptors"
+            "Fine-VSA valid-token matching requires an eligible padded "
+            "child descriptor for every query row"
         )
-    filler = zero_indices[
-        torch.arange(
-            selected_blocks,
-            device=child_scores.device,
-        ).remainder(zero_indices.numel())
-    ]
-    selected = filler.view(1, -1).expand(rows, -1).clone()
+    filler = zero_candidate.to(torch.int64).argmax(dim=-1)
+    selected = filler[:, None].expand(-1, selected_blocks).clone()
 
     category_counts: list[tuple[int, torch.Tensor]] = []
     remaining = flat_target

@@ -379,12 +379,59 @@ def install_runtime_patches(mode: str) -> None:
         "br_vsa",
         "fine_vsa_census",
         "fine_vsa",
+        "anchored_fine_vsa_census",
+        "anchored_fine_vsa25",
+        "anchored_fine_vsa50",
     }:
         from fastvideo.attention.backends.video_sparse_attn import VideoSparseAttentionImpl
 
         original_vsa = VideoSparseAttentionImpl.forward
 
         def vsa_forward(self, query, key, value, gate_compress, attn_metadata):
+            if mode in {
+                "anchored_fine_vsa25",
+                "anchored_fine_vsa50",
+            }:
+                from research.anchored_fine_vsa.attention import (
+                    anchored_fine_video_sparse_attn,
+                    summarize_anchored_decision,
+                )
+
+                anchor_parent_blocks = (
+                    31 if mode == "anchored_fine_vsa25" else 62
+                )
+                output, decision = _timed_call(
+                    lambda: anchored_fine_video_sparse_attn(
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata.variable_block_sizes,
+                        anchor_parent_blocks=anchor_parent_blocks,
+                    )
+                )
+                decision_summary = summarize_anchored_decision(
+                    decision
+                )
+                record_effective_sparsity(
+                    decision_summary["nominal_effective_sparsity"]
+                )
+                if _CAPTURE.job_id is not None:
+                    _CAPTURE.rows.append(
+                        {
+                            "event_type": "anchored_fine_vsa_policy",
+                            "job_id": _CAPTURE.job_id,
+                            "prefix": self.prefix,
+                            "layer": _layer_index(self.prefix),
+                            "timestep": int(
+                                attn_metadata.current_timestep
+                            ),
+                            "mode": mode,
+                            **decision_summary,
+                        }
+                    )
+                return output
+
             if mode == "fine_vsa":
                 from research.fine_vsa.attention import (
                     fine_video_sparse_attn,
@@ -417,6 +464,41 @@ def install_runtime_patches(mode: str) -> None:
                             **decision_summary,
                         }
                     )
+                return output
+
+            if mode == "anchored_fine_vsa_census":
+                record_effective_sparsity(attn_metadata.VSA_sparsity)
+                output = _timed_call(
+                    lambda: original_vsa(
+                        self,
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata,
+                    )
+                )
+                if _CAPTURE.job_id is not None:
+                    from research.anchored_fine_vsa.support import (
+                        analyze_support_overlap,
+                    )
+
+                    support = analyze_support_overlap(
+                        query,
+                        key,
+                        attn_metadata.variable_block_sizes,
+                    )
+                    common = {
+                        "job_id": _CAPTURE.job_id,
+                        "prefix": self.prefix,
+                        "layer": _layer_index(self.prefix),
+                        "timestep": int(
+                            attn_metadata.current_timestep
+                        ),
+                        **support.geometry,
+                    }
+                    for row in support.rows:
+                        _CAPTURE.rows.append({**common, **row})
                 return output
 
             if mode == "fine_vsa_census":
