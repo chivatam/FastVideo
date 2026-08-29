@@ -29,6 +29,8 @@ MODE_PRECISION = {
     "hierarchical_vsa_census": "bf16",
     "cluster_vsa_census": "bf16",
     "vector_vsa_census": "bf16",
+    "coretail_dense_calibration": "bf16",
+    "coretail_vsa_census": "bf16",
     "dense_nvfp4_fa4": "nvfp4_qk",
     "sim_vsa_nvfp4": "sim_nvfp4_qk",
 }
@@ -102,7 +104,10 @@ def prepare_jobs(args: argparse.Namespace) -> int:
                 "hierarchical_vsa_census",
                 "cluster_vsa_census",
                 "vector_vsa_census",
+                "coretail_vsa_census",
             }
+            else [0.0]
+            if mode == "coretail_dense_calibration"
             else _mode_sparsities(
                 mode,
                 args.sparsities,
@@ -150,6 +155,18 @@ def prepare_jobs(args: argparse.Namespace) -> int:
                     "br_k_table_path": (
                         str(args.br_k_table)
                         if mode == "br_vsa" and args.br_k_table is not None
+                        else None
+                    ),
+                    "coretail_mass_dir": (
+                        str(args.coretail_mass_dir)
+                        if mode == "coretail_dense_calibration"
+                        and args.coretail_mass_dir is not None
+                        else None
+                    ),
+                    "coretail_core_mask_path": (
+                        str(args.coretail_core_mask)
+                        if mode == "coretail_vsa_census"
+                        and args.coretail_core_mask is not None
                         else None
                     ),
                     "height": args.height,
@@ -289,6 +306,8 @@ def main() -> None:
         default=[32, 64, 96, 125, 192, 250, 375, 624],
     )
     parser.add_argument("--br-k-table", type=Path)
+    parser.add_argument("--coretail-mass-dir", type=Path)
+    parser.add_argument("--coretail-core-mask", type=Path)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--seed", type=int, default=1024)
     parser.add_argument("--height", type=int, default=480)
@@ -309,6 +328,22 @@ def main() -> None:
     args.prompts = args.prompts or args.artifact_root / "phase0" / "vbench_subject_consistency_prompts.json"
     if "br_vsa" in args.modes and args.br_k_table is None:
         parser.error("--br-k-table is required for br_vsa")
+    if (
+        "coretail_dense_calibration" in args.modes
+        and args.coretail_mass_dir is None
+    ):
+        parser.error(
+            "--coretail-mass-dir is required for "
+            "coretail_dense_calibration"
+        )
+    if (
+        "coretail_vsa_census" in args.modes
+        and args.coretail_core_mask is None
+    ):
+        parser.error(
+            "--coretail-core-mask is required for "
+            "coretail_vsa_census"
+        )
 
     if not args.run_only:
         print(f"created={prepare_jobs(args)}")

@@ -40,6 +40,8 @@ def _rpc_begin_capture(
     cs_detailed_trace: bool = True,
     br_candidate_k: list[int] | None = None,
     br_k_table_path: str | None = None,
+    coretail_mass_dir: str | None = None,
+    coretail_core_mask_path: str | None = None,
 ) -> dict[str, Any]:
     import torch
 
@@ -49,6 +51,8 @@ def _rpc_begin_capture(
         configure_br_census,
         configure_br_policy,
         configure_compressed_support,
+        configure_coretail_dense_capture,
+        configure_coretail_masks,
         configure_residual_policy,
         install_runtime_patches,
     )
@@ -93,6 +97,22 @@ def _rpc_begin_capture(
         if br_k_table_path is None:
             raise ValueError("BR-VSA requires a frozen K-table path")
         policy = configure_br_policy(k_table_path=br_k_table_path)
+    elif mode == "coretail_dense_calibration":
+        if coretail_mass_dir is None:
+            raise ValueError(
+                "CoreTail dense calibration requires a mass directory"
+            )
+        policy = configure_coretail_dense_capture(
+            mass_root=coretail_mass_dir,
+        )
+    elif mode == "coretail_vsa_census":
+        if coretail_core_mask_path is None:
+            raise ValueError(
+                "CoreTail replay requires a frozen core-mask path"
+            )
+        policy = configure_coretail_masks(
+            mask_path=coretail_core_mask_path,
+        )
     begin_job(job_id)
     torch.cuda.reset_peak_memory_stats()
     return {
@@ -121,12 +141,16 @@ def _rpc_prepare_runtime(
     cs_detailed_trace: bool = True,
     br_candidate_k: list[int] | None = None,
     br_k_table_path: str | None = None,
+    coretail_mass_dir: str | None = None,
+    coretail_core_mask_path: str | None = None,
 ) -> dict[str, Any]:
     from research.adaptive_vsa_fp4.scripts.runtime import (
         configure_adaptive_policy,
         configure_br_census,
         configure_br_policy,
         configure_compressed_support,
+        configure_coretail_dense_capture,
+        configure_coretail_masks,
         configure_residual_policy,
         install_runtime_patches,
     )
@@ -171,6 +195,22 @@ def _rpc_prepare_runtime(
         if br_k_table_path is None:
             raise ValueError("BR-VSA requires a frozen K-table path")
         policy = configure_br_policy(k_table_path=br_k_table_path)
+    elif mode == "coretail_dense_calibration":
+        if coretail_mass_dir is None:
+            raise ValueError(
+                "CoreTail dense calibration requires a mass directory"
+            )
+        policy = configure_coretail_dense_capture(
+            mass_root=coretail_mass_dir,
+        )
+    elif mode == "coretail_vsa_census":
+        if coretail_core_mask_path is None:
+            raise ValueError(
+                "CoreTail replay requires a frozen core-mask path"
+            )
+        policy = configure_coretail_masks(
+            mask_path=coretail_core_mask_path,
+        )
     return {
         "status": "runtime_prepared",
         "rank": worker.rpc_rank,
@@ -301,6 +341,7 @@ def _configure_mode(mode: str) -> None:
         "hierarchical_vsa_census",
         "cluster_vsa_census",
         "vector_vsa_census",
+        "coretail_vsa_census",
     }:
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "VIDEO_SPARSE_ATTN"
         os.environ["FASTVIDEO_VSA_SM100A"] = "1"
@@ -310,6 +351,10 @@ def _configure_mode(mode: str) -> None:
         os.environ["FASTVIDEO_NVFP4_FA4"] = "1"
         os.environ["FASTVIDEO_RESEARCH_ALLOW_UNUSED_VSA_GATES"] = "1"
     elif mode == "dense_bf16_fa4":
+        os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "FLASH_ATTN"
+        os.environ["FASTVIDEO_NVFP4_FA4"] = "0"
+        os.environ["FASTVIDEO_RESEARCH_ALLOW_UNUSED_VSA_GATES"] = "1"
+    elif mode == "coretail_dense_calibration":
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "FLASH_ATTN"
         os.environ["FASTVIDEO_NVFP4_FA4"] = "0"
         os.environ["FASTVIDEO_RESEARCH_ALLOW_UNUSED_VSA_GATES"] = "1"
@@ -373,6 +418,10 @@ def _warm_generator(generator: Any, payload: dict[str, Any], mode: str) -> None:
             ),
             "br_candidate_k": payload.get("br_candidate_k"),
             "br_k_table_path": payload.get("br_k_table_path"),
+            "coretail_mass_dir": payload.get("coretail_mass_dir"),
+            "coretail_core_mask_path": payload.get(
+                "coretail_core_mask_path"
+            ),
         },
     )
     _validate_effective_sparsity(prepared, sparsity, "runtime_prepared")
@@ -424,6 +473,10 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
             ),
             "br_candidate_k": payload.get("br_candidate_k"),
             "br_k_table_path": payload.get("br_k_table_path"),
+            "coretail_mass_dir": payload.get("coretail_mass_dir"),
+            "coretail_core_mask_path": payload.get(
+                "coretail_core_mask_path"
+            ),
         },
     )
     _validate_effective_sparsity(capture_start, sparsity, "capture_started")
@@ -456,6 +509,7 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "hierarchical_vsa_census",
         "cluster_vsa_census",
         "vector_vsa_census",
+        "coretail_vsa_census",
     } and effective_sparsities != [sparsity]:
         raise RuntimeError(f"Requested VSA sparsity {sparsity}, attention metadata observed {effective_sparsities!r}.")
     adaptive_rows = [row for row in stats_rows if row.get("event_type") == "adaptive_policy"]
@@ -783,6 +837,99 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
                 "Vector-VSA violated native exact-pair accounting: "
                 f"{invalid_vector_budget[:3]!r}"
             )
+    coretail_dense_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "coretail_dense_mass_capture"
+    ]
+    if mode == "coretail_dense_calibration":
+        if len(coretail_dense_rows) != 90:
+            raise RuntimeError(
+                "CoreTail dense calibration expected 90 self-attention "
+                f"mass captures, observed {len(coretail_dense_rows)}"
+            )
+        observed_units = {
+            (int(row["timestep"]), int(row["layer"]))
+            for row in coretail_dense_rows
+        }
+        if len(observed_units) != 90:
+            raise RuntimeError(
+                "CoreTail dense calibration has duplicate or missing "
+                "step/layer units"
+            )
+        invalid_mass = [
+            row
+            for row in coretail_dense_rows
+            if (
+                float(row["mass_sum_error_max"]) > 0.01
+                or not Path(str(row["mass_path"])).is_file()
+            )
+        ]
+        if invalid_mass:
+            raise RuntimeError(
+                "CoreTail dense mass capture failed normalization or "
+                f"persistence checks: {invalid_mass[:3]!r}"
+            )
+    coretail_error_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "coretail_vsa_error"
+    ]
+    coretail_accounting_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "coretail_pair_accounting"
+    ]
+    coretail_benchmark_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "coretail_vsa_benchmark"
+    ]
+    if mode == "coretail_vsa_census":
+        if (
+            not coretail_error_rows
+            or not coretail_accounting_rows
+            or not coretail_benchmark_rows
+        ):
+            raise RuntimeError(
+                "CoreTail held-out replay produced incomplete traces"
+            )
+        from research.coretail_vsa.replay import EXPECTED_VARIANTS
+
+        variants = {row["variant"] for row in coretail_error_rows}
+        if variants != set(EXPECTED_VARIANTS):
+            raise RuntimeError(
+                f"CoreTail replay variants are incomplete: {variants!r}"
+            )
+        invalid_budget = [
+            row
+            for row in coretail_error_rows
+            if (
+                row["variant"]
+                in {
+                    "native64",
+                    "fine8",
+                    "native_anchor25",
+                    "native_anchor50",
+                    "calib_core25_tail",
+                    "calib_core50_tail",
+                }
+                and float(row["actual_pair_budget_ratio"]) > 1.0 + 1e-6
+            )
+        ]
+        invalid_accounting = [
+            row
+            for row in coretail_accounting_rows
+            if (
+                int(row["valid_token_error_abs_max"]) != 0
+                or int(row["duplicate_valid_tokens_max"]) != 0
+            )
+        ]
+        if invalid_budget or invalid_accounting:
+            raise RuntimeError(
+                "CoreTail violated pair accounting: "
+                f"{(invalid_budget + invalid_accounting)[:3]!r}"
+            )
     br_rows = [row for row in stats_rows if row.get("event_type") == "br_vsa_policy"]
     if mode == "br_vsa" and not br_rows:
         raise RuntimeError("BR-VSA produced no fixed-policy trace rows")
@@ -843,7 +990,14 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         )
     else:
         effective_sparsity = (
-            effective_sparsities[0] if len(effective_sparsities) == 1 else (0.0 if mode.startswith("dense_") else None)
+            effective_sparsities[0]
+            if len(effective_sparsities) == 1
+            else (
+                0.0
+                if mode.startswith("dense_")
+                or mode == "coretail_dense_calibration"
+                else None
+            )
         )
     component = _extract_component_times(result)
     stats_path = Path(payload["stats_path"])
@@ -880,6 +1034,10 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "cs_detailed_trace": payload.get("cs_detailed_trace"),
         "br_candidate_k": payload.get("br_candidate_k"),
         "br_k_table_path": payload.get("br_k_table_path"),
+        "coretail_mass_dir": payload.get("coretail_mass_dir"),
+        "coretail_core_mask_path": payload.get(
+            "coretail_core_mask_path"
+        ),
         "gpu_id": worker_id,
         "warm": True,
         "wall_ms": wall_ms,

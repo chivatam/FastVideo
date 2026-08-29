@@ -34,6 +34,9 @@ _BR_POLICY = None
 _FINE_NATIVE_VALIDATED = False
 _COMPRESSED_SUPPORT_DETAILED_TRACE = True
 _BR_CANDIDATE_K = (32, 64, 96, 125, 192, 250, 375, 624)
+_CORETAIL_MASS_ROOT: Path | None = None
+_CORETAIL_CORE_MASKS = None
+_CORETAIL_DENSE_LAYER_COUNTS: dict[int, int] = {}
 
 
 def configure_adaptive_policy(
@@ -114,6 +117,27 @@ def configure_br_policy(
     return _BR_POLICY.as_dict()
 
 
+def configure_coretail_dense_capture(
+    *,
+    mass_root: str,
+) -> dict[str, Any]:
+    global _CORETAIL_MASS_ROOT
+    _CORETAIL_MASS_ROOT = Path(mass_root)
+    _CORETAIL_MASS_ROOT.mkdir(parents=True, exist_ok=True)
+    return {"mass_root": str(_CORETAIL_MASS_ROOT)}
+
+
+def configure_coretail_masks(
+    *,
+    mask_path: str,
+) -> dict[str, Any]:
+    global _CORETAIL_CORE_MASKS
+    from research.coretail_vsa.selection import CoreMaskTable
+
+    _CORETAIL_CORE_MASKS = CoreMaskTable.from_path(mask_path)
+    return _CORETAIL_CORE_MASKS.as_dict()
+
+
 def begin_job(job_id: str) -> None:
     _CAPTURE.job_id = job_id
     _CAPTURE.attention_events.clear()
@@ -123,6 +147,7 @@ def begin_job(job_id: str) -> None:
     _CAPTURE.residual_decisions.clear()
     _CAPTURE.compressed_support_decisions.clear()
     _CAPTURE.br_decisions.clear()
+    _CORETAIL_DENSE_LAYER_COUNTS.clear()
 
 
 def record_effective_sparsity(value: float) -> None:
@@ -368,6 +393,66 @@ def install_runtime_patches(mode: str) -> None:
         return
     _PATCHED = True
 
+    if mode == "coretail_dense_calibration":
+        from fastvideo.attention.backends.flash_attn import (
+            FlashAttentionImpl,
+        )
+
+        original_dense = FlashAttentionImpl.forward
+
+        def dense_forward(self, query, key, value, attn_metadata):
+            output = _timed_call(
+                lambda: original_dense(
+                    self,
+                    query,
+                    key,
+                    value,
+                    attn_metadata,
+                )
+            )
+            if _CAPTURE.job_id is None:
+                return output
+            from research.coretail_vsa.dense_mass import (
+                capture_dense_block_mass,
+                is_coretail_dense_call,
+            )
+
+            if not is_coretail_dense_call(query, key):
+                return output
+            if _CORETAIL_MASS_ROOT is None:
+                raise RuntimeError(
+                    "CoreTail dense mass root was not configured"
+                )
+            from fastvideo.forward_context import get_forward_context
+
+            timestep = int(get_forward_context().current_timestep)
+            layer = _CORETAIL_DENSE_LAYER_COUNTS.get(timestep, 0)
+            if layer >= 30:
+                raise RuntimeError(
+                    f"Observed more than 30 dense self-attention calls "
+                    f"for timestep {timestep}"
+                )
+            _CORETAIL_DENSE_LAYER_COUNTS[timestep] = layer + 1
+            row = capture_dense_block_mass(
+                query,
+                key,
+                job_id=_CAPTURE.job_id,
+                timestep=timestep,
+                layer=layer,
+                output_root=_CORETAIL_MASS_ROOT,
+            )
+            _CAPTURE.rows.append(
+                {
+                    "job_id": _CAPTURE.job_id,
+                    "prefix": f"dense_self_attn_layer_{layer}",
+                    **row,
+                }
+            )
+            return output
+
+        FlashAttentionImpl.forward = dense_forward
+        return
+
     if mode in {
         "vsa_bf16",
         "sim_vsa_nvfp4",
@@ -385,12 +470,67 @@ def install_runtime_patches(mode: str) -> None:
         "hierarchical_vsa_census",
         "cluster_vsa_census",
         "vector_vsa_census",
+        "coretail_vsa_census",
     }:
         from fastvideo.attention.backends.video_sparse_attn import VideoSparseAttentionImpl
 
         original_vsa = VideoSparseAttentionImpl.forward
 
         def vsa_forward(self, query, key, value, gate_compress, attn_metadata):
+            if mode == "coretail_vsa_census":
+                if _CORETAIL_CORE_MASKS is None:
+                    raise RuntimeError(
+                        "CoreTail frozen masks were not configured"
+                    )
+                record_effective_sparsity(attn_metadata.VSA_sparsity)
+                output = _timed_call(
+                    lambda: original_vsa(
+                        self,
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata,
+                    )
+                )
+                if _CAPTURE.job_id is not None:
+                    from research.coretail_vsa.replay import (
+                        replay_coretail_vsa,
+                    )
+
+                    timestep = int(attn_metadata.current_timestep)
+                    layer = _layer_index(self.prefix)
+                    if layer is None:
+                        raise RuntimeError(
+                            f"Could not resolve CoreTail layer from "
+                            f"{self.prefix!r}"
+                        )
+                    replay = replay_coretail_vsa(
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata.variable_block_sizes,
+                        attn_metadata.non_pad_index,
+                        timestep=timestep,
+                        layer=layer,
+                        core_masks=_CORETAIL_CORE_MASKS,
+                    )
+                    common = {
+                        "job_id": _CAPTURE.job_id,
+                        "prefix": self.prefix,
+                        "layer": layer,
+                        "timestep": timestep,
+                        **replay.geometry,
+                    }
+                    for row in (
+                        replay.error_rows
+                        + replay.accounting_rows
+                        + replay.benchmark_rows
+                    ):
+                        _CAPTURE.rows.append({**common, **row})
+                return output
+
             if mode == "vector_vsa_census":
                 record_effective_sparsity(attn_metadata.VSA_sparsity)
                 output = _timed_call(
