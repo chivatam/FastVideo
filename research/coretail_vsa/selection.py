@@ -91,6 +91,8 @@ class CoreMaskTable:
 class CoreTailSelection:
     core_parent_blocks: int
     core_parent_indices: torch.Tensor
+    core_parent_active: torch.Tensor
+    core_active_parent_blocks: torch.Tensor
     core_child_indices: torch.Tensor
     fine_tail_indices: torch.Tensor
     selected_indices: torch.Tensor
@@ -127,14 +129,36 @@ def select_coretail_support(
         sorted=True,
     ).indices
     native_actual = parent_sizes[native_indices].sum(dim=-1)
-    core_children = parent_indices_to_children(core_parent_indices)
-    core_actual = parent_sizes[core_parent_indices].sum(dim=-1)
+    core_sizes = parent_sizes[core_parent_indices]
+    core_active = torch.zeros_like(core_parent_indices, dtype=torch.bool)
+    remaining = native_actual.clone()
+    for rank in range(core_parent_blocks):
+        fits = core_sizes[..., rank].le(remaining)
+        core_active[..., rank] = fits
+        remaining = remaining - (core_sizes[..., rank] * fits.to(core_sizes.dtype))
+    core_actual = (core_sizes * core_active.to(core_sizes.dtype)).sum(dim=-1)
     tail_target = native_actual - core_actual
-    if tail_target.lt(0).any():
-        raise RuntimeError("Static core exceeds native matched capacity")
+    raw_core_children = parent_indices_to_children(core_parent_indices)
+    active_children = core_active.unsqueeze(-1).expand(
+        *core_active.shape,
+        CHILDREN_PER_PARENT,
+    ).flatten(-2)
+    zero_children = torch.nonzero(
+        child_sizes.eq(0),
+        as_tuple=False,
+    ).flatten()
+    if zero_children.numel() == 0 and (~active_children).any():
+        raise RuntimeError("CoreTail needs a zero-valid filler for budget projection")
+    filler = (zero_children[0] if zero_children.numel() else torch.tensor(0, device=child_sizes.device))
+    core_children = torch.where(
+        active_children,
+        raw_core_children,
+        filler.to(raw_core_children.dtype),
+    )
 
     candidate = torch.ones_like(child_scores, dtype=torch.bool)
-    candidate.scatter_(-1, core_children.long(), False)
+    core_support = selected_support_mask(core_children, child_sizes)
+    candidate &= ~core_support
     fine_tail = select_children_fixed_tokens(
         child_scores,
         child_sizes,
@@ -150,7 +174,7 @@ def select_coretail_support(
         [core_children.to(torch.int32), fine_tail],
         dim=-1,
     )
-    core_mask = selected_support_mask(core_children, child_sizes)
+    core_mask = core_support
     tail_mask = selected_support_mask(fine_tail, child_sizes)
     duplicate = support_token_count(
         core_mask & tail_mask,
@@ -169,6 +193,8 @@ def select_coretail_support(
     return CoreTailSelection(
         core_parent_blocks=core_parent_blocks,
         core_parent_indices=core_parent_indices.to(torch.int32),
+        core_parent_active=core_active,
+        core_active_parent_blocks=core_active.sum(dim=-1),
         core_child_indices=core_children.to(torch.int32),
         fine_tail_indices=fine_tail,
         selected_indices=selected,

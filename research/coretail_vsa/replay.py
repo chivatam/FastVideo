@@ -352,6 +352,14 @@ def replay_coretail_vsa(
             f"calib_core{label}_tail",
             "static_parent_blocks":
             parent_count,
+            "static_active_parent_blocks_mean":
+            float(selection.core_active_parent_blocks.float().mean().item()),
+            "static_active_parent_blocks_min":
+            int(selection.core_active_parent_blocks.min().item()),
+            "static_active_parent_blocks_max":
+            int(selection.core_active_parent_blocks.max().item()),
+            "static_budget_projection_fraction":
+            float(selection.core_active_parent_blocks.lt(parent_count).float().mean().item()),
             "static_valid_tokens_mean":
             float(selection.core_actual_kv_tokens.float().mean().item()),
             "dynamic_valid_tokens_mean":
@@ -376,10 +384,18 @@ def replay_coretail_vsa(
             child_width=CHILD_WIDTH,
             nominal_tokens=NOMINAL_KV_TOKENS,
             metadata={
-                "candidate_kind": "calibrated_coretail",
-                "static_parent_blocks": parent_count,
-                "dynamic_child_width": CHILD_WIDTH,
-                "tail_active_descriptors_mean": float(selection.tail_active_descriptors.float().mean().item()),
+                "candidate_kind":
+                "calibrated_coretail",
+                "static_parent_blocks":
+                parent_count,
+                "static_active_parent_blocks_mean":
+                float(selection.core_active_parent_blocks.float().mean().item()),
+                "static_budget_projection_fraction":
+                float(selection.core_active_parent_blocks.lt(parent_count).float().mean().item()),
+                "dynamic_child_width":
+                CHILD_WIDTH,
+                "tail_active_descriptors_mean":
+                float(selection.tail_active_descriptors.float().mean().item()),
             },
         )
         record(

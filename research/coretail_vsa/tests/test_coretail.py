@@ -86,3 +86,27 @@ def test_coretail_selection_matches_native_valid_tokens() -> None:
     )
     assert selection.duplicate_valid_tokens.max().item() == 0
     assert selection.selected_actual_kv_tokens.max().item() == 8000
+
+
+def test_coretail_projects_static_core_into_ragged_native_budget() -> None:
+    parent_sizes = torch.full((624,), 8, dtype=torch.int32)
+    parent_sizes[:31] = 64
+    child_sizes = child_block_sizes(parent_sizes, 8)
+    query_shape = (1, 1, 1)
+    parent_scores = torch.zeros((*query_shape, 624))
+    parent_scores[..., 100:225] = 10.0
+    child_scores = torch.randn(*query_shape, child_sizes.numel())
+    core = torch.arange(31).view(1, 1, 1, 31)
+    selection = select_coretail_support(
+        child_scores,
+        child_sizes,
+        parent_scores,
+        parent_sizes,
+        core,
+    )
+    assert selection.native_actual_kv_tokens.item() == 1000
+    assert selection.core_active_parent_blocks.item() == 15
+    assert selection.core_actual_kv_tokens.item() == 960
+    assert selection.fine_tail_actual_kv_tokens.item() == 40
+    assert selection.selected_actual_kv_tokens.item() == 1000
+    assert selection.duplicate_valid_tokens.item() == 0
