@@ -16,6 +16,7 @@ MODE_PRECISION = {
     "dense_bf16_fa4": "bf16",
     "vsa_bf16": "bf16",
     "adaptive_vsa": "bf16",
+    "ra_vsa": "bf16",
     "dense_nvfp4_fa4": "nvfp4_qk",
     "sim_vsa_nvfp4": "sim_nvfp4_qk",
 }
@@ -72,6 +73,8 @@ def prepare_jobs(args: argparse.Namespace) -> int:
         sparsities = (
             [args.adaptive_floor_sparsity]
             if mode == "adaptive_vsa"
+            else [args.ra_native_sparsity]
+            if mode == "ra_vsa"
             else _mode_sparsities(
                 mode,
                 args.sparsities,
@@ -105,6 +108,31 @@ def prepare_jobs(args: argparse.Namespace) -> int:
                     "adaptive_native_sparsity": (
                         args.adaptive_native_sparsity
                         if mode == "adaptive_vsa"
+                        else None
+                    ),
+                    "ra_native_fraction": (
+                        args.ra_native_fraction
+                        if mode == "ra_vsa"
+                        else None
+                    ),
+                    "ra_native_sparsity": (
+                        args.ra_native_sparsity
+                        if mode == "ra_vsa"
+                        else None
+                    ),
+                    "ra_risk_formula": (
+                        args.ra_risk_formula
+                        if mode == "ra_vsa"
+                        else None
+                    ),
+                    "ra_instrument_splits": (
+                        args.ra_instrument_splits
+                        if mode == "ra_vsa"
+                        else None
+                    ),
+                    "ra_detailed_trace": (
+                        not args.ra_minimal_trace
+                        if mode == "ra_vsa"
                         else None
                     ),
                     "height": args.height,
@@ -221,6 +249,19 @@ def main() -> None:
         nargs="+",
         default=[0.8, 0.7, 0.6, 0.4, 0.0],
     )
+    parser.add_argument("--ra-native-fraction", type=float, default=0.75)
+    parser.add_argument("--ra-native-sparsity", type=float, default=0.8)
+    parser.add_argument(
+        "--ra-risk-formula",
+        default="coarse_mass_x_key_heterogeneity",
+    )
+    parser.add_argument(
+        "--ra-instrument-splits",
+        type=float,
+        nargs="*",
+        default=[],
+    )
+    parser.add_argument("--ra-minimal-trace", action="store_true")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--seed", type=int, default=1024)
     parser.add_argument("--height", type=int, default=480)

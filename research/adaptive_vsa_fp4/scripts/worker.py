@@ -30,12 +30,18 @@ def _rpc_begin_capture(
     adaptive_floor_sparsity: float | None = None,
     adaptive_candidate_sparsities: list[float] | None = None,
     adaptive_native_sparsity: float | None = None,
+    ra_native_fraction: float | None = None,
+    ra_native_sparsity: float | None = None,
+    ra_risk_formula: str | None = None,
+    ra_instrument_splits: list[float] | None = None,
+    ra_detailed_trace: bool = True,
 ) -> dict[str, Any]:
     import torch
 
     from research.adaptive_vsa_fp4.scripts.runtime import (
         begin_job,
         configure_adaptive_policy,
+        configure_residual_policy,
         install_runtime_patches,
     )
 
@@ -57,6 +63,23 @@ def _rpc_begin_capture(
                 else adaptive_floor_sparsity
             ),
         )
+    elif mode == "ra_vsa":
+        if ra_native_fraction is None:
+            raise ValueError("RA-VSA requires a native fraction")
+        policy = configure_residual_policy(
+            native_fraction=float(ra_native_fraction),
+            native_sparsity=float(
+                ra_native_sparsity
+                if ra_native_sparsity is not None
+                else sparsity
+            ),
+            risk_formula=(
+                ra_risk_formula
+                or "coarse_mass_x_key_heterogeneity"
+            ),
+            instrument_splits=tuple(ra_instrument_splits or ()),
+            detailed_trace=bool(ra_detailed_trace),
+        )
     begin_job(job_id)
     torch.cuda.reset_peak_memory_stats()
     return {
@@ -76,9 +99,15 @@ def _rpc_prepare_runtime(
     adaptive_floor_sparsity: float | None = None,
     adaptive_candidate_sparsities: list[float] | None = None,
     adaptive_native_sparsity: float | None = None,
+    ra_native_fraction: float | None = None,
+    ra_native_sparsity: float | None = None,
+    ra_risk_formula: str | None = None,
+    ra_instrument_splits: list[float] | None = None,
+    ra_detailed_trace: bool = True,
 ) -> dict[str, Any]:
     from research.adaptive_vsa_fp4.scripts.runtime import (
         configure_adaptive_policy,
+        configure_residual_policy,
         install_runtime_patches,
     )
 
@@ -99,6 +128,23 @@ def _rpc_prepare_runtime(
                 if adaptive_native_sparsity is not None
                 else adaptive_floor_sparsity
             ),
+        )
+    elif mode == "ra_vsa":
+        if ra_native_fraction is None:
+            raise ValueError("RA-VSA requires a native fraction")
+        policy = configure_residual_policy(
+            native_fraction=float(ra_native_fraction),
+            native_sparsity=float(
+                ra_native_sparsity
+                if ra_native_sparsity is not None
+                else sparsity
+            ),
+            risk_formula=(
+                ra_risk_formula
+                or "coarse_mass_x_key_heterogeneity"
+            ),
+            instrument_splits=tuple(ra_instrument_splits or ()),
+            detailed_trace=bool(ra_detailed_trace),
         )
     return {
         "status": "runtime_prepared",
@@ -213,7 +259,12 @@ def _configure_mode(mode: str) -> None:
     os.environ["FASTVIDEO_FA4"] = "1"
     os.environ["FASTVIDEO_STAGE_LOGGING"] = "1"
     os.environ["CUTE_DSL_ENABLE_TVM_FFI"] = "1"
-    if mode in {"vsa_bf16", "sim_vsa_nvfp4", "adaptive_vsa"}:
+    if mode in {
+        "vsa_bf16",
+        "sim_vsa_nvfp4",
+        "adaptive_vsa",
+        "ra_vsa",
+    }:
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "VIDEO_SPARSE_ATTN"
         os.environ["FASTVIDEO_VSA_SM100A"] = "1"
         os.environ["FASTVIDEO_NVFP4_FA4"] = "0"
@@ -273,6 +324,16 @@ def _warm_generator(generator: Any, payload: dict[str, Any], mode: str) -> None:
             "adaptive_native_sparsity": payload.get(
                 "adaptive_native_sparsity"
             ),
+            "ra_native_fraction": payload.get("ra_native_fraction"),
+            "ra_native_sparsity": payload.get("ra_native_sparsity"),
+            "ra_risk_formula": payload.get("ra_risk_formula"),
+            "ra_instrument_splits": payload.get(
+                "ra_instrument_splits"
+            ),
+            "ra_detailed_trace": payload.get(
+                "ra_detailed_trace",
+                True,
+            ),
         },
     )
     _validate_effective_sparsity(prepared, sparsity, "runtime_prepared")
@@ -312,6 +373,16 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
             "adaptive_native_sparsity": payload.get(
                 "adaptive_native_sparsity"
             ),
+            "ra_native_fraction": payload.get("ra_native_fraction"),
+            "ra_native_sparsity": payload.get("ra_native_sparsity"),
+            "ra_risk_formula": payload.get("ra_risk_formula"),
+            "ra_instrument_splits": payload.get(
+                "ra_instrument_splits"
+            ),
+            "ra_detailed_trace": payload.get(
+                "ra_detailed_trace",
+                True,
+            ),
         },
     )
     _validate_effective_sparsity(capture_start, sparsity, "capture_started")
@@ -347,6 +418,27 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
     ]
     if mode == "adaptive_vsa" and not adaptive_rows:
         raise RuntimeError("Adaptive VSA produced no policy trace rows")
+    residual_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "ra_vsa_policy"
+    ]
+    if mode == "ra_vsa" and not residual_rows:
+        raise RuntimeError("RA-VSA produced no policy trace rows")
+    if residual_rows:
+        invalid_fixed_k = [
+            row
+            for row in residual_rows
+            if (
+            int(row["selected_count_min"]) != int(row["total_slots"])
+            or int(row["selected_count_max"]) != int(row["total_slots"])
+            )
+        ]
+        if invalid_fixed_k:
+            raise RuntimeError(
+                "RA-VSA violated the fixed-K invariant in policy traces: "
+                f"{invalid_fixed_k[:3]!r}"
+            )
     if adaptive_rows:
         total_rows = sum(int(row["num_query_rows"]) for row in adaptive_rows)
         effective_sparsity = sum(
@@ -391,6 +483,11 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "adaptive_native_sparsity": payload.get(
             "adaptive_native_sparsity"
         ),
+        "ra_native_fraction": payload.get("ra_native_fraction"),
+        "ra_native_sparsity": payload.get("ra_native_sparsity"),
+        "ra_risk_formula": payload.get("ra_risk_formula"),
+        "ra_instrument_splits": payload.get("ra_instrument_splits"),
+        "ra_detailed_trace": payload.get("ra_detailed_trace"),
         "gpu_id": worker_id,
         "warm": True,
         "wall_ms": wall_ms,

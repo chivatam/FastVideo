@@ -23,11 +23,15 @@ class RuntimeCapture:
     adaptive_decisions: list[tuple[str, int, Any, Any]] = field(
         default_factory=list
     )
+    residual_decisions: list[tuple[str, int, Any, Any]] = field(
+        default_factory=list
+    )
 
 
 _CAPTURE = RuntimeCapture()
 _PATCHED = False
 _ADAPTIVE_POLICY = None
+_RESIDUAL_POLICY = None
 
 
 def configure_adaptive_policy(
@@ -51,12 +55,36 @@ def configure_adaptive_policy(
     return _ADAPTIVE_POLICY.as_dict()
 
 
+def configure_residual_policy(
+    *,
+    native_fraction: float,
+    native_sparsity: float = 0.8,
+    risk_formula: str = "coarse_mass_x_key_heterogeneity",
+    instrument_splits: tuple[float, ...] = (),
+    detailed_trace: bool = True,
+) -> dict[str, Any]:
+    global _RESIDUAL_POLICY
+    from research.ra_vsa_deadline.residual_attention import (
+        ResidualAwareVSAPolicy,
+    )
+
+    _RESIDUAL_POLICY = ResidualAwareVSAPolicy(
+        native_fraction=native_fraction,
+        native_sparsity=native_sparsity,
+        risk_formula=risk_formula,
+        instrument_splits=instrument_splits,
+        detailed_trace=detailed_trace,
+    )
+    return _RESIDUAL_POLICY.as_dict()
+
+
 def begin_job(job_id: str) -> None:
     _CAPTURE.job_id = job_id
     _CAPTURE.attention_events.clear()
     _CAPTURE.rows.clear()
     _CAPTURE.effective_sparsities.clear()
     _CAPTURE.adaptive_decisions.clear()
+    _CAPTURE.residual_decisions.clear()
 
 
 def record_effective_sparsity(value: float) -> None:
@@ -88,6 +116,25 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
                     **decision_summary,
                 }
             )
+    if _CAPTURE.residual_decisions:
+        from research.ra_vsa_deadline.residual_attention import (
+            summarize_residual_decision,
+        )
+
+        for prefix, timestep, policy, decision in _CAPTURE.residual_decisions:
+            decision_summary = summarize_residual_decision(decision)
+            record_effective_sparsity(policy.native_sparsity)
+            _CAPTURE.rows.append(
+                {
+                    "event_type": "ra_vsa_policy",
+                    "job_id": _CAPTURE.job_id,
+                    "prefix": prefix,
+                    "layer": _layer_index(prefix),
+                    "timestep": timestep,
+                    **policy.as_dict(),
+                    **decision_summary,
+                }
+            )
     rows = list(_CAPTURE.rows)
     effective_sparsities = sorted(_CAPTURE.effective_sparsities)
     _CAPTURE.job_id = None
@@ -95,6 +142,7 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
     _CAPTURE.rows.clear()
     _CAPTURE.effective_sparsities.clear()
     _CAPTURE.adaptive_decisions.clear()
+    _CAPTURE.residual_decisions.clear()
     return attention_ms, rows, effective_sparsities
 
 
@@ -244,12 +292,47 @@ def install_runtime_patches(mode: str) -> None:
         return
     _PATCHED = True
 
-    if mode in {"vsa_bf16", "sim_vsa_nvfp4", "adaptive_vsa"}:
+    if mode in {
+        "vsa_bf16",
+        "sim_vsa_nvfp4",
+        "adaptive_vsa",
+        "ra_vsa",
+    }:
         from fastvideo.attention.backends.video_sparse_attn import VideoSparseAttentionImpl
 
         original_vsa = VideoSparseAttentionImpl.forward
 
         def vsa_forward(self, query, key, value, gate_compress, attn_metadata):
+            if mode == "ra_vsa":
+                from research.ra_vsa_deadline.residual_attention import (
+                    residual_aware_video_sparse_attn,
+                )
+
+                if _RESIDUAL_POLICY is None:
+                    raise RuntimeError(
+                        "RA-VSA policy was not configured before generation"
+                    )
+                output, decision = _timed_call(
+                    lambda: residual_aware_video_sparse_attn(
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata.variable_block_sizes,
+                        _RESIDUAL_POLICY,
+                    )
+                )
+                if _CAPTURE.job_id is not None:
+                    _CAPTURE.residual_decisions.append(
+                        (
+                            self.prefix,
+                            int(attn_metadata.current_timestep),
+                            _RESIDUAL_POLICY,
+                            decision,
+                        )
+                    )
+                return output
+
             if mode == "adaptive_vsa":
                 from research.adaptive_vsa_deadline.adaptive_attention import (
                     adaptive_video_sparse_attn,
