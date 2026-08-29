@@ -300,6 +300,7 @@ def _configure_mode(mode: str) -> None:
         "anchored_fine_vsa50",
         "hierarchical_vsa_census",
         "cluster_vsa_census",
+        "vector_vsa_census",
     }:
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "VIDEO_SPARSE_ATTN"
         os.environ["FASTVIDEO_VSA_SM100A"] = "1"
@@ -454,6 +455,7 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "anchored_fine_vsa_census",
         "hierarchical_vsa_census",
         "cluster_vsa_census",
+        "vector_vsa_census",
     } and effective_sparsities != [sparsity]:
         raise RuntimeError(f"Requested VSA sparsity {sparsity}, attention metadata observed {effective_sparsities!r}.")
     adaptive_rows = [row for row in stats_rows if row.get("event_type") == "adaptive_policy"]
@@ -728,6 +730,58 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
             raise RuntimeError(
                 "Cluster-VSA violated native exact-pair accounting: "
                 f"{invalid_cluster_budget[:3]!r}"
+            )
+    vector_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "vector_vsa_error"
+    ]
+    vector_alignment = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "vector_vsa_alignment"
+    ]
+    vector_structure = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "vector_vsa_support_structure"
+    ]
+    vector_benchmarks = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "vector_vsa_benchmark"
+    ]
+    if mode == "vector_vsa_census":
+        if (
+            not vector_rows
+            or not vector_alignment
+            or not vector_structure
+            or not vector_benchmarks
+        ):
+            raise RuntimeError(
+                "Vector-VSA census produced incomplete traces"
+            )
+        variants = {row["variant"] for row in vector_rows}
+        from research.vector_vsa.replay import EXPECTED_VARIANTS
+
+        if variants != set(EXPECTED_VARIANTS):
+            raise RuntimeError(
+                f"Vector-VSA census variants are incomplete: {variants!r}"
+            )
+        invalid_vector_budget = [
+            row
+            for row in vector_rows
+            if (
+                abs(float(row["nominal_pair_budget_ratio"]) - 1.0)
+                > 1e-9
+                or abs(float(row["actual_pair_budget_ratio"]) - 1.0)
+                > 1e-6
+            )
+        ]
+        if invalid_vector_budget:
+            raise RuntimeError(
+                "Vector-VSA violated native exact-pair accounting: "
+                f"{invalid_vector_budget[:3]!r}"
             )
     br_rows = [row for row in stats_rows if row.get("event_type") == "br_vsa_policy"]
     if mode == "br_vsa" and not br_rows:
