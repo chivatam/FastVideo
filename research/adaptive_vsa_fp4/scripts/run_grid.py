@@ -19,6 +19,8 @@ MODE_PRECISION = {
     "ra_vsa": "bf16",
     "rectified_vsa": "bf16",
     "compressed_halo_vsa": "bf16",
+    "br_vsa_census": "bf16",
+    "br_vsa": "bf16",
     "dense_nvfp4_fa4": "nvfp4_qk",
     "sim_vsa_nvfp4": "sim_nvfp4_qk",
 }
@@ -78,7 +80,7 @@ def prepare_jobs(args: argparse.Namespace) -> int:
             else [args.ra_native_sparsity]
             if mode == "ra_vsa"
             else [0.8]
-            if mode in {"rectified_vsa", "compressed_halo_vsa"}
+            if mode in {"rectified_vsa", "compressed_halo_vsa", "br_vsa_census", "br_vsa"}
             else _mode_sparsities(
                 mode,
                 args.sparsities,
@@ -116,6 +118,16 @@ def prepare_jobs(args: argparse.Namespace) -> int:
                             "rectified_vsa",
                             "compressed_halo_vsa",
                         }
+                        else None
+                    ),
+                    "br_candidate_k": (
+                        args.br_candidate_k
+                        if mode == "br_vsa_census"
+                        else None
+                    ),
+                    "br_k_table_path": (
+                        str(args.br_k_table)
+                        if mode == "br_vsa" and args.br_k_table is not None
                         else None
                     ),
                     "height": args.height,
@@ -248,6 +260,13 @@ def main() -> None:
         action="store_true",
     )
     parser.add_argument("--cs-minimal-trace", action="store_true")
+    parser.add_argument(
+        "--br-candidate-k",
+        type=int,
+        nargs="+",
+        default=[32, 64, 96, 125, 192, 250, 375, 624],
+    )
+    parser.add_argument("--br-k-table", type=Path)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--seed", type=int, default=1024)
     parser.add_argument("--height", type=int, default=480)
@@ -266,6 +285,8 @@ def main() -> None:
     args = parser.parse_args()
     args.db = args.db or args.artifact_root / f"phase{args.phase}" / "jobs.sqlite"
     args.prompts = args.prompts or args.artifact_root / "phase0" / "vbench_subject_consistency_prompts.json"
+    if "br_vsa" in args.modes and args.br_k_table is None:
+        parser.error("--br-k-table is required for br_vsa")
 
     if not args.run_only:
         print(f"created={prepare_jobs(args)}")

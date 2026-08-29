@@ -38,12 +38,16 @@ def _rpc_begin_capture(
     ra_detailed_trace: bool = True,
     ra_force_outside_native: bool = False,
     cs_detailed_trace: bool = True,
+    br_candidate_k: list[int] | None = None,
+    br_k_table_path: str | None = None,
 ) -> dict[str, Any]:
     import torch
 
     from research.adaptive_vsa_fp4.scripts.runtime import (
         begin_job,
         configure_adaptive_policy,
+        configure_br_census,
+        configure_br_policy,
         configure_compressed_support,
         configure_residual_policy,
         install_runtime_patches,
@@ -78,6 +82,17 @@ def _rpc_begin_capture(
         policy = configure_compressed_support(
             detailed_trace=bool(cs_detailed_trace),
         )
+    elif mode == "br_vsa_census":
+        policy = configure_br_census(
+            candidate_k=tuple(
+                br_candidate_k
+                or (32, 64, 96, 125, 192, 250, 375, 624)
+            ),
+        )
+    elif mode == "br_vsa":
+        if br_k_table_path is None:
+            raise ValueError("BR-VSA requires a frozen K-table path")
+        policy = configure_br_policy(k_table_path=br_k_table_path)
     begin_job(job_id)
     torch.cuda.reset_peak_memory_stats()
     return {
@@ -104,9 +119,13 @@ def _rpc_prepare_runtime(
     ra_detailed_trace: bool = True,
     ra_force_outside_native: bool = False,
     cs_detailed_trace: bool = True,
+    br_candidate_k: list[int] | None = None,
+    br_k_table_path: str | None = None,
 ) -> dict[str, Any]:
     from research.adaptive_vsa_fp4.scripts.runtime import (
         configure_adaptive_policy,
+        configure_br_census,
+        configure_br_policy,
         configure_compressed_support,
         configure_residual_policy,
         install_runtime_patches,
@@ -141,6 +160,17 @@ def _rpc_prepare_runtime(
         policy = configure_compressed_support(
             detailed_trace=bool(cs_detailed_trace),
         )
+    elif mode == "br_vsa_census":
+        policy = configure_br_census(
+            candidate_k=tuple(
+                br_candidate_k
+                or (32, 64, 96, 125, 192, 250, 375, 624)
+            ),
+        )
+    elif mode == "br_vsa":
+        if br_k_table_path is None:
+            raise ValueError("BR-VSA requires a frozen K-table path")
+        policy = configure_br_policy(k_table_path=br_k_table_path)
     return {
         "status": "runtime_prepared",
         "rank": worker.rpc_rank,
@@ -261,6 +291,8 @@ def _configure_mode(mode: str) -> None:
         "ra_vsa",
         "rectified_vsa",
         "compressed_halo_vsa",
+        "br_vsa_census",
+        "br_vsa",
     }:
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "VIDEO_SPARSE_ATTN"
         os.environ["FASTVIDEO_VSA_SM100A"] = "1"
@@ -331,6 +363,8 @@ def _warm_generator(generator: Any, payload: dict[str, Any], mode: str) -> None:
                 "cs_detailed_trace",
                 True,
             ),
+            "br_candidate_k": payload.get("br_candidate_k"),
+            "br_k_table_path": payload.get("br_k_table_path"),
         },
     )
     _validate_effective_sparsity(prepared, sparsity, "runtime_prepared")
@@ -380,6 +414,8 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
                 "cs_detailed_trace",
                 True,
             ),
+            "br_candidate_k": payload.get("br_candidate_k"),
+            "br_k_table_path": payload.get("br_k_table_path"),
         },
     )
     _validate_effective_sparsity(capture_start, sparsity, "capture_started")
@@ -424,6 +460,43 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
     ]
     if invalid_compressed_k:
         raise RuntimeError(f"Compressed-support VSA violated native K=125: {invalid_compressed_k[:3]!r}")
+    census_rows = [row for row in stats_rows if row.get("event_type") == "br_vsa_sensitivity"]
+    if mode == "br_vsa_census" and not census_rows:
+        raise RuntimeError("BR-VSA census produced no sensitivity rows")
+    invalid_census_k = [
+        row
+        for row in census_rows
+        if (
+            int(row["selected_count_min"]) != int(row["K"])
+            or int(row["selected_count_max"]) != int(row["K"])
+        )
+    ]
+    if invalid_census_k:
+        raise RuntimeError(f"BR-VSA census violated exact K: {invalid_census_k[:3]!r}")
+    br_rows = [row for row in stats_rows if row.get("event_type") == "br_vsa_policy"]
+    if mode == "br_vsa" and not br_rows:
+        raise RuntimeError("BR-VSA produced no fixed-policy trace rows")
+    invalid_br_k = [
+        row
+        for row in br_rows
+        if (
+            int(row["selected_count_error_abs_max"]) != 0
+            or int(row["selected_total_per_query_min"])
+            != int(row["requested_total_k"])
+            or int(row["selected_total_per_query_max"])
+            != int(row["requested_total_k"])
+        )
+    ]
+    if invalid_br_k:
+        raise RuntimeError(f"BR-VSA violated requested per-head K: {invalid_br_k[:3]!r}")
+    if br_rows:
+        observed_budget = sum(int(row["requested_total_k"]) for row in br_rows)
+        expected_budget = int(br_rows[0]["allocated_budget"])
+        if observed_budget != expected_budget:
+            raise RuntimeError(
+                "BR-VSA inference budget mismatch: "
+                f"observed={observed_budget}, expected={expected_budget}"
+            )
     if residual_rows:
         invalid_fixed_k = [
             row
@@ -446,7 +519,14 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         ]
         if invalid_replacement:
             raise RuntimeError(f"Forced RA-VSA violated the exact replacement invariant: {invalid_replacement[:3]!r}")
-    if adaptive_rows:
+    if br_rows:
+        total_exact = sum(int(row["requested_total_k"]) for row in br_rows)
+        total_capacity = sum(
+            len(row["requested_k"]) * int(row["num_blocks"])
+            for row in br_rows
+        )
+        effective_sparsity = 1.0 - total_exact / total_capacity
+    elif adaptive_rows:
         total_rows = sum(int(row["num_query_rows"]) for row in adaptive_rows)
         effective_sparsity = (
             sum(float(row["effective_sparsity"]) * int(row["num_query_rows"]) for row in adaptive_rows) / total_rows
@@ -488,6 +568,8 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "ra_detailed_trace": payload.get("ra_detailed_trace"),
         "ra_force_outside_native": payload.get("ra_force_outside_native"),
         "cs_detailed_trace": payload.get("cs_detailed_trace"),
+        "br_candidate_k": payload.get("br_candidate_k"),
+        "br_k_table_path": payload.get("br_k_table_path"),
         "gpu_id": worker_id,
         "warm": True,
         "wall_ms": wall_ms,

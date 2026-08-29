@@ -23,13 +23,16 @@ class RuntimeCapture:
     adaptive_decisions: list[tuple[str, int, Any, Any]] = field(default_factory=list)
     residual_decisions: list[tuple[str, int, Any, Any]] = field(default_factory=list)
     compressed_support_decisions: list[tuple[str, int, Any]] = field(default_factory=list)
+    br_decisions: list[tuple[str, int, Any, Any]] = field(default_factory=list)
 
 
 _CAPTURE = RuntimeCapture()
 _PATCHED = False
 _ADAPTIVE_POLICY = None
 _RESIDUAL_POLICY = None
+_BR_POLICY = None
 _COMPRESSED_SUPPORT_DETAILED_TRACE = True
+_BR_CANDIDATE_K = (32, 64, 96, 125, 192, 250, 375, 624)
 
 
 def configure_adaptive_policy(
@@ -87,6 +90,29 @@ def configure_compressed_support(
     return {"detailed_trace": _COMPRESSED_SUPPORT_DETAILED_TRACE}
 
 
+def configure_br_census(
+    *,
+    candidate_k: tuple[int, ...] = _BR_CANDIDATE_K,
+) -> dict[str, Any]:
+    global _BR_CANDIDATE_K
+    normalized = tuple(sorted({int(value) for value in candidate_k}))
+    if not normalized:
+        raise ValueError("BR-VSA census requires candidate K values")
+    _BR_CANDIDATE_K = normalized
+    return {"candidate_k": list(_BR_CANDIDATE_K)}
+
+
+def configure_br_policy(
+    *,
+    k_table_path: str,
+) -> dict[str, Any]:
+    global _BR_POLICY
+    from research.br_vsa.attention import BudgetRedistributedPolicy
+
+    _BR_POLICY = BudgetRedistributedPolicy.from_path(k_table_path)
+    return _BR_POLICY.as_dict()
+
+
 def begin_job(job_id: str) -> None:
     _CAPTURE.job_id = job_id
     _CAPTURE.attention_events.clear()
@@ -95,6 +121,7 @@ def begin_job(job_id: str) -> None:
     _CAPTURE.adaptive_decisions.clear()
     _CAPTURE.residual_decisions.clear()
     _CAPTURE.compressed_support_decisions.clear()
+    _CAPTURE.br_decisions.clear()
 
 
 def record_effective_sparsity(value: float) -> None:
@@ -161,6 +188,26 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
                     **decision_summary,
                 }
             )
+    if _CAPTURE.br_decisions:
+        from research.br_vsa.attention import (
+            summarize_budget_redistributed_decision,
+        )
+
+        for prefix, timestep, policy, decision in _CAPTURE.br_decisions:
+            decision_summary = summarize_budget_redistributed_decision(
+                decision
+            )
+            _CAPTURE.rows.append(
+                {
+                    "event_type": "br_vsa_policy",
+                    "job_id": _CAPTURE.job_id,
+                    "prefix": prefix,
+                    "layer": _layer_index(prefix),
+                    "timestep": timestep,
+                    **policy.as_dict(),
+                    **decision_summary,
+                }
+            )
     rows = list(_CAPTURE.rows)
     effective_sparsities = sorted(_CAPTURE.effective_sparsities)
     _CAPTURE.job_id = None
@@ -170,6 +217,7 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
     _CAPTURE.adaptive_decisions.clear()
     _CAPTURE.residual_decisions.clear()
     _CAPTURE.compressed_support_decisions.clear()
+    _CAPTURE.br_decisions.clear()
     return attention_ms, rows, effective_sparsities
 
 
@@ -326,12 +374,90 @@ def install_runtime_patches(mode: str) -> None:
         "ra_vsa",
         "rectified_vsa",
         "compressed_halo_vsa",
+        "br_vsa_census",
+        "br_vsa",
     }:
         from fastvideo.attention.backends.video_sparse_attn import VideoSparseAttentionImpl
 
         original_vsa = VideoSparseAttentionImpl.forward
 
         def vsa_forward(self, query, key, value, gate_compress, attn_metadata):
+            if mode == "br_vsa":
+                from research.br_vsa.attention import (
+                    budget_redistributed_video_sparse_attn,
+                )
+
+                if _BR_POLICY is None:
+                    raise RuntimeError("BR-VSA policy was not configured before generation")
+                timestep = int(attn_metadata.current_timestep)
+                layer = _layer_index(self.prefix)
+                if layer is None:
+                    raise RuntimeError(
+                        f"Could not resolve transformer layer from {self.prefix!r}"
+                    )
+                requested_k = _BR_POLICY.k_for(timestep, layer)
+                output, decision = _timed_call(
+                    lambda: budget_redistributed_video_sparse_attn(
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata.variable_block_sizes,
+                        requested_k,
+                    )
+                )
+                if _CAPTURE.job_id is not None:
+                    _CAPTURE.br_decisions.append(
+                        (
+                            self.prefix,
+                            timestep,
+                            _BR_POLICY,
+                            decision,
+                        )
+                    )
+                return output
+
+            if mode == "br_vsa_census":
+                record_effective_sparsity(attn_metadata.VSA_sparsity)
+                output = _timed_call(
+                    lambda: original_vsa(
+                        self,
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata,
+                    )
+                )
+                if _CAPTURE.job_id is not None:
+                    from research.br_vsa.sensitivity import (
+                        replay_vsa_sensitivity,
+                    )
+
+                    replay = replay_vsa_sensitivity(
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata.variable_block_sizes,
+                        attn_metadata.non_pad_index,
+                        candidate_k=_BR_CANDIDATE_K,
+                    )
+                    timestep = int(attn_metadata.current_timestep)
+                    layer = _layer_index(self.prefix)
+                    for row in replay.rows:
+                        _CAPTURE.rows.append(
+                            {
+                                "event_type": "br_vsa_sensitivity",
+                                "job_id": _CAPTURE.job_id,
+                                "prefix": self.prefix,
+                                "layer": layer,
+                                "timestep": timestep,
+                                **row,
+                            }
+                        )
+                return output
+
             if mode in {"rectified_vsa", "compressed_halo_vsa"}:
                 from research.compressed_halo_vsa.compressed_support import (
                     compressed_support_video_sparse_attn,
