@@ -48,6 +48,7 @@ def _fine_sparse_attention_kernel(
     query_block: tl.constexpr,
     child_width: tl.constexpr,
     load_width: tl.constexpr,
+    descriptors_per_group: tl.constexpr,
 ):
     query_block_index = tl.program_id(0)
     batch_head = tl.program_id(1)
@@ -57,56 +58,43 @@ def _fine_sparse_attention_kernel(
     offsets_m = query_block_index * query_block + tl.arange(0, query_block)
     offsets_d = tl.arange(0, head_dim)
     query = tl.load(
-        query_ptr
-        + batch * stride_qb
-        + head * stride_qh
-        + offsets_m[:, None] * stride_qs
-        + offsets_d[None, :] * stride_qd,
-    )
+        query_ptr + batch * stride_qb + head * stride_qh + offsets_m[:, None] * stride_qs +
+        offsets_d[None, :] * stride_qd, )
     row_max = tl.full([query_block], -float("inf"), tl.float32)
     row_sum = tl.zeros([query_block], tl.float32)
     accumulator = tl.zeros([query_block, head_dim], tl.float32)
     scale_log2 = (1.0 / tl.sqrt(float(head_dim))) * 1.4426950408889634
 
-    selected_count = tl.load(
-        selected_count_ptr
-        + batch * stride_cb
-        + head * stride_ch
-        + query_block_index * stride_cq,
-    )
-    selected_base = (
-        selected_index_ptr
-        + batch * stride_ib
-        + head * stride_ih
-        + query_block_index * stride_iq
-    )
+    selected_count = tl.load(selected_count_ptr + batch * stride_cb + head * stride_ch +
+                             query_block_index * stride_cq, )
+    selected_base = (selected_index_ptr + batch * stride_ib + head * stride_ih + query_block_index * stride_iq)
     offsets_n = tl.arange(0, load_width)
-    for selected_offset in range(0, selected_count):
+    child_offsets = offsets_n % child_width
+    descriptor_offsets = offsets_n // child_width
+    for selected_offset in range(
+            0,
+            selected_count,
+            descriptors_per_group,
+    ):
+        selected_offsets = selected_offset + descriptor_offsets
+        valid_descriptor = selected_offsets < selected_count
         child_index = tl.load(
-            selected_base + selected_offset * stride_ik,
+            selected_base + selected_offsets * stride_ik,
+            mask=valid_descriptor,
+            other=0,
         ).to(tl.int32)
         child_size = tl.load(child_size_ptr + child_index).to(tl.int32)
-        token_offsets = child_index * child_width + offsets_n
-        valid_n = (
-            (offsets_n < child_size)
-            & (offsets_n < child_width)
-            & (token_offsets < key_sequence)
-        )
+        token_offsets = child_index * child_width + child_offsets
+        valid_n = (valid_descriptor & (child_offsets < child_size) & (token_offsets < key_sequence))
         key = tl.load(
-            key_ptr
-            + batch * stride_kb
-            + head * stride_kh
-            + token_offsets[:, None] * stride_ks
-            + offsets_d[None, :] * stride_kd,
+            key_ptr + batch * stride_kb + head * stride_kh + token_offsets[:, None] * stride_ks +
+            offsets_d[None, :] * stride_kd,
             mask=valid_n[:, None],
             other=0.0,
         )
         value = tl.load(
-            value_ptr
-            + batch * stride_vb
-            + head * stride_vh
-            + token_offsets[:, None] * stride_vs
-            + offsets_d[None, :] * stride_vd,
+            value_ptr + batch * stride_vb + head * stride_vh + token_offsets[:, None] * stride_vs +
+            offsets_d[None, :] * stride_vd,
             mask=valid_n[:, None],
             other=0.0,
         )
@@ -131,18 +119,12 @@ def _fine_sparse_attention_kernel(
 
     output = accumulator / row_sum[:, None]
     tl.store(
-        output_ptr
-        + batch * stride_ob
-        + head * stride_oh
-        + offsets_m[:, None] * stride_os
-        + offsets_d[None, :] * stride_od,
+        output_ptr + batch * stride_ob + head * stride_oh + offsets_m[:, None] * stride_os +
+        offsets_d[None, :] * stride_od,
         output,
     )
     tl.store(
-        lse_ptr
-        + batch * stride_lb
-        + head * stride_lh
-        + offsets_m * stride_ls,
+        lse_ptr + batch * stride_lb + head * stride_lh + offsets_m * stride_ls,
         row_max + tl.log2(row_sum),
     )
 
@@ -156,6 +138,7 @@ def fine_sparse_attention(
     *,
     child_width: int,
     query_block: int = 64,
+    selected_counts: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Forward-only fixed-density sparse attention with fine KV blocks."""
     if not query_bhsd.is_cuda:
@@ -176,19 +159,25 @@ def fine_sparse_attention(
         query_sequence // query_block,
     )
     if selected_indices.shape[:3] != expected:
-        raise ValueError(
-            f"Unexpected selected-index shape {selected_indices.shape}; "
-            f"expected prefix {expected}"
-        )
+        raise ValueError(f"Unexpected selected-index shape {selected_indices.shape}; "
+                         f"expected prefix {expected}")
     if child_sizes.numel() != key_sequence // child_width:
         raise ValueError("Child-size metadata does not cover the key sequence")
     selected_indices = selected_indices.to(torch.int32).contiguous()
-    selected_counts = torch.full(
-        selected_indices.shape[:-1],
-        selected_indices.shape[-1],
-        dtype=torch.int32,
-        device=selected_indices.device,
-    )
+    if selected_counts is None:
+        selected_counts = torch.full(
+            selected_indices.shape[:-1],
+            selected_indices.shape[-1],
+            dtype=torch.int32,
+            device=selected_indices.device,
+        )
+    elif selected_counts.shape != selected_indices.shape[:-1]:
+        raise ValueError("selected_counts must match the selected-index row geometry")
+    else:
+        selected_counts = selected_counts.to(
+            device=selected_indices.device,
+            dtype=torch.int32,
+        ).contiguous()
     child_sizes = child_sizes.to(torch.int32).contiguous()
     output = torch.empty_like(query_bhsd)
     lse = torch.empty(
@@ -196,7 +185,8 @@ def fine_sparse_attention(
         device=query_bhsd.device,
         dtype=torch.float32,
     )
-    load_width = max(16, child_width)
+    descriptors_per_group = max(1, 64 // child_width)
+    load_width = child_width * descriptors_per_group
     grid = (query_sequence // query_block, batch * heads)
     _fine_sparse_attention_kernel[grid](
         query_bhsd,
@@ -221,6 +211,7 @@ def fine_sparse_attention(
         query_block=query_block,
         child_width=child_width,
         load_width=load_width,
+        descriptors_per_group=descriptors_per_group,
         num_warps=8,
         num_stages=3,
     )
@@ -242,12 +233,7 @@ def child_block_sizes(
         device=parent_sizes.device,
         dtype=parent_sizes.dtype,
     )
-    return (
-        parent_sizes[:, None]
-        .sub(offsets[None, :])
-        .clamp(min=0, max=child_width)
-        .reshape(-1)
-    )
+    return (parent_sizes[:, None].sub(offsets[None, :]).clamp(min=0, max=child_width).reshape(-1))
 
 
 def child_block_mean(
@@ -274,20 +260,17 @@ def child_block_mean(
         child_width,
         head_dim,
     )
-    valid = (
-        torch.arange(
-            child_width,
-            device=tensor_bhsd.device,
-        )[None, None, None, None, :, None]
-        < sizes.view(
-            1,
-            1,
-            parent_sizes.numel(),
-            factor,
-            1,
-            1,
-        )
-    )
+    valid = (torch.arange(
+        child_width,
+        device=tensor_bhsd.device,
+    )[None, None, None, None, :, None] < sizes.view(
+        1,
+        1,
+        parent_sizes.numel(),
+        factor,
+        1,
+        1,
+    ))
     means = (blocks * valid).sum(dim=-2) / sizes.clamp_min(1).view(
         1,
         1,

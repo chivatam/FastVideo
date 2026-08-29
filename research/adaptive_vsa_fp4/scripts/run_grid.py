@@ -31,6 +31,7 @@ MODE_PRECISION = {
     "vector_vsa_census": "bf16",
     "coretail_dense_calibration": "bf16",
     "coretail_vsa_census": "bf16",
+    "coretail_vsa25": "bf16",
     "dense_nvfp4_fa4": "nvfp4_qk",
     "sim_vsa_nvfp4": "sim_nvfp4_qk",
 }
@@ -105,6 +106,7 @@ def prepare_jobs(args: argparse.Namespace) -> int:
                 "cluster_vsa_census",
                 "vector_vsa_census",
                 "coretail_vsa_census",
+                "coretail_vsa25",
             }
             else [0.0]
             if mode == "coretail_dense_calibration"
@@ -165,7 +167,8 @@ def prepare_jobs(args: argparse.Namespace) -> int:
                     ),
                     "coretail_core_mask_path": (
                         str(args.coretail_core_mask)
-                        if mode == "coretail_vsa_census"
+                        if mode
+                        in {"coretail_vsa_census", "coretail_vsa25"}
                         and args.coretail_core_mask is not None
                         else None
                     ),
@@ -337,12 +340,14 @@ def main() -> None:
             "coretail_dense_calibration"
         )
     if (
-        "coretail_vsa_census" in args.modes
+        any(
+            mode in {"coretail_vsa_census", "coretail_vsa25"}
+            for mode in args.modes
+        )
         and args.coretail_core_mask is None
     ):
         parser.error(
-            "--coretail-core-mask is required for "
-            "coretail_vsa_census"
+            "--coretail-core-mask is required for CoreTail modes"
         )
 
     if not args.run_only:

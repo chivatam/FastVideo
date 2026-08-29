@@ -71,8 +71,26 @@ class CoreMaskTable:
             raise IndexError(f"Layer {layer} is outside the core table")
         return source[step, layer].to(
             device=device,
-            dtype=torch.int64,
+            dtype=torch.int32,
         )[None]
+
+    def preload(
+        self,
+        *,
+        device: torch.device | str,
+        core_parent_blocks: int,
+    ) -> CoreMaskTable:
+        """Preload one frozen core table for zero-copy runtime slicing."""
+        if core_parent_blocks not in CORE_PARENT_COUNTS:
+            raise ValueError("Only frozen Core25/Core50 ratios are allowed")
+        target = torch.device(device)
+        return CoreMaskTable(
+            timesteps=self.timesteps,
+            core25=(self.core25.to(device=target, dtype=torch.int32) if core_parent_blocks == 31 else self.core25),
+            core50=(self.core50.to(device=target, dtype=torch.int32) if core_parent_blocks == 62 else self.core50),
+            calibration_prompt_hash=self.calibration_prompt_hash,
+            quantile_semantics=self.quantile_semantics,
+        )
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -119,7 +137,8 @@ def select_coretail_support(
             core_parent_blocks,
     ):
         raise ValueError("Core mask geometry does not match attention state")
-    if parent_sizes[core_parent_indices].le(0).any():
+    core_parent_indices_long = core_parent_indices.long()
+    if parent_sizes[core_parent_indices_long].le(0).any():
         raise RuntimeError("Frozen core contains a zero-valid-token parent")
 
     native_indices = torch.topk(
@@ -129,7 +148,7 @@ def select_coretail_support(
         sorted=True,
     ).indices
     native_actual = parent_sizes[native_indices].sum(dim=-1)
-    core_sizes = parent_sizes[core_parent_indices]
+    core_sizes = parent_sizes[core_parent_indices_long]
     core_active = torch.zeros_like(core_parent_indices, dtype=torch.bool)
     remaining = native_actual.clone()
     for rank in range(core_parent_blocks):
@@ -138,7 +157,7 @@ def select_coretail_support(
         remaining = remaining - (core_sizes[..., rank] * fits.to(core_sizes.dtype))
     core_actual = (core_sizes * core_active.to(core_sizes.dtype)).sum(dim=-1)
     tail_target = native_actual - core_actual
-    raw_core_children = parent_indices_to_children(core_parent_indices)
+    raw_core_children = parent_indices_to_children(core_parent_indices_long)
     active_children = core_active.unsqueeze(-1).expand(
         *core_active.shape,
         CHILDREN_PER_PARENT,

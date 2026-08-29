@@ -105,13 +105,16 @@ def _rpc_begin_capture(
         policy = configure_coretail_dense_capture(
             mass_root=coretail_mass_dir,
         )
-    elif mode == "coretail_vsa_census":
+    elif mode in {"coretail_vsa_census", "coretail_vsa25"}:
         if coretail_core_mask_path is None:
             raise ValueError(
-                "CoreTail replay requires a frozen core-mask path"
+                "CoreTail requires a frozen core-mask path"
             )
         policy = configure_coretail_masks(
             mask_path=coretail_core_mask_path,
+            core_parent_blocks=(
+                31 if mode == "coretail_vsa25" else None
+            ),
         )
     begin_job(job_id)
     torch.cuda.reset_peak_memory_stats()
@@ -203,13 +206,16 @@ def _rpc_prepare_runtime(
         policy = configure_coretail_dense_capture(
             mass_root=coretail_mass_dir,
         )
-    elif mode == "coretail_vsa_census":
+    elif mode in {"coretail_vsa_census", "coretail_vsa25"}:
         if coretail_core_mask_path is None:
             raise ValueError(
-                "CoreTail replay requires a frozen core-mask path"
+                "CoreTail requires a frozen core-mask path"
             )
         policy = configure_coretail_masks(
             mask_path=coretail_core_mask_path,
+            core_parent_blocks=(
+                31 if mode == "coretail_vsa25" else None
+            ),
         )
     return {
         "status": "runtime_prepared",
@@ -342,6 +348,7 @@ def _configure_mode(mode: str) -> None:
         "cluster_vsa_census",
         "vector_vsa_census",
         "coretail_vsa_census",
+        "coretail_vsa25",
     }:
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "VIDEO_SPARSE_ATTN"
         os.environ["FASTVIDEO_VSA_SM100A"] = "1"
@@ -929,6 +936,49 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
             raise RuntimeError(
                 "CoreTail violated pair accounting: "
                 f"{(invalid_budget + invalid_accounting)[:3]!r}"
+            )
+    coretail_policy_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "coretail_vsa_policy"
+    ]
+    coretail_merge_rows = [
+        row
+        for row in stats_rows
+        if row.get("event_type") == "coretail_merge_validation"
+    ]
+    if mode == "coretail_vsa25":
+        if len(coretail_policy_rows) != 90 or not coretail_merge_rows:
+            raise RuntimeError(
+                "CoreTail systems run produced incomplete policy or "
+                "merge-validation traces"
+            )
+        invalid_coretail = [
+            row
+            for row in coretail_policy_rows
+            if (
+                int(row["static_parent_blocks"]) != 31
+                or float(row["nominal_pair_budget_ratio"]) > 1.0
+                + 1e-9
+                or int(row["actual_kv_token_error_abs_max"]) != 0
+                or int(row["duplicate_valid_tokens_max"]) != 0
+                or not bool(row["static_metadata_precomputed"])
+                or bool(row["static_selection_online_topk"])
+            )
+        ]
+        invalid_merge = [
+            row
+            for row in coretail_merge_rows
+            if (
+                not bool(row["finite"])
+                or not bool(row["passes"])
+                or float(row["relative_L2"]) > 0.01
+            )
+        ]
+        if invalid_coretail or invalid_merge:
+            raise RuntimeError(
+                "CoreTail systems invariants failed: "
+                f"{(invalid_coretail + invalid_merge)[:3]!r}"
             )
     br_rows = [row for row in stats_rows if row.get("event_type") == "br_vsa_policy"]
     if mode == "br_vsa" and not br_rows:

@@ -24,6 +24,9 @@ class RuntimeCapture:
     residual_decisions: list[tuple[str, int, Any, Any]] = field(default_factory=list)
     compressed_support_decisions: list[tuple[str, int, Any]] = field(default_factory=list)
     br_decisions: list[tuple[str, int, Any, Any]] = field(default_factory=list)
+    coretail_decisions: list[tuple[str, int, Any]] = field(
+        default_factory=list
+    )
 
 
 _CAPTURE = RuntimeCapture()
@@ -130,11 +133,17 @@ def configure_coretail_dense_capture(
 def configure_coretail_masks(
     *,
     mask_path: str,
+    core_parent_blocks: int | None = None,
 ) -> dict[str, Any]:
     global _CORETAIL_CORE_MASKS
     from research.coretail_vsa.selection import CoreMaskTable
 
     _CORETAIL_CORE_MASKS = CoreMaskTable.from_path(mask_path)
+    if core_parent_blocks is not None:
+        _CORETAIL_CORE_MASKS = _CORETAIL_CORE_MASKS.preload(
+            device="cuda",
+            core_parent_blocks=core_parent_blocks,
+        )
     return _CORETAIL_CORE_MASKS.as_dict()
 
 
@@ -147,6 +156,7 @@ def begin_job(job_id: str) -> None:
     _CAPTURE.residual_decisions.clear()
     _CAPTURE.compressed_support_decisions.clear()
     _CAPTURE.br_decisions.clear()
+    _CAPTURE.coretail_decisions.clear()
     _CORETAIL_DENSE_LAYER_COUNTS.clear()
 
 
@@ -234,6 +244,31 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
                     **decision_summary,
                 }
             )
+    if _CAPTURE.coretail_decisions:
+        from research.coretail_vsa.attention import (
+            get_merge_validation,
+            summarize_systems_decision,
+        )
+
+        for prefix, timestep, decision in _CAPTURE.coretail_decisions:
+            _CAPTURE.rows.append(
+                {
+                    "event_type": "coretail_vsa_policy",
+                    "job_id": _CAPTURE.job_id,
+                    "prefix": prefix,
+                    "layer": _layer_index(prefix),
+                    "timestep": timestep,
+                    **summarize_systems_decision(decision),
+                }
+            )
+        validation = get_merge_validation()
+        if validation is not None:
+            _CAPTURE.rows.append(
+                {
+                    "job_id": _CAPTURE.job_id,
+                    **validation,
+                }
+            )
     rows = list(_CAPTURE.rows)
     effective_sparsities = sorted(_CAPTURE.effective_sparsities)
     _CAPTURE.job_id = None
@@ -244,6 +279,7 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
     _CAPTURE.residual_decisions.clear()
     _CAPTURE.compressed_support_decisions.clear()
     _CAPTURE.br_decisions.clear()
+    _CAPTURE.coretail_decisions.clear()
     return attention_ms, rows, effective_sparsities
 
 
@@ -471,12 +507,49 @@ def install_runtime_patches(mode: str) -> None:
         "cluster_vsa_census",
         "vector_vsa_census",
         "coretail_vsa_census",
+        "coretail_vsa25",
     }:
         from fastvideo.attention.backends.video_sparse_attn import VideoSparseAttentionImpl
 
         original_vsa = VideoSparseAttentionImpl.forward
 
         def vsa_forward(self, query, key, value, gate_compress, attn_metadata):
+            if mode == "coretail_vsa25":
+                if _CORETAIL_CORE_MASKS is None:
+                    raise RuntimeError(
+                        "CoreTail frozen masks were not configured"
+                    )
+                from research.coretail_vsa.attention import (
+                    NOMINAL_SPARSITY,
+                    coretail_video_sparse_attn,
+                )
+
+                timestep = int(attn_metadata.current_timestep)
+                layer = _layer_index(self.prefix)
+                if layer is None:
+                    raise RuntimeError(
+                        f"Could not resolve CoreTail layer from "
+                        f"{self.prefix!r}"
+                    )
+                output, decision = _timed_call(
+                    lambda: coretail_video_sparse_attn(
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata.variable_block_sizes,
+                        timestep=timestep,
+                        layer=layer,
+                        core_masks=_CORETAIL_CORE_MASKS,
+                    )
+                )
+                record_effective_sparsity(NOMINAL_SPARSITY)
+                if _CAPTURE.job_id is not None:
+                    _CAPTURE.coretail_decisions.append(
+                        (self.prefix, timestep, decision)
+                    )
+                return output
+
             if mode == "coretail_vsa_census":
                 if _CORETAIL_CORE_MASKS is None:
                     raise RuntimeError(

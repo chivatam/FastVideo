@@ -6,6 +6,9 @@ from pathlib import Path
 import torch
 
 from research.coretail_vsa.calibrate import _linear_p10
+from research.coretail_vsa.attention import (
+    online_softmax_merge_reference,
+)
 from research.coretail_vsa.prompts import select_external_prompts
 from research.coretail_vsa.selection import select_coretail_support
 from research.fine_vsa.fine_attention import child_block_sizes
@@ -110,3 +113,44 @@ def test_coretail_projects_static_core_into_ragged_native_budget() -> None:
     assert selection.fine_tail_actual_kv_tokens.item() == 40
     assert selection.selected_actual_kv_tokens.item() == 1000
     assert selection.duplicate_valid_tokens.item() == 0
+
+
+def test_online_softmax_merge_matches_union_reference() -> None:
+    generator = torch.Generator().manual_seed(17)
+    logits_a = torch.randn(2, 3, 5, generator=generator) * 7
+    logits_b = torch.randn(2, 3, 7, generator=generator) * 7
+    values_a = torch.randn(2, 5, 4, generator=generator)
+    values_b = torch.randn(2, 7, 4, generator=generator)
+    probabilities_a = torch.softmax(logits_a, dim=-1)
+    probabilities_b = torch.softmax(logits_b, dim=-1)
+    output_a = torch.einsum("brk,bkd->brd", probabilities_a, values_a)
+    output_b = torch.einsum("brk,bkd->brd", probabilities_b, values_b)
+    lse_a = torch.logsumexp(logits_a, dim=-1) / torch.log(
+        torch.tensor(2.0)
+    )
+    lse_b = torch.logsumexp(logits_b, dim=-1) / torch.log(
+        torch.tensor(2.0)
+    )
+    merged, merged_lse = online_softmax_merge_reference(
+        output_a,
+        lse_a,
+        output_b,
+        lse_b,
+    )
+    union_logits = torch.cat([logits_a, logits_b], dim=-1)
+    union_values = torch.cat([values_a, values_b], dim=1)
+    expected = torch.einsum(
+        "brk,bkd->brd",
+        torch.softmax(union_logits, dim=-1),
+        union_values,
+    )
+    expected_lse = torch.logsumexp(union_logits, dim=-1) / torch.log(
+        torch.tensor(2.0)
+    )
+    assert torch.allclose(merged, expected, atol=2e-6, rtol=2e-6)
+    assert torch.allclose(
+        merged_lse,
+        expected_lse,
+        atol=2e-6,
+        rtol=2e-6,
+    )
