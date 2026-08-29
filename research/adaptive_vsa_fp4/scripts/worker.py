@@ -36,12 +36,14 @@ def _rpc_begin_capture(
     ra_instrument_splits: list[float] | None = None,
     ra_detailed_trace: bool = True,
     ra_force_outside_native: bool = False,
+    cs_detailed_trace: bool = True,
 ) -> dict[str, Any]:
     import torch
 
     from research.adaptive_vsa_fp4.scripts.runtime import (
         begin_job,
         configure_adaptive_policy,
+        configure_compressed_support,
         configure_residual_policy,
         install_runtime_patches,
     )
@@ -55,13 +57,9 @@ def _rpc_begin_capture(
         policy = configure_adaptive_policy(
             retained_mass_threshold=float(adaptive_p),
             maximum_sparsity=float(adaptive_floor_sparsity),
-            candidate_sparsities=tuple(
-                adaptive_candidate_sparsities or [0.8, 0.7, 0.6, 0.4, 0.0]
-            ),
+            candidate_sparsities=tuple(adaptive_candidate_sparsities or [0.8, 0.7, 0.6, 0.4, 0.0]),
             native_sparsity=float(
-                adaptive_native_sparsity
-                if adaptive_native_sparsity is not None
-                else adaptive_floor_sparsity
+                adaptive_native_sparsity if adaptive_native_sparsity is not None else adaptive_floor_sparsity
             ),
         )
     elif mode == "ra_vsa":
@@ -69,18 +67,15 @@ def _rpc_begin_capture(
             raise ValueError("RA-VSA requires a native fraction")
         policy = configure_residual_policy(
             native_fraction=float(ra_native_fraction),
-            native_sparsity=float(
-                ra_native_sparsity
-                if ra_native_sparsity is not None
-                else sparsity
-            ),
-            risk_formula=(
-                ra_risk_formula
-                or "coarse_mass_x_key_heterogeneity"
-            ),
+            native_sparsity=float(ra_native_sparsity if ra_native_sparsity is not None else sparsity),
+            risk_formula=(ra_risk_formula or "coarse_mass_x_key_heterogeneity"),
             instrument_splits=tuple(ra_instrument_splits or ()),
             detailed_trace=bool(ra_detailed_trace),
             force_outside_native=bool(ra_force_outside_native),
+        )
+    elif mode in {"rectified_vsa", "compressed_halo_vsa"}:
+        policy = configure_compressed_support(
+            detailed_trace=bool(cs_detailed_trace),
         )
     begin_job(job_id)
     torch.cuda.reset_peak_memory_stats()
@@ -107,9 +102,11 @@ def _rpc_prepare_runtime(
     ra_instrument_splits: list[float] | None = None,
     ra_detailed_trace: bool = True,
     ra_force_outside_native: bool = False,
+    cs_detailed_trace: bool = True,
 ) -> dict[str, Any]:
     from research.adaptive_vsa_fp4.scripts.runtime import (
         configure_adaptive_policy,
+        configure_compressed_support,
         configure_residual_policy,
         install_runtime_patches,
     )
@@ -123,13 +120,9 @@ def _rpc_prepare_runtime(
         policy = configure_adaptive_policy(
             retained_mass_threshold=float(adaptive_p),
             maximum_sparsity=float(adaptive_floor_sparsity),
-            candidate_sparsities=tuple(
-                adaptive_candidate_sparsities or [0.8, 0.7, 0.6, 0.4, 0.0]
-            ),
+            candidate_sparsities=tuple(adaptive_candidate_sparsities or [0.8, 0.7, 0.6, 0.4, 0.0]),
             native_sparsity=float(
-                adaptive_native_sparsity
-                if adaptive_native_sparsity is not None
-                else adaptive_floor_sparsity
+                adaptive_native_sparsity if adaptive_native_sparsity is not None else adaptive_floor_sparsity
             ),
         )
     elif mode == "ra_vsa":
@@ -137,18 +130,15 @@ def _rpc_prepare_runtime(
             raise ValueError("RA-VSA requires a native fraction")
         policy = configure_residual_policy(
             native_fraction=float(ra_native_fraction),
-            native_sparsity=float(
-                ra_native_sparsity
-                if ra_native_sparsity is not None
-                else sparsity
-            ),
-            risk_formula=(
-                ra_risk_formula
-                or "coarse_mass_x_key_heterogeneity"
-            ),
+            native_sparsity=float(ra_native_sparsity if ra_native_sparsity is not None else sparsity),
+            risk_formula=(ra_risk_formula or "coarse_mass_x_key_heterogeneity"),
             instrument_splits=tuple(ra_instrument_splits or ()),
             detailed_trace=bool(ra_detailed_trace),
             force_outside_native=bool(ra_force_outside_native),
+        )
+    elif mode in {"rectified_vsa", "compressed_halo_vsa"}:
+        policy = configure_compressed_support(
+            detailed_trace=bool(cs_detailed_trace),
         )
     return {
         "status": "runtime_prepared",
@@ -268,6 +258,8 @@ def _configure_mode(mode: str) -> None:
         "sim_vsa_nvfp4",
         "adaptive_vsa",
         "ra_vsa",
+        "rectified_vsa",
+        "compressed_halo_vsa",
     }:
         os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "VIDEO_SPARSE_ATTN"
         os.environ["FASTVIDEO_VSA_SM100A"] = "1"
@@ -319,21 +311,13 @@ def _warm_generator(generator: Any, payload: dict[str, Any], mode: str) -> None:
             "mode": mode,
             "sparsity": sparsity,
             "adaptive_p": payload.get("adaptive_p"),
-            "adaptive_floor_sparsity": payload.get(
-                "adaptive_floor_sparsity"
-            ),
-            "adaptive_candidate_sparsities": payload.get(
-                "adaptive_candidate_sparsities"
-            ),
-            "adaptive_native_sparsity": payload.get(
-                "adaptive_native_sparsity"
-            ),
+            "adaptive_floor_sparsity": payload.get("adaptive_floor_sparsity"),
+            "adaptive_candidate_sparsities": payload.get("adaptive_candidate_sparsities"),
+            "adaptive_native_sparsity": payload.get("adaptive_native_sparsity"),
             "ra_native_fraction": payload.get("ra_native_fraction"),
             "ra_native_sparsity": payload.get("ra_native_sparsity"),
             "ra_risk_formula": payload.get("ra_risk_formula"),
-            "ra_instrument_splits": payload.get(
-                "ra_instrument_splits"
-            ),
+            "ra_instrument_splits": payload.get("ra_instrument_splits"),
             "ra_detailed_trace": payload.get(
                 "ra_detailed_trace",
                 True,
@@ -341,6 +325,10 @@ def _warm_generator(generator: Any, payload: dict[str, Any], mode: str) -> None:
             "ra_force_outside_native": payload.get(
                 "ra_force_outside_native",
                 False,
+            ),
+            "cs_detailed_trace": payload.get(
+                "cs_detailed_trace",
+                True,
             ),
         },
     )
@@ -372,21 +360,13 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
             "mode": mode,
             "sparsity": sparsity,
             "adaptive_p": payload.get("adaptive_p"),
-            "adaptive_floor_sparsity": payload.get(
-                "adaptive_floor_sparsity"
-            ),
-            "adaptive_candidate_sparsities": payload.get(
-                "adaptive_candidate_sparsities"
-            ),
-            "adaptive_native_sparsity": payload.get(
-                "adaptive_native_sparsity"
-            ),
+            "adaptive_floor_sparsity": payload.get("adaptive_floor_sparsity"),
+            "adaptive_candidate_sparsities": payload.get("adaptive_candidate_sparsities"),
+            "adaptive_native_sparsity": payload.get("adaptive_native_sparsity"),
             "ra_native_fraction": payload.get("ra_native_fraction"),
             "ra_native_sparsity": payload.get("ra_native_sparsity"),
             "ra_risk_formula": payload.get("ra_risk_formula"),
-            "ra_instrument_splits": payload.get(
-                "ra_instrument_splits"
-            ),
+            "ra_instrument_splits": payload.get("ra_instrument_splits"),
             "ra_detailed_trace": payload.get(
                 "ra_detailed_trace",
                 True,
@@ -394,6 +374,10 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
             "ra_force_outside_native": payload.get(
                 "ra_force_outside_native",
                 False,
+            ),
+            "cs_detailed_trace": payload.get(
+                "cs_detailed_trace",
+                True,
             ),
         },
     )
@@ -420,68 +404,55 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
     stats_rows = capture["stats_rows"]
     effective_sparsities = [float(value) for value in capture["effective_sparsities"]]
     if mode in {"vsa_bf16", "sim_vsa_nvfp4"} and effective_sparsities != [sparsity]:
-        raise RuntimeError(
-            f"Requested VSA sparsity {sparsity}, attention metadata observed {effective_sparsities!r}."
-        )
-    adaptive_rows = [
-        row
-        for row in stats_rows
-        if row.get("event_type") == "adaptive_policy"
-    ]
+        raise RuntimeError(f"Requested VSA sparsity {sparsity}, attention metadata observed {effective_sparsities!r}.")
+    adaptive_rows = [row for row in stats_rows if row.get("event_type") == "adaptive_policy"]
     if mode == "adaptive_vsa" and not adaptive_rows:
         raise RuntimeError("Adaptive VSA produced no policy trace rows")
-    residual_rows = [
-        row
-        for row in stats_rows
-        if row.get("event_type") == "ra_vsa_policy"
-    ]
+    residual_rows = [row for row in stats_rows if row.get("event_type") == "ra_vsa_policy"]
     if mode == "ra_vsa" and not residual_rows:
         raise RuntimeError("RA-VSA produced no policy trace rows")
+    compressed_rows = [row for row in stats_rows if row.get("event_type") == "compressed_support_policy"]
+    if mode in {"rectified_vsa", "compressed_halo_vsa"} and not compressed_rows:
+        raise RuntimeError("Compressed-support VSA produced no policy trace rows")
+    invalid_compressed_k = [
+        row
+        for row in compressed_rows
+        if (
+            int(row["selected_count_min"]) != 125 or int(row["selected_count_max"]) != 125 or int(row["exact_k"]) != 125
+        )
+    ]
+    if invalid_compressed_k:
+        raise RuntimeError(f"Compressed-support VSA violated native K=125: {invalid_compressed_k[:3]!r}")
     if residual_rows:
         invalid_fixed_k = [
             row
             for row in residual_rows
             if (
-            int(row["selected_count_min"]) != int(row["total_slots"])
-            or int(row["selected_count_max"]) != int(row["total_slots"])
+                int(row["selected_count_min"]) != int(row["total_slots"])
+                or int(row["selected_count_max"]) != int(row["total_slots"])
             )
         ]
         if invalid_fixed_k:
-            raise RuntimeError(
-                "RA-VSA violated the fixed-K invariant in policy traces: "
-                f"{invalid_fixed_k[:3]!r}"
-            )
-        forced_rows = [
-            row
-            for row in residual_rows
-            if bool(row.get("force_outside_native"))
-        ]
+            raise RuntimeError(f"RA-VSA violated the fixed-K invariant in policy traces: {invalid_fixed_k[:3]!r}")
+        forced_rows = [row for row in residual_rows if bool(row.get("force_outside_native"))]
         invalid_replacement = [
             row
             for row in forced_rows
             if (
-                int(row["replacement_count_min"])
-                != int(row["rescue_slots"])
-                or int(row["replacement_count_max"])
-                != int(row["rescue_slots"])
+                int(row["replacement_count_min"]) != int(row["rescue_slots"])
+                or int(row["replacement_count_max"]) != int(row["rescue_slots"])
             )
         ]
         if invalid_replacement:
-            raise RuntimeError(
-                "Forced RA-VSA violated the exact replacement invariant: "
-                f"{invalid_replacement[:3]!r}"
-            )
+            raise RuntimeError(f"Forced RA-VSA violated the exact replacement invariant: {invalid_replacement[:3]!r}")
     if adaptive_rows:
         total_rows = sum(int(row["num_query_rows"]) for row in adaptive_rows)
-        effective_sparsity = sum(
-            float(row["effective_sparsity"]) * int(row["num_query_rows"])
-            for row in adaptive_rows
-        ) / total_rows
+        effective_sparsity = (
+            sum(float(row["effective_sparsity"]) * int(row["num_query_rows"]) for row in adaptive_rows) / total_rows
+        )
     else:
         effective_sparsity = (
-            effective_sparsities[0]
-            if len(effective_sparsities) == 1
-            else (0.0 if mode.startswith("dense_") else None)
+            effective_sparsities[0] if len(effective_sparsities) == 1 else (0.0 if mode.startswith("dense_") else None)
         )
     component = _extract_component_times(result)
     stats_path = Path(payload["stats_path"])
@@ -506,23 +477,16 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "attention_backend": os.environ["FASTVIDEO_ATTENTION_BACKEND"],
         "kernel_path": mode,
         "adaptive_p": payload.get("adaptive_p"),
-        "adaptive_floor_sparsity": payload.get(
-            "adaptive_floor_sparsity"
-        ),
-        "adaptive_candidate_sparsities": payload.get(
-            "adaptive_candidate_sparsities"
-        ),
-        "adaptive_native_sparsity": payload.get(
-            "adaptive_native_sparsity"
-        ),
+        "adaptive_floor_sparsity": payload.get("adaptive_floor_sparsity"),
+        "adaptive_candidate_sparsities": payload.get("adaptive_candidate_sparsities"),
+        "adaptive_native_sparsity": payload.get("adaptive_native_sparsity"),
         "ra_native_fraction": payload.get("ra_native_fraction"),
         "ra_native_sparsity": payload.get("ra_native_sparsity"),
         "ra_risk_formula": payload.get("ra_risk_formula"),
         "ra_instrument_splits": payload.get("ra_instrument_splits"),
         "ra_detailed_trace": payload.get("ra_detailed_trace"),
-        "ra_force_outside_native": payload.get(
-            "ra_force_outside_native"
-        ),
+        "ra_force_outside_native": payload.get("ra_force_outside_native"),
+        "cs_detailed_trace": payload.get("cs_detailed_trace"),
         "gpu_id": worker_id,
         "warm": True,
         "wall_ms": wall_ms,

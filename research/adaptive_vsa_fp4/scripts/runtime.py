@@ -20,18 +20,16 @@ class RuntimeCapture:
     attention_events: list[tuple[torch.cuda.Event, torch.cuda.Event]] = field(default_factory=list)
     rows: list[dict[str, Any]] = field(default_factory=list)
     effective_sparsities: set[float] = field(default_factory=set)
-    adaptive_decisions: list[tuple[str, int, Any, Any]] = field(
-        default_factory=list
-    )
-    residual_decisions: list[tuple[str, int, Any, Any]] = field(
-        default_factory=list
-    )
+    adaptive_decisions: list[tuple[str, int, Any, Any]] = field(default_factory=list)
+    residual_decisions: list[tuple[str, int, Any, Any]] = field(default_factory=list)
+    compressed_support_decisions: list[tuple[str, int, Any]] = field(default_factory=list)
 
 
 _CAPTURE = RuntimeCapture()
 _PATCHED = False
 _ADAPTIVE_POLICY = None
 _RESIDUAL_POLICY = None
+_COMPRESSED_SUPPORT_DETAILED_TRACE = True
 
 
 def configure_adaptive_policy(
@@ -80,6 +78,15 @@ def configure_residual_policy(
     return _RESIDUAL_POLICY.as_dict()
 
 
+def configure_compressed_support(
+    *,
+    detailed_trace: bool = True,
+) -> dict[str, Any]:
+    global _COMPRESSED_SUPPORT_DETAILED_TRACE
+    _COMPRESSED_SUPPORT_DETAILED_TRACE = bool(detailed_trace)
+    return {"detailed_trace": _COMPRESSED_SUPPORT_DETAILED_TRACE}
+
+
 def begin_job(job_id: str) -> None:
     _CAPTURE.job_id = job_id
     _CAPTURE.attention_events.clear()
@@ -87,6 +94,7 @@ def begin_job(job_id: str) -> None:
     _CAPTURE.effective_sparsities.clear()
     _CAPTURE.adaptive_decisions.clear()
     _CAPTURE.residual_decisions.clear()
+    _CAPTURE.compressed_support_decisions.clear()
 
 
 def record_effective_sparsity(value: float) -> None:
@@ -104,9 +112,7 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
 
         for prefix, timestep, policy, decision in _CAPTURE.adaptive_decisions:
             decision_summary = summarize_decision(decision)
-            record_effective_sparsity(
-                decision_summary["effective_sparsity"]
-            )
+            record_effective_sparsity(decision_summary["effective_sparsity"])
             _CAPTURE.rows.append(
                 {
                     "event_type": "adaptive_policy",
@@ -137,6 +143,24 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
                     **decision_summary,
                 }
             )
+    if _CAPTURE.compressed_support_decisions:
+        from research.compressed_halo_vsa.compressed_support import (
+            summarize_compressed_support_decision,
+        )
+
+        for prefix, timestep, decision in _CAPTURE.compressed_support_decisions:
+            decision_summary = summarize_compressed_support_decision(decision)
+            record_effective_sparsity(0.8)
+            _CAPTURE.rows.append(
+                {
+                    "event_type": "compressed_support_policy",
+                    "job_id": _CAPTURE.job_id,
+                    "prefix": prefix,
+                    "layer": _layer_index(prefix),
+                    "timestep": timestep,
+                    **decision_summary,
+                }
+            )
     rows = list(_CAPTURE.rows)
     effective_sparsities = sorted(_CAPTURE.effective_sparsities)
     _CAPTURE.job_id = None
@@ -145,6 +169,7 @@ def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
     _CAPTURE.effective_sparsities.clear()
     _CAPTURE.adaptive_decisions.clear()
     _CAPTURE.residual_decisions.clear()
+    _CAPTURE.compressed_support_decisions.clear()
     return attention_ms, rows, effective_sparsities
 
 
@@ -201,7 +226,7 @@ def _quantiles(values: torch.Tensor) -> dict[str, float]:
 def _dense_reference(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor) -> torch.Tensor:
     from flash_attn.cute.interface import flash_attn_func
 
-    output = flash_attn_func(query, key, value, softmax_scale=query.shape[-1]**-0.5, causal=False)
+    output = flash_attn_func(query, key, value, softmax_scale=query.shape[-1] ** -0.5, causal=False)
     return output[0] if isinstance(output, tuple) else output
 
 
@@ -299,21 +324,49 @@ def install_runtime_patches(mode: str) -> None:
         "sim_vsa_nvfp4",
         "adaptive_vsa",
         "ra_vsa",
+        "rectified_vsa",
+        "compressed_halo_vsa",
     }:
         from fastvideo.attention.backends.video_sparse_attn import VideoSparseAttentionImpl
 
         original_vsa = VideoSparseAttentionImpl.forward
 
         def vsa_forward(self, query, key, value, gate_compress, attn_metadata):
+            if mode in {"rectified_vsa", "compressed_halo_vsa"}:
+                from research.compressed_halo_vsa.compressed_support import (
+                    compressed_support_video_sparse_attn,
+                )
+
+                support_mode = "rectified" if mode == "rectified_vsa" else "compressed_halo"
+                output, decision = _timed_call(
+                    lambda: compressed_support_video_sparse_attn(
+                        query,
+                        key,
+                        value,
+                        gate_compress,
+                        attn_metadata.variable_block_sizes,
+                        mode=support_mode,
+                        sparsity=float(attn_metadata.VSA_sparsity),
+                        detailed_trace=(_COMPRESSED_SUPPORT_DETAILED_TRACE),
+                    )
+                )
+                if _CAPTURE.job_id is not None:
+                    _CAPTURE.compressed_support_decisions.append(
+                        (
+                            self.prefix,
+                            int(attn_metadata.current_timestep),
+                            decision,
+                        )
+                    )
+                return output
+
             if mode == "ra_vsa":
                 from research.ra_vsa_deadline.residual_attention import (
                     residual_aware_video_sparse_attn,
                 )
 
                 if _RESIDUAL_POLICY is None:
-                    raise RuntimeError(
-                        "RA-VSA policy was not configured before generation"
-                    )
+                    raise RuntimeError("RA-VSA policy was not configured before generation")
                 output, decision = _timed_call(
                     lambda: residual_aware_video_sparse_attn(
                         query,
@@ -341,9 +394,7 @@ def install_runtime_patches(mode: str) -> None:
                 )
 
                 if _ADAPTIVE_POLICY is None:
-                    raise RuntimeError(
-                        "Adaptive VSA policy was not configured before generation"
-                    )
+                    raise RuntimeError("Adaptive VSA policy was not configured before generation")
 
                 output, decision = _timed_call(
                     lambda: adaptive_video_sparse_attn(
@@ -370,12 +421,14 @@ def install_runtime_patches(mode: str) -> None:
             runtime_query = query
             runtime_key = key
             if mode == "sim_vsa_nvfp4":
+
                 def operation():
                     nonlocal runtime_query, runtime_key
                     runtime_query = fake_nvfp4_e2m1(query)
                     runtime_key = fake_nvfp4_e2m1(key)
                     return original_vsa(self, runtime_query, runtime_key, value, gate_compress, attn_metadata)
             else:
+
                 def operation():
                     return original_vsa(self, runtime_query, runtime_key, value, gate_compress, attn_metadata)
 

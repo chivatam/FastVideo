@@ -17,6 +17,8 @@ MODE_PRECISION = {
     "vsa_bf16": "bf16",
     "adaptive_vsa": "bf16",
     "ra_vsa": "bf16",
+    "rectified_vsa": "bf16",
+    "compressed_halo_vsa": "bf16",
     "dense_nvfp4_fa4": "nvfp4_qk",
     "sim_vsa_nvfp4": "sim_nvfp4_qk",
 }
@@ -75,6 +77,8 @@ def prepare_jobs(args: argparse.Namespace) -> int:
             if mode == "adaptive_vsa"
             else [args.ra_native_sparsity]
             if mode == "ra_vsa"
+            else [0.8]
+            if mode in {"rectified_vsa", "compressed_halo_vsa"}
             else _mode_sparsities(
                 mode,
                 args.sparsities,
@@ -92,52 +96,25 @@ def prepare_jobs(args: argparse.Namespace) -> int:
                     "sparsity": sparsity,
                     "topk": None,
                     "precision": MODE_PRECISION[mode],
-                    "adaptive_p": (
-                        args.adaptive_p if mode == "adaptive_vsa" else None
-                    ),
-                    "adaptive_floor_sparsity": (
-                        args.adaptive_floor_sparsity
-                        if mode == "adaptive_vsa"
-                        else None
-                    ),
+                    "adaptive_p": (args.adaptive_p if mode == "adaptive_vsa" else None),
+                    "adaptive_floor_sparsity": (args.adaptive_floor_sparsity if mode == "adaptive_vsa" else None),
                     "adaptive_candidate_sparsities": (
-                        args.adaptive_candidate_sparsities
-                        if mode == "adaptive_vsa"
-                        else None
+                        args.adaptive_candidate_sparsities if mode == "adaptive_vsa" else None
                     ),
-                    "adaptive_native_sparsity": (
-                        args.adaptive_native_sparsity
-                        if mode == "adaptive_vsa"
-                        else None
-                    ),
-                    "ra_native_fraction": (
-                        args.ra_native_fraction
-                        if mode == "ra_vsa"
-                        else None
-                    ),
-                    "ra_native_sparsity": (
-                        args.ra_native_sparsity
-                        if mode == "ra_vsa"
-                        else None
-                    ),
-                    "ra_risk_formula": (
-                        args.ra_risk_formula
-                        if mode == "ra_vsa"
-                        else None
-                    ),
-                    "ra_instrument_splits": (
-                        args.ra_instrument_splits
-                        if mode == "ra_vsa"
-                        else None
-                    ),
-                    "ra_detailed_trace": (
-                        not args.ra_minimal_trace
-                        if mode == "ra_vsa"
-                        else None
-                    ),
-                    "ra_force_outside_native": (
-                        args.ra_force_outside_native
-                        if mode == "ra_vsa"
+                    "adaptive_native_sparsity": (args.adaptive_native_sparsity if mode == "adaptive_vsa" else None),
+                    "ra_native_fraction": (args.ra_native_fraction if mode == "ra_vsa" else None),
+                    "ra_native_sparsity": (args.ra_native_sparsity if mode == "ra_vsa" else None),
+                    "ra_risk_formula": (args.ra_risk_formula if mode == "ra_vsa" else None),
+                    "ra_instrument_splits": (args.ra_instrument_splits if mode == "ra_vsa" else None),
+                    "ra_detailed_trace": (not args.ra_minimal_trace if mode == "ra_vsa" else None),
+                    "ra_force_outside_native": (args.ra_force_outside_native if mode == "ra_vsa" else None),
+                    "cs_detailed_trace": (
+                        not args.cs_minimal_trace
+                        if mode
+                        in {
+                            "rectified_vsa",
+                            "compressed_halo_vsa",
+                        }
                         else None
                     ),
                     "height": args.height,
@@ -160,9 +137,7 @@ def prepare_jobs(args: argparse.Namespace) -> int:
                     / f"s{sparsity:.2f}"
                     / f"{prompt['prompt_id']}-{job_id[:10]}.mp4"
                 )
-                payload["stats_path"] = str(
-                    args.artifact_root / f"phase{args.phase}" / "stats" / f"{job_id}.parquet"
-                )
+                payload["stats_path"] = str(args.artifact_root / f"phase{args.phase}" / "stats" / f"{job_id}.parquet")
                 cursor = conn.execute(
                     """
                     INSERT OR IGNORE INTO jobs(job_id, ordinal, phase, mode, payload)
@@ -271,6 +246,7 @@ def main() -> None:
         "--ra-force-outside-native",
         action="store_true",
     )
+    parser.add_argument("--cs-minimal-trace", action="store_true")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--seed", type=int, default=1024)
     parser.add_argument("--height", type=int, default=480)
