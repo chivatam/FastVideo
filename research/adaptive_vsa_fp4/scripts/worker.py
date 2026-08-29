@@ -20,22 +20,38 @@ MODEL_REVISIONS = {
 }
 
 
-def _rpc_begin_capture(worker: Any, *, job_id: str, mode: str) -> dict[str, Any]:
+def _rpc_begin_capture(
+    worker: Any,
+    *,
+    job_id: str,
+    mode: str,
+    sparsity: float,
+) -> dict[str, Any]:
     import torch
 
     from research.adaptive_vsa_fp4.scripts.runtime import begin_job, install_runtime_patches
 
     install_runtime_patches(mode)
+    worker.fastvideo_args.VSA_sparsity = float(sparsity)
     begin_job(job_id)
     torch.cuda.reset_peak_memory_stats()
-    return {"status": "capture_started", "rank": worker.rpc_rank}
+    return {
+        "status": "capture_started",
+        "rank": worker.rpc_rank,
+        "effective_sparsity": float(worker.fastvideo_args.VSA_sparsity),
+    }
 
 
-def _rpc_prepare_runtime(worker: Any, *, mode: str) -> dict[str, Any]:
+def _rpc_prepare_runtime(worker: Any, *, mode: str, sparsity: float) -> dict[str, Any]:
     from research.adaptive_vsa_fp4.scripts.runtime import install_runtime_patches
 
     install_runtime_patches(mode)
-    return {"status": "runtime_prepared", "rank": worker.rpc_rank}
+    worker.fastvideo_args.VSA_sparsity = float(sparsity)
+    return {
+        "status": "runtime_prepared",
+        "rank": worker.rpc_rank,
+        "effective_sparsity": float(worker.fastvideo_args.VSA_sparsity),
+    }
 
 
 def _rpc_finish_capture(worker: Any) -> dict[str, Any]:
@@ -43,14 +59,23 @@ def _rpc_finish_capture(worker: Any) -> dict[str, Any]:
 
     from research.adaptive_vsa_fp4.scripts.runtime import finish_job
 
-    attention_ms, stats_rows = finish_job()
+    attention_ms, stats_rows, effective_sparsities = finish_job()
     return {
         "status": "capture_finished",
         "rank": worker.rpc_rank,
         "attention_ms": attention_ms,
         "stats_rows": stats_rows,
+        "effective_sparsities": effective_sparsities,
         "peak_hbm_bytes": int(torch.cuda.max_memory_allocated()),
     }
+
+
+def _validate_effective_sparsity(response: list[dict[str, Any]], expected: float, status: str) -> None:
+    if not response or response[0].get("status") != status:
+        raise RuntimeError(f"Inner-worker runtime setup failed: {response!r}")
+    actual = float(response[0]["effective_sparsity"])
+    if abs(actual - expected) > 1e-9:
+        raise RuntimeError(f"Requested VSA sparsity {expected}, inner worker reported {actual}.")
 
 
 def canonical_job_id(payload: dict[str, Any]) -> str:
@@ -177,10 +202,13 @@ def _load_generator(payload: dict[str, Any], mode: str):
 
 
 def _warm_generator(generator: Any, payload: dict[str, Any], mode: str) -> None:
-    generator.fastvideo_args.VSA_sparsity = float(payload["sparsity"])
-    prepared = generator.executor.collective_rpc(_rpc_prepare_runtime, kwargs={"mode": mode})
-    if not prepared or prepared[0].get("status") != "runtime_prepared":
-        raise RuntimeError(f"Failed to prepare inner-worker runtime: {prepared!r}")
+    sparsity = float(payload["sparsity"])
+    generator.fastvideo_args.VSA_sparsity = sparsity
+    prepared = generator.executor.collective_rpc(
+        _rpc_prepare_runtime,
+        kwargs={"mode": mode, "sparsity": sparsity},
+    )
+    _validate_effective_sparsity(prepared, sparsity, "runtime_prepared")
     generator.generate_video(
         payload["prompt"],
         save_video=False,
@@ -197,15 +225,15 @@ def _warm_generator(generator: Any, payload: dict[str, Any], mode: str) -> None:
 def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, worker_id: int) -> dict[str, Any]:
     from research.adaptive_vsa_fp4.scripts.runtime import write_stats
 
-    generator.fastvideo_args.VSA_sparsity = float(payload["sparsity"])
+    sparsity = float(payload["sparsity"])
+    generator.fastvideo_args.VSA_sparsity = sparsity
     output_path = Path(payload["video_path"])
     output_path.parent.mkdir(parents=True, exist_ok=True)
     capture_start = generator.executor.collective_rpc(
         _rpc_begin_capture,
-        kwargs={"job_id": job_id, "mode": mode},
+        kwargs={"job_id": job_id, "mode": mode, "sparsity": sparsity},
     )
-    if not capture_start or capture_start[0].get("status") != "capture_started":
-        raise RuntimeError(f"Failed to start inner-worker capture: {capture_start!r}")
+    _validate_effective_sparsity(capture_start, sparsity, "capture_started")
     start = time.perf_counter()
     result = generator.generate_video(
         payload["prompt"],
@@ -226,6 +254,11 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
     capture = capture_finish[0]
     attention_ms = float(capture["attention_ms"])
     stats_rows = capture["stats_rows"]
+    effective_sparsities = [float(value) for value in capture["effective_sparsities"]]
+    if mode in {"vsa_bf16", "sim_vsa_nvfp4"} and effective_sparsities != [sparsity]:
+        raise RuntimeError(
+            f"Requested VSA sparsity {sparsity}, attention metadata observed {effective_sparsities!r}."
+        )
     component = _extract_component_times(result)
     stats_path = Path(payload["stats_path"])
     written_stats = write_stats(stats_rows, stats_path)
@@ -239,6 +272,11 @@ def _run_generation(generator, job_id: str, payload: dict[str, Any], mode: str, 
         "prompt": payload["prompt"],
         "seed": payload["seed"],
         "sparsity": payload["sparsity"],
+        "effective_sparsity": (
+            effective_sparsities[0]
+            if len(effective_sparsities) == 1
+            else (0.0 if mode.startswith("dense_") else None)
+        ),
         "topk": payload.get("topk"),
         "precision": payload["precision"],
         "resolution": f"{payload['height']}x{payload['width']}",

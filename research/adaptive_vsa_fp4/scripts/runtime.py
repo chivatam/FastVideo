@@ -19,6 +19,7 @@ class RuntimeCapture:
     job_id: str | None = None
     attention_events: list[tuple[torch.cuda.Event, torch.cuda.Event]] = field(default_factory=list)
     rows: list[dict[str, Any]] = field(default_factory=list)
+    effective_sparsities: set[float] = field(default_factory=set)
 
 
 _CAPTURE = RuntimeCapture()
@@ -29,17 +30,24 @@ def begin_job(job_id: str) -> None:
     _CAPTURE.job_id = job_id
     _CAPTURE.attention_events.clear()
     _CAPTURE.rows.clear()
+    _CAPTURE.effective_sparsities.clear()
 
 
-def finish_job() -> tuple[float, list[dict[str, Any]]]:
+def record_effective_sparsity(value: float) -> None:
+    _CAPTURE.effective_sparsities.add(float(value))
+
+
+def finish_job() -> tuple[float, list[dict[str, Any]], list[float]]:
     if _CAPTURE.attention_events:
         torch.cuda.synchronize()
     attention_ms = sum(start.elapsed_time(end) for start, end in _CAPTURE.attention_events)
     rows = list(_CAPTURE.rows)
+    effective_sparsities = sorted(_CAPTURE.effective_sparsities)
     _CAPTURE.job_id = None
     _CAPTURE.attention_events.clear()
     _CAPTURE.rows.clear()
-    return attention_ms, rows
+    _CAPTURE.effective_sparsities.clear()
+    return attention_ms, rows, effective_sparsities
 
 
 def _timed_call(fn):
@@ -194,6 +202,7 @@ def install_runtime_patches(mode: str) -> None:
         original_vsa = VideoSparseAttentionImpl.forward
 
         def vsa_forward(self, query, key, value, gate_compress, attn_metadata):
+            record_effective_sparsity(attn_metadata.VSA_sparsity)
             runtime_query = query
             runtime_key = key
             if mode == "sim_vsa_nvfp4":
