@@ -27,6 +27,7 @@ struct BlockSparseVsaArgs {
   const int* q2k_idx;              // [batch*num_heads*num_blocks, max_kv] int32
   const int* q2k_num;              // [batch*num_heads*num_blocks] int32
   const int* variable_block_sizes; // [num_blocks] int32, valid tokens per block
+  const uint8_t* child_masks;       // optional [batch*num_heads*num_blocks, max_kv]
 
   int batch;
   int num_heads;
@@ -41,13 +42,17 @@ struct BlockSparseVsaArgs {
 // to fall back to its own implementation rather than get a wrong answer.
 __host__ inline cudaError_t block_sparse_supported(const BlockSparseVsaArgs& a) {
   if (a.head_dim != HEAD_DIM) return cudaErrorInvalidValue;      // compile-time in the kernel
-  if (a.num_blocks % 2 != 0) return cudaErrorInvalidValue;       // a CTA owns an adjacent pair
+  if (!ONE_Q_CTA && a.num_blocks % 2 != 0)
+    return cudaErrorInvalidValue;                                // paired CTA build
   if (a.seqlen != a.num_blocks * BLOCK) return cudaErrorInvalidValue;
   if (a.max_kv < 1 || a.num_blocks < 1) return cudaErrorInvalidValue;
   if (a.q == nullptr || a.k == nullptr || a.o == nullptr) return cudaErrorInvalidValue;
   if (a.q2k_idx == nullptr || a.q2k_num == nullptr) return cudaErrorInvalidValue;
   // FastVideo always supplies this; without it padded keys would be attended as real zeros.
   if (a.variable_block_sizes == nullptr) return cudaErrorInvalidValue;
+  if constexpr (CHILD_MASK) {
+    if (a.child_masks == nullptr) return cudaErrorInvalidValue;
+  }
   // V is read MN-major at BOTH block sizes now, so no pre-transposed V_T is ever needed.
   if (a.v == nullptr) return cudaErrorInvalidValue;
   return cudaSuccess;
@@ -61,11 +66,12 @@ __host__ inline cudaError_t launch_block_sparse_sm100a(const BlockSparseVsaArgs&
   const int B = a.batch, H = a.num_heads, S = a.seqlen, hd = a.head_dim;
   const int num_blocks = a.num_blocks, max_kv = a.max_kv;
   const long tq = (long)B * S;
-  const int packed_mtiles_per_seq = num_blocks / 2;
+  const int packed_mtiles_per_seq =
+      ONE_Q_CTA ? num_blocks : num_blocks / 2;
   const int total_work = B * H * packed_mtiles_per_seq;
   constexpr bool BHSD = VSA_BHSD;
 
-  CUtensorMap tq_, tk_, tvt_, tv_, to_;
+  CUtensorMap tq_, tk_, tvt_, tv_, tk_full_, tv_full_, to_;
   {
     uint64_t gd[4] = { (uint64_t)SUB_COLS_BF16, BHSD ? (uint64_t)((long)B * H) : (uint64_t)H,
                        BHSD ? (uint64_t)S : (uint64_t)tq, (uint64_t)Q_SUBTILES };
@@ -95,7 +101,9 @@ __host__ inline cudaError_t launch_block_sparse_sm100a(const BlockSparseVsaArgs&
     uint64_t gs[3] = { BHSD ? (uint64_t)hd * 2u : (uint64_t)((long)H * hd) * 2u,
                        (uint64_t)SUB_COLS_BF16 * 2u,
                        (uint64_t)((long)S * hd) * 2u };
-    uint32_t bd[4] = { (uint32_t)SUB_COLS_BF16, (uint32_t)BLOCK,
+    uint32_t bd[4] = { (uint32_t)SUB_COLS_BF16,
+                       GATHER ? (uint32_t)GATHER_WIDTH
+                              : (uint32_t)BLOCK,
                        BLK128 ? (uint32_t)K_SUBTILES : 1u, 1u };
     uint32_t es[4] = { 1u, 1u, 1u, 1u };
     if (cuTensorMapEncodeTiled(&tk_, CU_TENSOR_MAP_DATA_TYPE_BFLOAT16, BHSD ? 4 : 3,
@@ -112,6 +120,28 @@ __host__ inline cudaError_t launch_block_sparse_sm100a(const BlockSparseVsaArgs&
                                CU_TENSOR_MAP_L2_PROMOTION_L2_128B,
                                CU_TENSOR_MAP_FLOAT_OOB_FILL_NONE) != CUDA_SUCCESS)
       return cudaErrorInvalidValue;
+    if constexpr (GATHER && GATHER_WIDTH < BLOCK) {
+      bd[1] = (uint32_t)BLOCK;
+      if (cuTensorMapEncodeTiled(
+              &tk_full_, CU_TENSOR_MAP_DATA_TYPE_BFLOAT16,
+              BHSD ? 4 : 3, const_cast<__nv_bfloat16*>(a.k),
+              gd, gs, bd, es, CU_TENSOR_MAP_INTERLEAVE_NONE,
+              CU_TENSOR_MAP_SWIZZLE_128B,
+              CU_TENSOR_MAP_L2_PROMOTION_L2_128B,
+              CU_TENSOR_MAP_FLOAT_OOB_FILL_NONE) != CUDA_SUCCESS)
+        return cudaErrorInvalidValue;
+      if (cuTensorMapEncodeTiled(
+              &tv_full_, CU_TENSOR_MAP_DATA_TYPE_BFLOAT16,
+              BHSD ? 4 : 3, const_cast<__nv_bfloat16*>(vbase),
+              gd, gs, bd, es, CU_TENSOR_MAP_INTERLEAVE_NONE,
+              CU_TENSOR_MAP_SWIZZLE_128B,
+              CU_TENSOR_MAP_L2_PROMOTION_L2_128B,
+              CU_TENSOR_MAP_FLOAT_OOB_FILL_NONE) != CUDA_SUCCESS)
+        return cudaErrorInvalidValue;
+    } else {
+      tk_full_ = tk_;
+      tv_full_ = tv_;
+    }
   }
   // V_T map: blk64 only. Unused at blk128 but must still be a valid tensormap to pass by value.
   {
@@ -137,8 +167,9 @@ __host__ inline cudaError_t launch_block_sparse_sm100a(const BlockSparseVsaArgs&
   }
 
   const size_t smem =
-        (size_t)2 * Q_TILE_BYTES + NUM_KV_STAGES * KV_RING_SLOT_BYTES
-      + (size_t)2 * M_TILE * HEAD_DIM * sizeof(__nv_bfloat16)
+        (size_t)M_TILES_PER_CTA * Q_TILE_BYTES
+      + NUM_KV_STAGES * KV_RING_SLOT_BYTES
+      + (size_t)O_STORAGE_BUFFER_COUNT * O_STORAGE_BYTES
       + (2 * NUM_KV_STAGES + 22) * 8
       + (size_t)CLC_STAGES * (2 * 8 + 16) + 16
       + 8
@@ -154,12 +185,27 @@ __host__ inline cudaError_t launch_block_sparse_sm100a(const BlockSparseVsaArgs&
 #ifndef VSA_USE_CLC
 #define VSA_USE_CLC true
 #endif
-  constexpr bool FULL_NAMED_BAR = VSA_NAMED_BAR, EX2_EMU = true, SPLIT_P = true,
+#ifndef VSA_RESCALE_THRESHOLD
+#define VSA_RESCALE_THRESHOLD 8
+#endif
+#ifndef VSA_EX2_EMU
+#define VSA_EX2_EMU true
+#endif
+#ifndef VSA_S_LD_COLS
+#define VSA_S_LD_COLS 32
+#endif
+#ifndef VSA_SPLIT_P
+#define VSA_SPLIT_P true
+#endif
+  constexpr bool FULL_NAMED_BAR = VSA_NAMED_BAR,
+                 EX2_EMU = VSA_EX2_EMU, SPLIT_P = VSA_SPLIT_P,
                  SOFTMAX_THROTTLE = VSA_THROTTLE, USE_CLC = VSA_USE_CLC,
                  Q_RASTER = true, MHA = true;
-  auto kfn = &fmha_context_bf16_gen_kernel<32, FULL_NAMED_BAR, EX2_EMU, SPLIT_P,
+  auto kfn = &fmha_context_bf16_gen_kernel<VSA_S_LD_COLS, FULL_NAMED_BAR,
+                                           EX2_EMU, SPLIT_P,
                                            SOFTMAX_THROTTLE, USE_CLC, Q_RASTER, MHA,
-                                           /*RESCALE_THRESHOLD=*/8, /*BHSD=*/VSA_BHSD>;
+                                           /*RESCALE_THRESHOLD=*/VSA_RESCALE_THRESHOLD,
+                                           /*BHSD=*/VSA_BHSD>;
   cudaError_t e = cudaFuncSetAttribute(kfn, cudaFuncAttributeMaxDynamicSharedMemorySize, (int)smem);
   if (e != cudaSuccess) return e;
 
@@ -171,7 +217,11 @@ __host__ inline cudaError_t launch_block_sparse_sm100a(const BlockSparseVsaArgs&
   int numSM = 0;
   e = cudaDeviceGetAttribute(&numSM, cudaDevAttrMultiProcessorCount, 0);
   if (e != cudaSuccess) return e;
-  const int num_ctas = USE_CLC ? total_work : (total_work < numSM ? total_work : numSM);
+  const int static_cta_limit = ONE_Q_CTA ? 2 * numSM : numSM;
+  const int num_ctas =
+      USE_CLC
+      ? total_work
+      : (total_work < static_cta_limit ? total_work : static_cta_limit);
   dim3 grid(num_ctas, 1, 1), block(N_WARPS * 32, 1, 1);
 
   if (USE_CLC) {
@@ -182,13 +232,18 @@ __host__ inline cudaError_t launch_block_sparse_sm100a(const BlockSparseVsaArgs&
     cfgAttr[0].val.clusterDim.x = 1; cfgAttr[0].val.clusterDim.y = 1;
     cfgAttr[0].val.clusterDim.z = 1;
     cfg.attrs = cfgAttr; cfg.numAttrs = 1;
-    return cudaLaunchKernelEx(&cfg, kfn, tq_, tk_, tvt_, tv_, to_, S, H, scale_log2, B,
+    return cudaLaunchKernelEx(&cfg, kfn, tq_, tk_, tvt_, tv_,
+                              tk_full_, tv_full_, to_, a.k, a.v, a.o,
+                              S, H, scale_log2, B,
                               num_blocks, packed_mtiles_per_seq, max_kv, magic0, magic1, magic2,
-                              a.q2k_idx, a.q2k_num, a.variable_block_sizes, a.lse);
+                              a.q2k_idx, a.q2k_num, a.variable_block_sizes, a.child_masks, a.lse);
   }
-  kfn<<<grid, block, smem, stream>>>(tq_, tk_, tvt_, tv_, to_, S, H, scale_log2, B, num_blocks,
+  kfn<<<grid, block, smem, stream>>>(tq_, tk_, tvt_, tv_,
+                                     tk_full_, tv_full_, to_, a.k, a.v, a.o,
+                                     S, H, scale_log2, B, num_blocks,
                                      packed_mtiles_per_seq, max_kv, magic0, magic1, magic2,
-                                     a.q2k_idx, a.q2k_num, a.variable_block_sizes, a.lse);
+                                     a.q2k_idx, a.q2k_num, a.variable_block_sizes, a.child_masks,
+                                     a.lse);
   return cudaGetLastError();
 }
 

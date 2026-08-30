@@ -66,9 +66,16 @@ class AppearanceStyleMetric(BaseMetric):
         import clip
 
         video = sample["video"]  # (T, C, H, W)
-        text_prompt = sample.get("text_prompt")
+        aux = sample.get("auxiliary_info") or {}
+        text_prompt = (
+            aux.get("appearance_style")
+            or sample.get("text_prompt")
+        )
         if text_prompt is None:
-            return self._skip(sample, "missing text_prompt")
+            return self._skip(
+                sample,
+                "missing appearance_style/text_prompt",
+            )
 
         frames = _clip_transform(video.to(self.device))
 

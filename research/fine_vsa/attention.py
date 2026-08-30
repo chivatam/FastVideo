@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -26,6 +27,7 @@ SELECTED_CHILD_BLOCKS = NOMINAL_KV_TOKENS // CHILD_WIDTH
 
 @dataclass
 class FineVSADecision:
+    executor: str
     parent_blocks: int
     query_blocks: int
     child_width: int
@@ -110,17 +112,78 @@ def fine_video_sparse_attn(
         child_width=CHILD_WIDTH,
     )
     selected_actual_kv_tokens = active_child_count * CHILD_WIDTH
-    exact_output, _ = fine_sparse_attention(
-        query_bhsd,
-        key_bhsd,
-        value_bhsd,
-        selected_indices,
-        child_sizes,
-        child_width=CHILD_WIDTH,
-        selected_counts=active_child_count,
+    executor = os.environ.get(
+        "FASTVIDEO_FINE_VSA_EXECUTOR",
+        "triton_fine8",
     )
+    if executor == "triton_fine8":
+        exact_output, _ = fine_sparse_attention(
+            query_bhsd,
+            key_bhsd,
+            value_bhsd,
+            selected_indices,
+            child_sizes,
+            child_width=CHILD_WIDTH,
+            selected_counts=active_child_count,
+        )
+    elif executor == "sm100a_gather32_fp32":
+        from research.fine_vsa.gather_segment_sm100a import (
+            gather_segment_sparse_attention,
+            pack_fine_segments_sm100a,
+        )
+
+        query_bshd = query if query.is_contiguous() else query.contiguous()
+        key_bshd = key if key.is_contiguous() else key.contiguous()
+        value_bshd = value if value.is_contiguous() else value.contiguous()
+        segment_metadata = pack_fine_segments_sm100a(
+            selected_indices,
+            active_child_count,
+            parent_blocks=parent_blocks,
+            width=32,
+            fp32_partial=True,
+        )
+        exact_output = gather_segment_sparse_attention(
+            query_bshd,
+            key_bshd,
+            value_bshd,
+            segment_metadata,
+            parent_sizes,
+            fp32_partial=True,
+        ).transpose(1, 2)
+    elif executor == "sm100a_gather32_shared_bf16":
+        from research.fine_vsa.gather_segment_sm100a import (
+            gather_segment_sparse_attention,
+            pack_fine_segments_sm100a,
+        )
+
+        query_bshd = query if query.is_contiguous() else query.contiguous()
+        key_bshd = key if key.is_contiguous() else key.contiguous()
+        value_bshd = value if value.is_contiguous() else value.contiguous()
+        segment_metadata = pack_fine_segments_sm100a(
+            selected_indices,
+            active_child_count,
+            parent_blocks=parent_blocks,
+            width=32,
+            packed_pair32=True,
+            shared_pair_kv=True,
+        )
+        exact_output = gather_segment_sparse_attention(
+            query_bshd,
+            key_bshd,
+            value_bshd,
+            segment_metadata,
+            parent_sizes,
+        ).transpose(1, 2)
+    else:
+        raise ValueError(
+            "Unknown FASTVIDEO_FINE_VSA_EXECUTOR="
+            f"{executor!r}; expected 'triton_fine8' or "
+            "'sm100a_gather32_fp32' or "
+            "'sm100a_gather32_shared_bf16'"
+        )
     output = exact_output + coarse_output * gate_bhsd
     decision = FineVSADecision(
+        executor=executor,
         parent_blocks=parent_blocks,
         query_blocks=int(query_coarse.shape[-2]),
         child_width=CHILD_WIDTH,
@@ -137,6 +200,8 @@ def summarize_fine_vsa_decision(decision: FineVSADecision, ) -> dict[str, Any]:
     nominal_sparsity = 1.0 - (decision.selected_child_blocks * decision.child_width /
                               (decision.parent_blocks * PARENT_WIDTH))
     return {
+        "executor":
+        decision.executor,
         "parent_blocks":
         decision.parent_blocks,
         "query_blocks":

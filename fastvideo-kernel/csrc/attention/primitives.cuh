@@ -444,6 +444,16 @@ void tma_load_4d(uint32_t smem_dst, const void* tensormap_ptr,
     : "memory");
 }
 
+__device__ __forceinline__
+void bulk_load_g2s(uint32_t smem_dst, const void* global_src,
+                   uint32_t bytes, uint32_t mbar_smem) {
+  asm volatile(
+    "cp.async.bulk.shared::cta.global.mbarrier::complete_tx::bytes"
+    " [%0], [%1], %2, [%3];\n"
+    :: "r"(smem_dst), "l"(global_src), "r"(bytes), "r"(mbar_smem)
+    : "memory");
+}
+
 template <int CTA_GROUP>
 __device__ __forceinline__ void tcgen05_dealloc(uint32_t tmem_addr,
                                                 uint32_t n_cols) {
@@ -874,4 +884,3 @@ __device__ __forceinline__
 void sts_f32(uint32_t smem_addr, float val) {
   asm volatile("st.shared.f32 [%0], %1;" :: "r"(smem_addr), "f"(val) : "memory");
 }
-

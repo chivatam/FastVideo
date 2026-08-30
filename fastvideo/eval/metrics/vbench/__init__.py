@@ -93,6 +93,18 @@ def _install_modeling_finetune_hook() -> None:
 
             patched._fastvideo_patched = True  # type: ignore[attr-defined]
             module.vit_large_patch16_224 = patched
+            # timm's decorator stores the original callable in its
+            # registry while the module is executing. Replacing only the
+            # module attribute is therefore too late for create_model().
+            # Point the registry entry at the compatibility wrapper too.
+            try:
+                import timm.models._registry as _timm_registry
+
+                _timm_registry._model_entrypoints[
+                    "vit_large_patch16_224"
+                ] = patched
+            except (ImportError, AttributeError):
+                pass
 
     class _Finder(importlib.abc.MetaPathFinder):
         _reentrant = False

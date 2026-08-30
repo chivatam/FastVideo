@@ -26,19 +26,160 @@
 #ifndef VSA_BHSD
 #define VSA_BHSD false
 #endif
+#ifndef VSA_CHILD_MASK
+#define VSA_CHILD_MASK false
+#endif
+#ifndef VSA_GATHER_WIDTH
+#define VSA_GATHER_WIDTH 0
+#endif
+#ifndef VSA_PACKED_PAIR32
+#define VSA_PACKED_PAIR32 false
+#endif
+#ifndef VSA_SHARED_PAIR_KV
+#define VSA_SHARED_PAIR_KV false
+#endif
+#ifndef VSA_BULK_GATHER8
+#define VSA_BULK_GATHER8 false
+#endif
+#ifndef VSA_LOAD_WARPS
+#define VSA_LOAD_WARPS 1
+#endif
+#ifndef VSA_SINGLE_Q_CTA
+#define VSA_SINGLE_Q_CTA false
+#endif
+#ifndef VSA_ONE_Q_CTA
+#define VSA_ONE_Q_CTA false
+#endif
+#ifndef VSA_DEFER_MASK_RESOLVE
+#define VSA_DEFER_MASK_RESOLVE false
+#endif
+#ifndef VSA_ALWAYS_RESCALE
+#define VSA_ALWAYS_RESCALE false
+#endif
+#ifndef VSA_USE_CLC
+#define VSA_USE_CLC true
+#endif
+#ifndef VSA_KV_STAGES
+#define VSA_KV_STAGES 0
+#endif
+#ifndef VSA_STREAM_SOFTMAX
+#define VSA_STREAM_SOFTMAX false
+#endif
+#ifndef VSA_FP32_PARTIAL
+#define VSA_FP32_PARTIAL false
+#endif
+#ifndef VSA_PRECISE_BETA
+#define VSA_PRECISE_BETA false
+#endif
+#ifndef VSA_PRECISE_RCP
+#define VSA_PRECISE_RCP false
+#endif
 
 // BLK128 is a file-scope constexpr, not a template parameter, so the blk64 and blk128 builds
 // would instantiate the SAME kernel symbol with DIFFERENT bodies -- an ODR violation the linker
 // resolves by silently keeping one. A config-named namespace keeps the two builds' symbols
 // distinct so both can live in one extension.
-#if VSA_BLK128
+#if VSA_GATHER_WIDTH == 32 && VSA_PACKED_PAIR32 && VSA_ONE_Q_CTA
+#define VSA_NAMESPACE vsa_blk64_gather32_pair_one_q
+#elif VSA_GATHER_WIDTH == 8 && VSA_SINGLE_Q_CTA
+#define VSA_NAMESPACE vsa_blk64_gather8_single_q
+#elif VSA_GATHER_WIDTH == 8 && VSA_BULK_GATHER8 && VSA_LOAD_WARPS == 2
+#define VSA_NAMESPACE vsa_blk64_gather8_bulk_load2
+#elif VSA_GATHER_WIDTH == 8 && VSA_LOAD_WARPS == 2
+#define VSA_NAMESPACE vsa_blk64_gather8_load2
+#elif VSA_GATHER_WIDTH == 32 && VSA_PACKED_PAIR32 && \
+    VSA_SHARED_PAIR_KV && VSA_DEFER_MASK_RESOLVE && \
+    VSA_ALWAYS_RESCALE && VSA_USE_CLC && VSA_KV_STAGES == 2
+#define VSA_NAMESPACE vsa_blk64_gather32_pair_shared_stage2
+#elif VSA_GATHER_WIDTH == 32 && VSA_PACKED_PAIR32 && \
+    VSA_SHARED_PAIR_KV && VSA_DEFER_MASK_RESOLVE && \
+    VSA_ALWAYS_RESCALE && VSA_USE_CLC && VSA_KV_STAGES == 3
+#define VSA_NAMESPACE vsa_blk64_gather32_pair_shared_stage3
+#elif VSA_GATHER_WIDTH == 32 && VSA_PACKED_PAIR32 && \
+    VSA_SHARED_PAIR_KV && VSA_DEFER_MASK_RESOLVE && \
+    VSA_ALWAYS_RESCALE && !VSA_USE_CLC
+#define VSA_NAMESPACE vsa_blk64_gather32_pair_shared_static
+#elif VSA_GATHER_WIDTH == 32 && VSA_PACKED_PAIR32 && \
+    VSA_SHARED_PAIR_KV && VSA_DEFER_MASK_RESOLVE && VSA_ALWAYS_RESCALE
+#define VSA_NAMESPACE vsa_blk64_gather32_pair_shared_defermask_alwayscorr
+#elif VSA_GATHER_WIDTH == 32 && VSA_PACKED_PAIR32 && \
+    VSA_SHARED_PAIR_KV && VSA_ALWAYS_RESCALE
+#define VSA_NAMESPACE vsa_blk64_gather32_pair_shared_alwayscorr
+#elif VSA_GATHER_WIDTH == 32 && VSA_PACKED_PAIR32 && \
+    VSA_SHARED_PAIR_KV && VSA_DEFER_MASK_RESOLVE
+#define VSA_NAMESPACE vsa_blk64_gather32_pair_shared_defermask
+#elif VSA_GATHER_WIDTH == 32 && VSA_PACKED_PAIR32 && VSA_SHARED_PAIR_KV
+#define VSA_NAMESPACE vsa_blk64_gather32_pair_shared
+#elif VSA_GATHER_WIDTH == 32 && VSA_PACKED_PAIR32
+#define VSA_NAMESPACE vsa_blk64_gather32_pair
+#elif VSA_GATHER_WIDTH == 8 && VSA_BULK_GATHER8
+#define VSA_NAMESPACE vsa_blk64_gather8_bulk
+#elif VSA_GATHER_WIDTH == 8
+#define VSA_NAMESPACE vsa_blk64_gather8
+#elif VSA_GATHER_WIDTH == 16
+#define VSA_NAMESPACE vsa_blk64_gather16
+#elif VSA_GATHER_WIDTH == 32
+#define VSA_NAMESPACE vsa_blk64_gather32
+#elif VSA_GATHER_WIDTH == 64
+#define VSA_NAMESPACE vsa_blk64_gather64
+#elif VSA_BLK128
 #define VSA_NAMESPACE vsa_blk128
+#elif VSA_CHILD_MASK
+#define VSA_NAMESPACE vsa_blk64_childmask
 #else
 #define VSA_NAMESPACE vsa_blk64
 #endif
 namespace VSA_NAMESPACE {
 
 constexpr bool BLK128 = VSA_BLK128;
+constexpr bool CHILD_MASK = VSA_CHILD_MASK;
+constexpr int GATHER_WIDTH = VSA_GATHER_WIDTH;
+constexpr bool GATHER = GATHER_WIDTH > 0;
+constexpr bool PACKED_PAIR32 = VSA_PACKED_PAIR32;
+constexpr bool SHARED_PAIR_KV = VSA_SHARED_PAIR_KV;
+constexpr bool BULK_GATHER8 = VSA_BULK_GATHER8;
+constexpr int LOAD_WARPS = VSA_LOAD_WARPS;
+constexpr bool SINGLE_Q_CTA = VSA_SINGLE_Q_CTA;
+constexpr bool ONE_Q_CTA = VSA_ONE_Q_CTA || SINGLE_Q_CTA;
+constexpr bool DEFER_MASK_RESOLVE = VSA_DEFER_MASK_RESOLVE;
+constexpr bool ALWAYS_RESCALE = VSA_ALWAYS_RESCALE;
+constexpr bool STREAM_SOFTMAX = VSA_STREAM_SOFTMAX;
+constexpr bool FP32_PARTIAL = VSA_FP32_PARTIAL;
+constexpr bool PRECISE_BETA = VSA_PRECISE_BETA;
+constexpr bool PRECISE_RCP = VSA_PRECISE_RCP;
+constexpr int GATHER_CHILDREN = GATHER ? GATHER_WIDTH / 8 : 0;
+static_assert(!GATHER || !BLK128,
+              "Fine gather is defined only for the 64-token query kernel");
+static_assert(!GATHER || GATHER_WIDTH == 8 || GATHER_WIDTH == 16 ||
+                  GATHER_WIDTH == 32 || GATHER_WIDTH == 64,
+              "Fine gather width must be 8, 16, 32, or 64");
+static_assert(!PACKED_PAIR32 || GATHER_WIDTH == 32,
+              "Packed pair metadata is defined only for 32-token gather");
+static_assert(!SHARED_PAIR_KV || PACKED_PAIR32,
+              "Shared pair KV requires packed pair32 metadata");
+static_assert(!BULK_GATHER8 || (GATHER_WIDTH == 8 && !VSA_BHSD),
+              "Bulk Fine8 gather requires width 8 in BSHD mode");
+static_assert(LOAD_WARPS == 1 || LOAD_WARPS == 2,
+              "Fine8 producer experiment supports one or two load warps");
+static_assert(LOAD_WARPS == 1 ||
+                  (GATHER_WIDTH == 8 && !SHARED_PAIR_KV),
+              "Two load warps are defined only for independent exact Fine8");
+static_assert(!SINGLE_Q_CTA ||
+                  (GATHER_WIDTH == 8 && !BULK_GATHER8 &&
+                   !SHARED_PAIR_KV && LOAD_WARPS == 1),
+              "Single-query CTA is defined for exact TMA Fine8 only");
+static_assert(!VSA_ONE_Q_CTA ||
+                  (PACKED_PAIR32 && !SHARED_PAIR_KV &&
+                   !BULK_GATHER8 && LOAD_WARPS == 1),
+              "One-query packed CTA requires independent packed pair32");
+static_assert(!(VSA_ONE_Q_CTA && SINGLE_Q_CTA),
+              "Only one single-query CTA mode may be enabled");
+static_assert(!VSA_ONE_Q_CTA || !VSA_USE_CLC,
+              "One-query packed CTA uses a two-wave static schedule");
+static_assert(!FP32_PARTIAL || (!BLK128 && GATHER),
+              "FP32 partial combination is only defined for Fine gather");
+static_assert(!STREAM_SOFTMAX || PACKED_PAIR32,
+              "streamed softmax is currently defined for packed pair32");
 
 #ifndef VSA_DEFER_ROWSUM
 #define VSA_DEFER_ROWSUM (!VSA_BLK128)
@@ -46,8 +187,10 @@ constexpr bool BLK128 = VSA_BLK128;
 constexpr bool DEFER_ROWSUM = VSA_DEFER_ROWSUM;
 
 constexpr int BLOCK  = BLK128 ? 128 : 64;
+constexpr int GATHER_SEGMENTS_PER_BLOCK =
+    GATHER ? BLOCK / GATHER_WIDTH : 0;
 constexpr int M_TILE = BLOCK;
-constexpr int M_TILES_PER_CTA = 2;
+constexpr int M_TILES_PER_CTA = ONE_Q_CTA ? 1 : 2;
 constexpr int K_TILE = 256 / (BLK128 ? 2 : 1);
 constexpr int BLOCKS_PER_KTILE = K_TILE / BLOCK;
 constexpr int KV_HALF = K_TILE / 2;
@@ -65,9 +208,20 @@ constexpr int Q_TILE_BYTES = Q_SUBTILES * Q_SUB_COLS_BYTES;
 constexpr int KV_RING_SLOT_BYTES = 32 * 1024;
 constexpr int SLOTS_PER_KV_TILE = BLK128 ? 1 : 2;
 
-constexpr int NUM_KV_STAGES = BLK128 ? 3 : 4;
+constexpr int DEFAULT_KV_STAGES =
+    ONE_Q_CTA ? 2 : (BLK128 ? 3 : 4);
+constexpr int NUM_KV_STAGES =
+    VSA_KV_STAGES > 0 ? VSA_KV_STAGES : DEFAULT_KV_STAGES;
+static_assert(NUM_KV_STAGES >= 2 && NUM_KV_STAGES <= 4,
+              "KV stage count must be 2, 3, or 4");
 
 constexpr int V_BLK_BYTES = HEAD_DIM * SUB_COLS_BYTES;
+constexpr int O_STORAGE_ELEMENT_BYTES =
+    FP32_PARTIAL ? (int)sizeof(float) : (int)sizeof(__nv_bfloat16);
+constexpr int O_STORAGE_BYTES =
+    M_TILE * HEAD_DIM * O_STORAGE_ELEMENT_BYTES;
+constexpr int O_STORAGE_BUFFER_COUNT =
+    FP32_PARTIAL ? 1 : M_TILES_PER_CTA;
 
 constexpr int S_COLS = 128;
 constexpr int K_ATOMS_PER_TILE = SUB_COLS_BF16 / 16;
@@ -80,13 +234,18 @@ constexpr int EX2_FREQ      = 16;
 constexpr int EX2_RES       = 4;
 
 constexpr int O_COLS = HEAD_DIM;
-constexpr int TMEM_TOTAL = 512;
+constexpr int TMEM_TOTAL = ONE_Q_CTA ? 256 : 512;
 
 constexpr int STATS = BLK128 ? M_TILE : 2 * M_TILE;
 constexpr int STAT_REGIONS = BLK128 ? 2 : 3;
 
-constexpr int W_CORR0 = 8, W_MMA = 12, W_EPI = 13, W_LOAD = 14, W_SCHED = 15;
-constexpr int N_WARPS = 16;
+constexpr int W_CORR0 = ONE_Q_CTA ? 4 : 8;
+constexpr int W_MMA = ONE_Q_CTA ? 8 : 12;
+constexpr int W_EPI = ONE_Q_CTA ? 9 : 13;
+constexpr int W_LOAD = ONE_Q_CTA ? 10 : 14;
+constexpr int W_SCHED = ONE_Q_CTA ? 11 : 15;
+constexpr int N_WARPS = ONE_Q_CTA ? 11 : 16;
+constexpr int MIN_CTAS_PER_SM = ONE_Q_CTA ? 2 : 1;
 constexpr int CLC_STAGES = 2;
 
 extern __shared__ __align__(1024) uint8_t fmha_smem[];
@@ -106,6 +265,17 @@ __device__ __forceinline__ void desc_add_lo(SmemDescPair& d, uint32_t inc) {
       "}"
       : "+l"(d.u64)
       : "r"(inc));
+}
+
+__device__ __forceinline__ void mask_s_row_child8(float* scores, int mask) {
+  #pragma unroll
+  for (int child = 0; child < 8; ++child) {
+    if ((mask & (1 << child)) == 0) {
+      #pragma unroll
+      for (int token = 0; token < 8; ++token)
+        scores[child * 8 + token] = -INFINITY;
+    }
+  }
 }
 
 __device__ __forceinline__ void tcgen05_mma_ws_f16_ss_1sm_lead(uint32_t lead,
@@ -171,12 +341,25 @@ __device__ __forceinline__ WorkItem decode_workitem(
     p       = (int)fdiv((unsigned)rem, magic1);
     it.head = rem - p * num_heads;
   }
-  it.mtile0 = 2 * p;
-  it.mtile1 = 2 * p + 1;
+  it.mtile0 = ONE_Q_CTA ? p : 2 * p;
+  it.mtile1 = ONE_Q_CTA ? p : 2 * p + 1;
   it.global_mtile0  = (it.sample * num_heads + it.head) * num_blocks + it.mtile0;
-  it.global_mtile1  = it.global_mtile0 + 1;
-  it.num_kv_blocks_mt[0] = q2k_num[it.global_mtile0];
-  it.num_kv_blocks_mt[1] = q2k_num[it.global_mtile1];
+  it.global_mtile1  = ONE_Q_CTA ? it.global_mtile0
+                                : it.global_mtile0 + 1;
+  if constexpr (PACKED_PAIR32) {
+    it.num_kv_blocks_mt[0] = q2k_num[it.global_mtile0];
+    it.num_kv_blocks_mt[1] = q2k_num[it.global_mtile1];
+  } else if constexpr (GATHER) {
+    it.num_kv_blocks_mt[0] =
+        (q2k_num[it.global_mtile0] + GATHER_SEGMENTS_PER_BLOCK - 1)
+        / GATHER_SEGMENTS_PER_BLOCK;
+    it.num_kv_blocks_mt[1] =
+        (q2k_num[it.global_mtile1] + GATHER_SEGMENTS_PER_BLOCK - 1)
+        / GATHER_SEGMENTS_PER_BLOCK;
+  } else {
+    it.num_kv_blocks_mt[0] = q2k_num[it.global_mtile0];
+    it.num_kv_blocks_mt[1] = q2k_num[it.global_mtile1];
+  }
   // Floor of 1: a pair whose rows are BOTH empty still walks one K-tile so no
   // mbarrier wait is left without its arrive (the load/MMA/softmax/correction
   // pipeline has a fixed per-iteration handshake); the per-tile counts mask
@@ -190,16 +373,23 @@ template <int S_LD_COLS = 32, bool FULL_NAMED_BAR = false, bool EX2_EMU = false,
           int RESCALE_THRESHOLD = 8,
 
           bool BHSD = false>
-__global__ void __cluster_dims__(1, 1, 1) __launch_bounds__(N_WARPS * 32, 1)
+__global__ void __cluster_dims__(1, 1, 1)
+__launch_bounds__(N_WARPS * 32, MIN_CTAS_PER_SM)
 fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     const __grid_constant__ CUtensorMap tmap_k, const __grid_constant__ CUtensorMap tmap_v_t,
-      const __grid_constant__ CUtensorMap tmap_v,
-    const __grid_constant__ CUtensorMap tmap_o, int seqlen,
+    const __grid_constant__ CUtensorMap tmap_v,
+    const __grid_constant__ CUtensorMap tmap_k_full,
+    const __grid_constant__ CUtensorMap tmap_v_full,
+    const __grid_constant__ CUtensorMap tmap_o,
+    const __nv_bfloat16* __restrict__ packed_k,
+    const __nv_bfloat16* __restrict__ packed_v,
+    __nv_bfloat16* __restrict__ output, int seqlen,
     int num_heads, float scale_log2, int num_samples, int num_blocks,
     int packed_mtiles_per_seq, int max_kv,
     unsigned long long magic0, unsigned long long magic1, unsigned long long magic2,
     const int* __restrict__ q2k_idx, const int* __restrict__ q2k_num,
     const int* __restrict__ variable_block_sizes,
+    const uint8_t* __restrict__ child_masks,
       float* __restrict__ lse_out) {
 // Multi-arch builds: torch's cmake appends -gencode for EVERY entry of
 // TORCH_CUDA_ARCH_LIST to this TU on top of the pinned compute_100a pass, and
@@ -217,11 +407,16 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
   uint8_t* sQ0 = fmha_smem;
   uint8_t* sQ1 = sQ0 + Q_TILE_BYTES;
   uint8_t* sQ[2] = { sQ0, sQ1 };
-  uint8_t* sKV = sQ1 + Q_TILE_BYTES;
-  __nv_bfloat16* sO0 = reinterpret_cast<__nv_bfloat16*>(sKV + NUM_KV_STAGES * KV_RING_SLOT_BYTES);
-  __nv_bfloat16* sO1 = sO0 + M_TILE * HEAD_DIM;
+  uint8_t* sKV = sQ0 + M_TILES_PER_CTA * Q_TILE_BYTES;
+  uint8_t* sO_storage0 = sKV + NUM_KV_STAGES * KV_RING_SLOT_BYTES;
+  uint8_t* sO_storage1 = sO_storage0 + O_STORAGE_BYTES;
+  __nv_bfloat16* sO0 = reinterpret_cast<__nv_bfloat16*>(sO_storage0);
+  __nv_bfloat16* sO1 = reinterpret_cast<__nv_bfloat16*>(sO_storage1);
   __nv_bfloat16* sO_bufs[2] = { sO0, sO1 };
-  uint64_t* full_bar = reinterpret_cast<uint64_t*>(reinterpret_cast<uint8_t*>(sO1) + M_TILE * HEAD_DIM * sizeof(__nv_bfloat16));
+  float* sO_partial = reinterpret_cast<float*>(sO_storage0);
+  uint64_t* full_bar =
+      reinterpret_cast<uint64_t*>(
+          sO_storage0 + O_STORAGE_BUFFER_COUNT * O_STORAGE_BYTES);
   uint64_t* empty_bar= full_bar + NUM_KV_STAGES;
   uint64_t* full_bar_q  = empty_bar + NUM_KV_STAGES;
   uint64_t* empty_bar_q   = full_bar_q + 2;
@@ -283,8 +478,24 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
   fence_mbarrier_init_release_cluster();
   __syncthreads();
 
-  if (warp_id == W_LOAD) {
-    setmaxnreg_dec<48>();
+  const bool single_q_copy_role =
+      SINGLE_Q_CTA && warp_id >= 4 && warp_id < 8;
+  const bool single_q_control_role =
+      SINGLE_Q_CTA && warp_id == W_LOAD;
+  if (single_q_copy_role || single_q_control_role ||
+      (!SINGLE_Q_CTA &&
+       (warp_id == W_LOAD ||
+        (LOAD_WARPS == 2 && warp_id == W_SCHED)))) {
+    if constexpr (ONE_Q_CTA)
+      setmaxnreg_dec<40>();
+    else
+      setmaxnreg_dec<48>();
+    const int producer_warp =
+        SINGLE_Q_CTA
+        ? (single_q_copy_role ? warp_id - 4 : 4)
+        : warp_id - W_LOAD;
+    const bool control_producer =
+        SINGLE_Q_CTA ? producer_warp == 4 : producer_warp == 0;
 
     EmptyPhaseTracker<NUM_KV_STAGES> kv_empty_ph;
     EmptyPhaseTracker<1> q_empty_ph;
@@ -310,7 +521,9 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
           // never dereferences its row at all and loads block 0 instead. Both
           // are fully masked by the per-tile vbs thresholds, so only the
           // load address safety matters here.
-          const int cnt = it.num_kv_blocks_mt[mtile_idx];
+          const int cnt = GATHER
+                        ? q2k_num[global_mtile[mtile_idx]]
+                        : it.num_kv_blocks_mt[mtile_idx];
           const int idx = max(0, min(window_start[mtile_idx] + lane, cnt - 1));
           kv_block_id_cache[mtile_idx] =
               (cnt > 0) ? q2k_idx[global_mtile[mtile_idx] * max_kv + idx] : 0;
@@ -325,11 +538,143 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
         kv_empty_ph.advance();
 
         int kv_tok[BLOCKS_PER_KTILE];
-        #pragma unroll
-        for (int blk = 0; blk < BLOCKS_PER_KTILE; ++blk)
-          kv_tok[blk] = k_start + get_kv_block_id(mtile_idx, ktile_idx * BLOCKS_PER_KTILE + blk) * BLOCK;
-        if (elect_one_sync()) {
+        if constexpr (!GATHER) {
+          #pragma unroll
+          for (int blk = 0; blk < BLOCKS_PER_KTILE; ++blk)
+            kv_tok[blk] = k_start + get_kv_block_id(
+                mtile_idx, ktile_idx * BLOCKS_PER_KTILE + blk) * BLOCK;
+        }
+        const bool elected = elect_one_sync();
+        if (control_producer && elected)
           mbarrier_arrive_expect_tx(smem_ptr_u32(&full_bar[kv_stage]), KV_RING_SLOT_BYTES);
+        if constexpr (SINGLE_Q_CTA || LOAD_WARPS == 2) {
+          bar_sync<10>(SINGLE_Q_CTA ? 160 : 64);
+        }
+        if constexpr (GATHER) {
+          #pragma unroll
+          for (int blk = 0; blk < BLOCKS_PER_KTILE; ++blk) {
+            if constexpr (BULK_GATHER8) {
+              constexpr int CHILD_HALF_ELEMENTS = 8 * SUB_COLS_BF16;
+              constexpr int CHILD_HALF_BYTES =
+                  CHILD_HALF_ELEMENTS * int(sizeof(__nv_bfloat16));
+              const int total_children =
+                  num_blocks * GATHER_SEGMENTS_PER_BLOCK;
+              #pragma unroll
+              for (int segment = 0;
+                   segment < GATHER_SEGMENTS_PER_BLOCK; ++segment) {
+                if (SINGLE_Q_CTA
+                        ? (producer_warp < 4 &&
+                           segment % 4 == producer_warp)
+                        : (LOAD_WARPS == 1 ||
+                           segment % LOAD_WARPS == producer_warp)) {
+                  const int descriptor =
+                      ktile_idx * BLOCKS_PER_KTILE
+                          * GATHER_SEGMENTS_PER_BLOCK
+                      + blk * GATHER_SEGMENTS_PER_BLOCK + segment;
+                  const int child =
+                      get_kv_block_id(mtile_idx, descriptor);
+                  const long packed_row =
+                      (((long)it.sample * num_heads + it.head) * 2 + s)
+                          * total_children
+                      + child;
+                  const auto* source =
+                      packed_k + packed_row * CHILD_HALF_ELEMENTS;
+                  const uint32_t dst = smem_ptr_u32(
+                      (sKV + kv_stage * KV_RING_SLOT_BYTES)
+                      + (blk * GATHER_SEGMENTS_PER_BLOCK + segment)
+                          * CHILD_HALF_BYTES);
+                  if (elected) {
+                    bulk_load_g2s(
+                        dst, source, CHILD_HALF_BYTES,
+                        smem_ptr_u32(&full_bar[kv_stage]));
+                  }
+                }
+              }
+            } else if constexpr (GATHER_WIDTH == 32) {
+              const int descriptor =
+                  PACKED_PAIR32
+                  ? ktile_idx * BLOCKS_PER_KTILE + blk
+                  : ktile_idx * BLOCKS_PER_KTILE * 2 + blk * 2;
+              const int packed_or_segment0 =
+                  get_kv_block_id(mtile_idx, descriptor);
+              const int segment0 = PACKED_PAIR32
+                  ? packed_or_segment0 & 0xffff
+                  : packed_or_segment0;
+              const int segment1 = PACKED_PAIR32
+                  ? (packed_or_segment0 >> 16) & 0xffff
+                  : get_kv_block_id(mtile_idx, descriptor + 1);
+              const bool adjacent = segment1 == segment0 + 1;
+              if (elected) {
+                const uint32_t dst = smem_ptr_u32(
+                    (sKV + kv_stage * KV_RING_SLOT_BYTES)
+                    + blk * BLOCK * SUB_COLS_BYTES);
+                if (adjacent) {
+                  const int token = k_start + segment0 * GATHER_WIDTH;
+                  if constexpr (BHSD)
+                    tma_load_4d(dst, &tmap_k_full,
+                                smem_ptr_u32(&full_bar[kv_stage]),
+                                0, token - k_start, s,
+                                it.sample * num_heads + it.head);
+                  else
+                    tma_load_3d(dst, &tmap_k_full,
+                                smem_ptr_u32(&full_bar[kv_stage]),
+                                0, token, it.head * K_SUBTILES + s);
+                } else {
+                  const int segments[2] = {segment0, segment1};
+                  #pragma unroll
+                  for (int half = 0; half < 2; ++half) {
+                    const int token =
+                        k_start + segments[half] * GATHER_WIDTH;
+                    const uint32_t half_dst =
+                        dst + half * GATHER_WIDTH * SUB_COLS_BYTES;
+                    if constexpr (BHSD)
+                      tma_load_4d(half_dst, &tmap_k,
+                                  smem_ptr_u32(&full_bar[kv_stage]),
+                                  0, token - k_start, s,
+                                  it.sample * num_heads + it.head);
+                    else
+                      tma_load_3d(half_dst, &tmap_k,
+                                  smem_ptr_u32(&full_bar[kv_stage]),
+                                  0, token, it.head * K_SUBTILES + s);
+                  }
+                }
+              }
+            } else {
+              #pragma unroll
+              for (int segment = 0;
+                   segment < GATHER_SEGMENTS_PER_BLOCK; ++segment) {
+                if (SINGLE_Q_CTA
+                        ? (producer_warp < 4 &&
+                           segment % 4 == producer_warp)
+                        : (LOAD_WARPS == 1 ||
+                           segment % LOAD_WARPS == producer_warp)) {
+                  const int descriptor =
+                      ktile_idx * BLOCKS_PER_KTILE
+                          * GATHER_SEGMENTS_PER_BLOCK
+                      + blk * GATHER_SEGMENTS_PER_BLOCK + segment;
+                  const int token =
+                      k_start + get_kv_block_id(mtile_idx, descriptor)
+                          * GATHER_WIDTH;
+                  if (elected) {
+                    const uint32_t dst = smem_ptr_u32(
+                        (sKV + kv_stage * KV_RING_SLOT_BYTES)
+                        + (blk * BLOCK + segment * GATHER_WIDTH)
+                            * SUB_COLS_BYTES);
+                    if constexpr (BHSD)
+                      tma_load_4d(dst, &tmap_k,
+                                  smem_ptr_u32(&full_bar[kv_stage]),
+                                  0, token - k_start, s,
+                                  it.sample * num_heads + it.head);
+                    else
+                      tma_load_3d(dst, &tmap_k,
+                                  smem_ptr_u32(&full_bar[kv_stage]),
+                                  0, token, it.head * K_SUBTILES + s);
+                  }
+                }
+              }
+            }
+          }
+        } else if (elected) {
           if constexpr (BLK128) {
 
             if constexpr (BHSD)
@@ -371,6 +716,152 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
                 tma_load_3d(smem_ptr_u32((sKV + kv_stage * KV_RING_SLOT_BYTES)), &tmap_v, smem_ptr_u32(&full_bar[kv_stage]),
                             0, kv_tok0, it.head * K_SUBTILES);
           }
+        } else if constexpr (GATHER) {
+          const bool elected = elect_one_sync();
+          if (control_producer && elected)
+            mbarrier_arrive_expect_tx(
+                smem_ptr_u32(&full_bar[kv_stage]),
+                KV_RING_SLOT_BYTES);
+          if constexpr (SINGLE_Q_CTA || LOAD_WARPS == 2) {
+            bar_sync<10>(SINGLE_Q_CTA ? 160 : 64);
+          }
+          #pragma unroll
+          for (int h = 0; h < 2; ++h) {
+            const int packed_block =
+                ktile_idx * BLOCKS_PER_KTILE + 2 * h + p;
+            if constexpr (BULK_GATHER8) {
+              constexpr int CHILD_HALF_ELEMENTS = 8 * SUB_COLS_BF16;
+              constexpr int CHILD_HALF_BYTES =
+                  CHILD_HALF_ELEMENTS * int(sizeof(__nv_bfloat16));
+              const int total_children =
+                  num_blocks * GATHER_SEGMENTS_PER_BLOCK;
+              #pragma unroll
+              for (int s2 = 0; s2 < K_SUBTILES; ++s2) {
+                #pragma unroll
+                for (int segment = 0;
+                     segment < GATHER_SEGMENTS_PER_BLOCK; ++segment) {
+                  if (SINGLE_Q_CTA
+                          ? (producer_warp < 4 &&
+                             segment % 4 == producer_warp)
+                          : (LOAD_WARPS == 1 ||
+                             segment % LOAD_WARPS == producer_warp)) {
+                    const int descriptor =
+                        packed_block * GATHER_SEGMENTS_PER_BLOCK + segment;
+                    const int child =
+                        get_kv_block_id(mtile_idx, descriptor);
+                    const long packed_row =
+                        (((long)it.sample * num_heads + it.head) * 2 + s2)
+                            * total_children
+                        + child;
+                    const auto* source =
+                        packed_v + packed_row * CHILD_HALF_ELEMENTS;
+                    const uint32_t dst = smem_ptr_u32(
+                        (sKV + kv_stage * KV_RING_SLOT_BYTES)
+                        + h * V_BLK_BYTES
+                        + s2 * (BLOCK * SUB_COLS_BYTES)
+                        + segment * CHILD_HALF_BYTES);
+                    if (elected) {
+                      bulk_load_g2s(
+                          dst, source, CHILD_HALF_BYTES,
+                          smem_ptr_u32(&full_bar[kv_stage]));
+                    }
+                  }
+                }
+              }
+            } else if constexpr (GATHER_WIDTH == 32) {
+              const int descriptor =
+                  PACKED_PAIR32
+                  ? packed_block
+                  : packed_block * GATHER_SEGMENTS_PER_BLOCK;
+              const int packed_or_segment0 =
+                  get_kv_block_id(mtile_idx, descriptor);
+              const int segment0 = PACKED_PAIR32
+                  ? packed_or_segment0 & 0xffff
+                  : packed_or_segment0;
+              const int segment1 = PACKED_PAIR32
+                  ? (packed_or_segment0 >> 16) & 0xffff
+                  : get_kv_block_id(mtile_idx, descriptor + 1);
+              const bool adjacent = segment1 == segment0 + 1;
+              if (elected) {
+                #pragma unroll
+                for (int s2 = 0; s2 < K_SUBTILES; ++s2) {
+                  const uint32_t dst = smem_ptr_u32(
+                      (sKV + kv_stage * KV_RING_SLOT_BYTES)
+                      + h * V_BLK_BYTES
+                      + s2 * (BLOCK * SUB_COLS_BYTES));
+                  if (adjacent) {
+                    const int token =
+                        k_start + segment0 * GATHER_WIDTH;
+                    if constexpr (BHSD)
+                      tma_load_4d(dst, &tmap_v_full,
+                                  smem_ptr_u32(&full_bar[kv_stage]),
+                                  0, token - k_start, s2,
+                                  it.sample * num_heads + it.head);
+                    else
+                      tma_load_3d(dst, &tmap_v_full,
+                                  smem_ptr_u32(&full_bar[kv_stage]),
+                                  0, token,
+                                  it.head * K_SUBTILES + s2);
+                  } else {
+                    const int segments[2] = {segment0, segment1};
+                    #pragma unroll
+                    for (int half = 0; half < 2; ++half) {
+                      const int token =
+                          k_start + segments[half] * GATHER_WIDTH;
+                      const uint32_t half_dst =
+                          dst + half * GATHER_WIDTH * SUB_COLS_BYTES;
+                      if constexpr (BHSD)
+                        tma_load_4d(half_dst, &tmap_v,
+                                    smem_ptr_u32(&full_bar[kv_stage]),
+                                    0, token - k_start, s2,
+                                    it.sample * num_heads + it.head);
+                      else
+                        tma_load_3d(half_dst, &tmap_v,
+                                    smem_ptr_u32(&full_bar[kv_stage]),
+                                    0, token,
+                                    it.head * K_SUBTILES + s2);
+                    }
+                  }
+                }
+              }
+            } else {
+              #pragma unroll
+              for (int segment = 0;
+                   segment < GATHER_SEGMENTS_PER_BLOCK; ++segment) {
+                if (SINGLE_Q_CTA
+                        ? (producer_warp < 4 &&
+                           segment % 4 == producer_warp)
+                        : (LOAD_WARPS == 1 ||
+                           segment % LOAD_WARPS == producer_warp)) {
+                  const int descriptor =
+                      packed_block * GATHER_SEGMENTS_PER_BLOCK + segment;
+                  const int token =
+                      k_start + get_kv_block_id(mtile_idx, descriptor)
+                          * GATHER_WIDTH;
+                  if (elected) {
+                    #pragma unroll
+                    for (int s2 = 0; s2 < K_SUBTILES; ++s2) {
+                      const uint32_t dst = smem_ptr_u32(
+                          (sKV + kv_stage * KV_RING_SLOT_BYTES)
+                          + h * V_BLK_BYTES
+                          + s2 * (BLOCK * SUB_COLS_BYTES)
+                          + segment * GATHER_WIDTH * SUB_COLS_BYTES);
+                      if constexpr (BHSD)
+                        tma_load_4d(dst, &tmap_v,
+                                    smem_ptr_u32(&full_bar[kv_stage]),
+                                    0, token - k_start, s2,
+                                    it.sample * num_heads + it.head);
+                      else
+                        tma_load_3d(dst, &tmap_v,
+                                    smem_ptr_u32(&full_bar[kv_stage]),
+                                    0, token,
+                                    it.head * K_SUBTILES + s2);
+                    }
+                  }
+                }
+              }
+            }
+          }
         } else {
           int kv_tok[2];
           #pragma unroll
@@ -405,26 +896,38 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
         if constexpr (!BLK128) load_v_oneslot(mtile_idx, ktile_idx, 1);
       };
 
-      load_k(0, 0); load_k(1, 0);
+      load_k(0, 0);
+      if constexpr (!SHARED_PAIR_KV && M_TILES_PER_CTA > 1)
+        load_k(1, 0);
 
-      #pragma unroll
-      for (int m = 0; m < M_TILES_PER_CTA; ++m) {
-        mbarrier_wait_parity_suspend(smem_ptr_u32(&empty_bar_q[m]), q_empty_ph.get_phase());
-        const int tok0 = q_start + mtile[m] * BLOCK;
-        if (elect_one_sync()) {
-          mbarrier_arrive_expect_tx(smem_ptr_u32(&full_bar_q[m]), Q_TILE_BYTES);
+      if (control_producer) {
+        #pragma unroll
+        for (int m = 0; m < M_TILES_PER_CTA; ++m) {
+          mbarrier_wait_parity_suspend(
+              smem_ptr_u32(&empty_bar_q[m]), q_empty_ph.get_phase());
+          const int tok0 = q_start + mtile[m] * BLOCK;
+          if (elect_one_sync()) {
+            mbarrier_arrive_expect_tx(
+                smem_ptr_u32(&full_bar_q[m]), Q_TILE_BYTES);
 
-          tma_load_4d(smem_ptr_u32(sQ[m]), &tmap_q, smem_ptr_u32(&full_bar_q[m]),
-                        0, BHSD ? it.sample * num_heads + it.head : it.head,
-                        BHSD ? tok0 - q_start : tok0, 0);
+            tma_load_4d(
+                smem_ptr_u32(sQ[m]), &tmap_q,
+                smem_ptr_u32(&full_bar_q[m]),
+                0, BHSD ? it.sample * num_heads + it.head : it.head,
+                BHSD ? tok0 - q_start : tok0, 0);
+          }
         }
-      }
       q_empty_ph.advance();
+      }
       for (int ktile_idx = 0; ktile_idx + 1 < num_k_tiles; ++ktile_idx) {
         load_v(0, ktile_idx); load_k(0, ktile_idx + 1);
-        load_v(1, ktile_idx); load_k(1, ktile_idx + 1);
+        if constexpr (!SHARED_PAIR_KV && M_TILES_PER_CTA > 1) {
+          load_v(1, ktile_idx); load_k(1, ktile_idx + 1);
+        }
       }
-      load_v(0, num_k_tiles - 1); load_v(1, num_k_tiles - 1);
+      load_v(0, num_k_tiles - 1);
+      if constexpr (!SHARED_PAIR_KV && M_TILES_PER_CTA > 1)
+        load_v(1, num_k_tiles - 1);
 
       if constexpr (USE_CLC) {
         ClcTileInfo next = clc_fetch_next_tile<1, 1, ClcRasterOrder::AlongN, 1, true>(
@@ -439,7 +942,10 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     }
   }
   else if (warp_id == W_MMA) {
-    setmaxnreg_dec<48>();
+    if constexpr (ONE_Q_CTA)
+      setmaxnreg_dec<40>();
+    else
+      setmaxnreg_dec<48>();
 
     const uint32_t lead = elect_one_sync() ? 1u : 0u;
     constexpr uint32_t DESC_SBO = 1024, DESC_LBO = 16;
@@ -503,7 +1009,9 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
       auto bmm2 = [&](int i, bool first_ktile, auto last_c) {
         constexpr bool last_ktile = decltype(last_c)::value;
         const uint32_t s_tmem_addr = tmem_base + (uint32_t)(i * S_COLS);
-        const uint32_t o_tmem_addr = tmem_base + (uint32_t)(2 * S_COLS + i * O_COLS);
+        const uint32_t o_tmem_addr =
+            tmem_base + (uint32_t)(M_TILES_PER_CTA * S_COLS
+                                   + i * O_COLS);
 
         int slot = 0;
         #pragma unroll
@@ -546,35 +1054,153 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
         }
       };
 
-      #pragma unroll
-      for (int i = 0; i < M_TILES_PER_CTA; ++i) {
-        mbarrier_wait_parity(smem_ptr_u32(&full_bar_q[i]), q_ph.get_phase());
-        bmm1(i);
-      }
+      auto bmm1_shared = [&]() {
+        #pragma unroll
+        for (int s = 0; s < Q_SUBTILES; ++s) {
+          const int slot = kv_ph.get_stage();
+          mbarrier_wait_parity(
+              smem_ptr_u32(&full_bar[slot]), kv_ph.get_phase());
+          kv_ph.advance();
+          #pragma unroll
+          for (int i = 0; i < M_TILES_PER_CTA; ++i) {
+            const uint32_t s_tmem_addr =
+                tmem_base + (uint32_t)(i * S_COLS);
+            const uint64_t da =
+                desc_q0 + (uint64_t)i * Q_MTILE_DESC_DELTA
+                + (uint64_t)s * Q_SUB_DELTA;
+            const uint64_t db =
+                desc_kv0 + (uint64_t)slot * KV_DESC_DELTA;
+            #pragma unroll
+            for (int ki = 0; ki < K_ATOMS_PER_TILE; ++ki) {
+              const bool enable_d = (s != 0) || (ki != 0);
+              tcgen05_mma_ws_f16_ss_1sm_lead(
+                  lead, s_tmem_addr, da + 2 * ki, db + 2 * ki,
+                  idesc_qk, enable_d);
+            }
+          }
+          tcgen05_commit1_lead(
+              lead, smem_ptr_u32(&empty_bar[slot]));
+        }
+        #pragma unroll
+        for (int i = 0; i < M_TILES_PER_CTA; ++i)
+          tcgen05_commit1_lead(
+              lead, smem_ptr_u32(&full_bar_spo[i]));
+      };
 
-      for (int k = 0; k + 1 < num_k_tiles; ++k) {
+      auto bmm2_shared = [&](bool first_ktile, auto last_c) {
+        constexpr bool last_ktile = decltype(last_c)::value;
+        #pragma unroll
+        for (int p = 0; p < V_SUBTILES; ++p) {
+          const int slot = kv_ph.get_stage();
+          mbarrier_wait_parity(
+              smem_ptr_u32(&full_bar[slot]), kv_ph.get_phase());
+          kv_ph.advance();
+          #pragma unroll
+          for (int i = 0; i < M_TILES_PER_CTA; ++i) {
+            const uint32_t s_tmem_addr =
+                tmem_base + (uint32_t)(i * S_COLS);
+            const uint32_t o_tmem_addr =
+                tmem_base
+                + (uint32_t)(M_TILES_PER_CTA * S_COLS
+                             + i * O_COLS);
+            SmemDescPair desc_bv;
+            desc_bv.u64 = desc_v0;
+            desc_bv.w.x += (uint32_t)(slot * (int)KV_DESC_DELTA);
+            #pragma unroll
+            for (int ki = 0; ki < K_ATOMS_PER_TILE; ++ki) {
+              const int a = p * K_ATOMS_PER_TILE + ki;
+              if constexpr (SPLIT_P) {
+                if (a == SPLIT_P_ATOM) {
+                  mbarrier_wait_parity(
+                      smem_ptr_u32(&full_bar_p_last[i]),
+                      spo_ph.get_phase());
+                }
+              }
+              const bool accumulate = (!first_ktile) || (a != 0);
+              tcgen05_mma_ws_f16_ts_1sm_lead(
+                  lead, o_tmem_addr,
+                  s_tmem_addr + (uint32_t)(a * 8),
+                  desc_bv.u64, idesc_pv, accumulate);
+              desc_add_lo(desc_bv, PV_DESC_STEP);
+            }
+          }
+          tcgen05_commit1_lead(
+              lead, smem_ptr_u32(&empty_bar[slot]));
+        }
+        if constexpr (last_ktile) {
+          #pragma unroll
+          for (int i = 0; i < M_TILES_PER_CTA; ++i)
+            tcgen05_commit1_lead(
+                lead, smem_ptr_u32(&full_bar_o_acc[i]));
+        }
+      };
+
+      if constexpr (SHARED_PAIR_KV) {
+        #pragma unroll
+        for (int i = 0; i < M_TILES_PER_CTA; ++i)
+          mbarrier_wait_parity(
+              smem_ptr_u32(&full_bar_q[i]), q_ph.get_phase());
+        bmm1_shared();
+
+        for (int k = 0; k + 1 < num_k_tiles; ++k) {
+          #pragma unroll
+          for (int i = 0; i < M_TILES_PER_CTA; ++i)
+            mbarrier_wait_parity(
+                smem_ptr_u32(&empty_bar_spo[i]),
+                spo_ph.get_phase());
+          bmm2_shared(k == 0, std::false_type{});
+          bmm1_shared();
+          spo_ph.advance();
+        }
+
+        #pragma unroll
+        for (int i = 0; i < M_TILES_PER_CTA; ++i)
+          tcgen05_commit1_lead(
+              lead, smem_ptr_u32(&empty_bar_q[i]));
+        q_ph.advance();
+
+        #pragma unroll
+        for (int i = 0; i < M_TILES_PER_CTA; ++i)
+          mbarrier_wait_parity(
+              smem_ptr_u32(&empty_bar_spo[i]),
+              spo_ph.get_phase());
+        bmm2_shared(num_k_tiles == 1, std::true_type{});
+        spo_ph.advance();
+      } else {
         #pragma unroll
         for (int i = 0; i < M_TILES_PER_CTA; ++i) {
-          mbarrier_wait_parity(smem_ptr_u32(&empty_bar_spo[i]), spo_ph.get_phase());
-          bmm2(i, (k == 0), std::false_type{});
+          mbarrier_wait_parity(
+              smem_ptr_u32(&full_bar_q[i]), q_ph.get_phase());
           bmm1(i);
         }
 
+        for (int k = 0; k + 1 < num_k_tiles; ++k) {
+          #pragma unroll
+          for (int i = 0; i < M_TILES_PER_CTA; ++i) {
+            mbarrier_wait_parity(
+                smem_ptr_u32(&empty_bar_spo[i]),
+                spo_ph.get_phase());
+            bmm2(i, (k == 0), std::false_type{});
+            bmm1(i);
+          }
+          spo_ph.advance();
+        }
+
+        #pragma unroll
+        for (int i = 0; i < M_TILES_PER_CTA; ++i)
+          tcgen05_commit1_lead(
+              lead, smem_ptr_u32(&empty_bar_q[i]));
+        q_ph.advance();
+
+        #pragma unroll
+        for (int i = 0; i < M_TILES_PER_CTA; ++i) {
+          mbarrier_wait_parity(
+              smem_ptr_u32(&empty_bar_spo[i]),
+              spo_ph.get_phase());
+          bmm2(i, (num_k_tiles == 1), std::true_type{});
+        }
         spo_ph.advance();
       }
-
-      #pragma unroll
-      for (int i = 0; i < M_TILES_PER_CTA; ++i)
-        tcgen05_commit1_lead(lead, smem_ptr_u32(&empty_bar_q[i]));
-      q_ph.advance();
-
-      #pragma unroll
-      for (int i = 0; i < M_TILES_PER_CTA; ++i) {
-        mbarrier_wait_parity(smem_ptr_u32(&empty_bar_spo[i]), spo_ph.get_phase());
-        bmm2(i, (num_k_tiles == 1), std::true_type{});
-      }
-
-      spo_ph.advance();
 
       if constexpr (USE_CLC) {
         ClcTileInfo next = clc_fetch_next_tile<1, 1, ClcRasterOrder::AlongN, 1, true>(
@@ -593,41 +1219,56 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
 
     PhaseTracker<1> full_o_ph;
 
-    if (elect_one_sync()) {
-      #pragma unroll
-      for (int m = 0; m < M_TILES_PER_CTA; ++m)
-        mbarrier_arrive(smem_ptr_u32(&empty_bar_o_epi[m]));
+    if constexpr (!FP32_PARTIAL) {
+      if (elect_one_sync()) {
+        #pragma unroll
+        for (int m = 0; m < M_TILES_PER_CTA; ++m)
+          mbarrier_arrive(smem_ptr_u32(&empty_bar_o_epi[m]));
+      }
     }
     [[maybe_unused]] int clc_stage = 0;
     [[maybe_unused]] uint32_t clc_phase = 0;
     int workitem_id = (int)blockIdx.x;
     while (true) {
-      const WorkItem it = decode_workitem<Q_RASTER>(workitem_id, num_heads, num_blocks, packed_mtiles_per_seq, magic0, magic1, magic2, q2k_num);
-      const int q_start = it.sample * seqlen;
-      const int mtile[2] = { it.mtile0, it.mtile1 };
+      if constexpr (!FP32_PARTIAL) {
+        const WorkItem it = decode_workitem<Q_RASTER>(
+            workitem_id, num_heads, num_blocks, packed_mtiles_per_seq,
+            magic0, magic1, magic2, q2k_num);
+        const int q_start = it.sample * seqlen;
+        const int mtile[2] = { it.mtile0, it.mtile1 };
 
-      #pragma unroll
-      for (int m = 0; m < M_TILES_PER_CTA; ++m) {
-        mbarrier_wait_parity_suspend(smem_ptr_u32(&full_bar_o_epi[m]), full_o_ph.get_phase());
+        #pragma unroll
+        for (int m = 0; m < M_TILES_PER_CTA; ++m) {
+          mbarrier_wait_parity_suspend(
+              smem_ptr_u32(&full_bar_o_epi[m]), full_o_ph.get_phase());
+
+          if (elect_one_sync()) {
+            const int tok0 = q_start + mtile[m] * BLOCK;
+
+            tma_store_4d(
+                &tmap_o, 0,
+                BHSD ? it.sample * num_heads + it.head : it.head,
+                BHSD ? tok0 - q_start : tok0, 0,
+                smem_ptr_u32(
+                    reinterpret_cast<const uint8_t*>(sO_bufs[m])));
+            cp_async_bulk_commit_group();
+          }
+        }
 
         if (elect_one_sync()) {
-          const int tok0 = q_start + mtile[m] * BLOCK;
-
-          tma_store_4d(&tmap_o, 0, BHSD ? it.sample * num_heads + it.head : it.head,
-                         BHSD ? tok0 - q_start : tok0, 0,
-                       smem_ptr_u32(reinterpret_cast<const uint8_t*>(sO_bufs[m])));
-          cp_async_bulk_commit_group();
+          if constexpr (ONE_Q_CTA) {
+            cp_async_bulk_wait_group_read<0>();
+            mbarrier_arrive(smem_ptr_u32(&empty_bar_o_epi[0]));
+          } else {
+            cp_async_bulk_wait_group_read<1>();
+            mbarrier_arrive(smem_ptr_u32(&empty_bar_o_epi[0]));
+            cp_async_bulk_wait_group_read<0>();
+            mbarrier_arrive(smem_ptr_u32(&empty_bar_o_epi[1]));
+          }
         }
-      }
 
-      if (elect_one_sync()) {
-        cp_async_bulk_wait_group_read<1>();
-        mbarrier_arrive(smem_ptr_u32(&empty_bar_o_epi[0]));
-        cp_async_bulk_wait_group_read<0>();
-        mbarrier_arrive(smem_ptr_u32(&empty_bar_o_epi[1]));
+        full_o_ph.advance();
       }
-
-      full_o_ph.advance();
       if constexpr (USE_CLC) {
         ClcTileInfo next = clc_fetch_next_tile<1, 1, ClcRasterOrder::AlongN, 1, true>(
             clc_full, clc_empty, clc_response, clc_stage, clc_phase, elect_one_sync());
@@ -641,7 +1282,10 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     }
   }
   else if (warp_id == W_SCHED) {
-    setmaxnreg_dec<48>();
+    if constexpr (ONE_Q_CTA)
+      setmaxnreg_dec<40>();
+    else
+      setmaxnreg_dec<48>();
 
     if constexpr (USE_CLC) {
       int prod_stage = 0; uint32_t prod_phase = 1;
@@ -670,7 +1314,10 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     }
   }
   else if (warp_id >= W_CORR0 && warp_id < W_MMA) {
-    setmaxnreg_dec<80>();
+    if constexpr (ONE_Q_CTA)
+      setmaxnreg_dec<64>();
+    else
+      setmaxnreg_dec<80>();
 
     const int corr_warp_id = warp_id - W_CORR0;
     const int corr_tid = corr_warp_id * 32 + lane;
@@ -678,7 +1325,7 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     const bool kv_half0 = BLK128 || corr_tid < 64;
     [[maybe_unused]] PhaseTracker<1> alpha_ph;
     PhaseTracker<1> o_acc_ph;
-    PhaseTracker<1> o_epi_empty_ph;
+    [[maybe_unused]] PhaseTracker<1> o_epi_empty_ph;
 
     #pragma unroll
     for (int i = 0; i < M_TILES_PER_CTA; ++i) {
@@ -710,10 +1357,16 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
           const float alpha = alpha_and_l_smem[(i * STAT_REGIONS + 0) * STATS + corr_tid];
           if constexpr (!SOFTMAX_THROTTLE) mbarrier_arrive(smem_ptr_u32(&empty_bar_alpha_and_l[i]));
 
-          bool skip = __all_sync(0xffffffffu, alpha == 1.0f);
+          bool skip = false;
+          if constexpr (!ALWAYS_RESCALE)
+            skip = __all_sync(0xffffffffu, alpha == 1.0f);
           if (!skip) {
 
-            const uint32_t o_tmem_addr = tmem_base + (uint32_t)(2 * S_COLS + i * O_COLS) + ((uint32_t)(corr_warp_id * 32) << 16);
+            const uint32_t o_tmem_addr =
+                tmem_base
+                + (uint32_t)(M_TILES_PER_CTA * S_COLS
+                             + i * O_COLS)
+                + ((uint32_t)(corr_warp_id * 32) << 16);
 
             const float2 alpha2 = f32x2_splat(alpha);
 
@@ -747,7 +1400,9 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
 
           const float l = alpha_and_l_smem[(i * STAT_REGIONS + 1) * STATS + corr_tid];
           mbarrier_arrive(smem_ptr_u32(&empty_bar_alpha_and_l[i]));
-          scale_own = (l > 0.f) ? rcp_approx_ftz_f32(l) : 0.f;
+          scale_own = (l > 0.f)
+                    ? (PRECISE_RCP ? 1.0f / l : rcp_approx_ftz_f32(l))
+                    : 0.f;
         } else {
           const float l_own = alpha_and_l_smem[(i * STAT_REGIONS + 1) * STATS + corr_tid];
           const float m_own = alpha_and_l_smem[(i * STAT_REGIONS + 2) * STATS + corr_tid];
@@ -755,11 +1410,17 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
           const float m_par = alpha_and_l_smem[(i * STAT_REGIONS + 2) * STATS + (corr_tid ^ 64)];
           mbarrier_arrive(smem_ptr_u32(&empty_bar_alpha_and_l[i]));
           const float d = (m_own - m_par) * scale_log2;
-          const float beta_lo = ex2_approx_f32(-fabsf(d));
+          const float beta_lo = PRECISE_BETA
+                              ? exp2f(-fabsf(d))
+                              : ex2_approx_f32(-fabsf(d));
           const float beta_own = (d >= 0.f) ? 1.f : beta_lo;
           const float beta_par = (d >= 0.f) ? beta_lo : 1.f;
           const float l_tot = beta_own * l_own + beta_par * l_par;
-          scale_own = (l_tot > 0.f) ? beta_own * rcp_approx_ftz_f32(l_tot) : 0.f;
+          scale_own = (l_tot > 0.f)
+                    ? beta_own * (PRECISE_RCP
+                                      ? 1.0f / l_tot
+                                      : rcp_approx_ftz_f32(l_tot))
+                    : 0.f;
 
             if (lse_out != nullptr && (corr_tid >> 6) == 0) {
               const float m_tot = (d >= 0.f) ? m_own : m_par;
@@ -770,7 +1431,11 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
             }
         }
         const float2 scale2 = f32x2_splat(scale_own);
-        const uint32_t o_tmem_addr = tmem_base + (uint32_t)(2 * S_COLS + i * O_COLS) + ((uint32_t)(corr_warp_id * 32) << 16);
+        const uint32_t o_tmem_addr =
+            tmem_base
+            + (uint32_t)(M_TILES_PER_CTA * S_COLS
+                         + i * O_COLS)
+            + ((uint32_t)(corr_warp_id * 32) << 16);
         if constexpr (BLK128) {
 
           #pragma unroll
@@ -799,7 +1464,11 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
           }
         } else {
 
-          mbarrier_wait_parity_suspend(smem_ptr_u32(&empty_bar_o_epi[i]), o_epi_empty_ph.get_phase());
+          if constexpr (!FP32_PARTIAL) {
+            mbarrier_wait_parity_suspend(
+                smem_ptr_u32(&empty_bar_o_epi[i]),
+                o_epi_empty_ph.get_phase());
+          }
           if (!kv_half0) {
             #pragma unroll
             for (int c0 = 0; c0 < HEAD_DIM; c0 += 16) {
@@ -808,18 +1477,32 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
               float2* o2 = reinterpret_cast<float2*>(o_regs);
               #pragma unroll
               for (int e = 0; e < 8; ++e) o2[e] = fmul2(o2[e], scale2);
-              const int s = c0 / SUB_COLS_BF16;
-              const int v_base = (c0 % SUB_COLS_BF16) / 8;
-              __nv_bfloat16* so_sub = sO_bufs[i] + s * (M_TILE * SUB_COLS_BF16);
-              #pragma unroll
-              for (int vv = 0; vv < 2; ++vv) {
-                const int v = v_base + vv;
-                uint4 packed;
-                packed.x = cvt_f32x2_to_bf16x2(o2[vv * 4 + 0].x, o2[vv * 4 + 0].y);
-                packed.y = cvt_f32x2_to_bf16x2(o2[vv * 4 + 1].x, o2[vv * 4 + 1].y);
-                packed.z = cvt_f32x2_to_bf16x2(o2[vv * 4 + 2].x, o2[vv * 4 + 2].y);
-                packed.w = cvt_f32x2_to_bf16x2(o2[vv * 4 + 3].x, o2[vv * 4 + 3].y);
-                *reinterpret_cast<uint4*>(&so_sub[corr_row * SUB_COLS_BF16 + (v ^ (corr_row & 7)) * 8]) = packed;
+              if constexpr (FP32_PARTIAL) {
+                float2* dst = reinterpret_cast<float2*>(
+                    &sO_partial[corr_row * HEAD_DIM + c0]);
+                #pragma unroll
+                for (int e = 0; e < 8; ++e) dst[e] = o2[e];
+              } else {
+                const int s = c0 / SUB_COLS_BF16;
+                const int v_base = (c0 % SUB_COLS_BF16) / 8;
+                __nv_bfloat16* so_sub =
+                    sO_bufs[i] + s * (M_TILE * SUB_COLS_BF16);
+                #pragma unroll
+                for (int vv = 0; vv < 2; ++vv) {
+                  const int v = v_base + vv;
+                  uint4 packed;
+                  packed.x = cvt_f32x2_to_bf16x2(
+                      o2[vv * 4 + 0].x, o2[vv * 4 + 0].y);
+                  packed.y = cvt_f32x2_to_bf16x2(
+                      o2[vv * 4 + 1].x, o2[vv * 4 + 1].y);
+                  packed.z = cvt_f32x2_to_bf16x2(
+                      o2[vv * 4 + 2].x, o2[vv * 4 + 2].y);
+                  packed.w = cvt_f32x2_to_bf16x2(
+                      o2[vv * 4 + 3].x, o2[vv * 4 + 3].y);
+                  *reinterpret_cast<uint4*>(
+                      &so_sub[corr_row * SUB_COLS_BF16
+                              + (v ^ (corr_row & 7)) * 8]) = packed;
+                }
               }
             }
           }
@@ -832,24 +1515,75 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
               float2* o2 = reinterpret_cast<float2*>(o_regs);
               #pragma unroll
               for (int e = 0; e < 8; ++e) o2[e] = fmul2(o2[e], scale2);
-              const int s = c0 / SUB_COLS_BF16;
-              const int v_base = (c0 % SUB_COLS_BF16) / 8;
-              __nv_bfloat16* so_sub = sO_bufs[i] + s * (M_TILE * SUB_COLS_BF16);
-              #pragma unroll
-              for (int vv = 0; vv < 2; ++vv) {
-                const int v = v_base + vv;
-                __nv_bfloat16* dst = &so_sub[corr_row * SUB_COLS_BF16 + (v ^ (corr_row & 7)) * 8];
-                uint4 h1 = *reinterpret_cast<uint4*>(dst);
-                o2[vv * 4 + 0] = fadd2(o2[vv * 4 + 0], __bfloat1622float2(*reinterpret_cast<__nv_bfloat162*>(&h1.x)));
-                o2[vv * 4 + 1] = fadd2(o2[vv * 4 + 1], __bfloat1622float2(*reinterpret_cast<__nv_bfloat162*>(&h1.y)));
-                o2[vv * 4 + 2] = fadd2(o2[vv * 4 + 2], __bfloat1622float2(*reinterpret_cast<__nv_bfloat162*>(&h1.z)));
-                o2[vv * 4 + 3] = fadd2(o2[vv * 4 + 3], __bfloat1622float2(*reinterpret_cast<__nv_bfloat162*>(&h1.w)));
-                uint4 packed;
-                packed.x = cvt_f32x2_to_bf16x2(o2[vv * 4 + 0].x, o2[vv * 4 + 0].y);
-                packed.y = cvt_f32x2_to_bf16x2(o2[vv * 4 + 1].x, o2[vv * 4 + 1].y);
-                packed.z = cvt_f32x2_to_bf16x2(o2[vv * 4 + 2].x, o2[vv * 4 + 2].y);
-                packed.w = cvt_f32x2_to_bf16x2(o2[vv * 4 + 3].x, o2[vv * 4 + 3].y);
-                *reinterpret_cast<uint4*>(dst) = packed;
+              if constexpr (FP32_PARTIAL) {
+                const float2* partial = reinterpret_cast<const float2*>(
+                    &sO_partial[corr_row * HEAD_DIM + c0]);
+                #pragma unroll
+                for (int e = 0; e < 8; ++e)
+                  o2[e] = fadd2(o2[e], partial[e]);
+                uint4 packed0;
+                packed0.x = cvt_f32x2_to_bf16x2(o2[0].x, o2[0].y);
+                packed0.y = cvt_f32x2_to_bf16x2(o2[1].x, o2[1].y);
+                packed0.z = cvt_f32x2_to_bf16x2(o2[2].x, o2[2].y);
+                packed0.w = cvt_f32x2_to_bf16x2(o2[3].x, o2[3].y);
+                uint4 packed1;
+                packed1.x = cvt_f32x2_to_bf16x2(o2[4].x, o2[4].y);
+                packed1.y = cvt_f32x2_to_bf16x2(o2[5].x, o2[5].y);
+                packed1.z = cvt_f32x2_to_bf16x2(o2[6].x, o2[6].y);
+                packed1.w = cvt_f32x2_to_bf16x2(o2[7].x, o2[7].y);
+                const int q_row =
+                    (i == 0 ? it.mtile0 : it.mtile1) * BLOCK + corr_row;
+                const long row_base =
+                    BHSD
+                    ? ((long)it.sample * num_heads + it.head)
+                          * (long)seqlen * HEAD_DIM
+                        + (long)q_row * HEAD_DIM
+                    : ((long)it.sample * seqlen + q_row)
+                          * (long)num_heads * HEAD_DIM
+                        + (long)it.head * HEAD_DIM;
+                *reinterpret_cast<uint4*>(&output[row_base + c0]) =
+                    packed0;
+                *reinterpret_cast<uint4*>(&output[row_base + c0 + 8]) =
+                    packed1;
+              } else {
+                const int s = c0 / SUB_COLS_BF16;
+                const int v_base = (c0 % SUB_COLS_BF16) / 8;
+                __nv_bfloat16* so_sub =
+                    sO_bufs[i] + s * (M_TILE * SUB_COLS_BF16);
+                #pragma unroll
+                for (int vv = 0; vv < 2; ++vv) {
+                  const int v = v_base + vv;
+                  __nv_bfloat16* dst =
+                      &so_sub[corr_row * SUB_COLS_BF16
+                              + (v ^ (corr_row & 7)) * 8];
+                  uint4 h1 = *reinterpret_cast<uint4*>(dst);
+                  o2[vv * 4 + 0] = fadd2(
+                      o2[vv * 4 + 0],
+                      __bfloat1622float2(
+                          *reinterpret_cast<__nv_bfloat162*>(&h1.x)));
+                  o2[vv * 4 + 1] = fadd2(
+                      o2[vv * 4 + 1],
+                      __bfloat1622float2(
+                          *reinterpret_cast<__nv_bfloat162*>(&h1.y)));
+                  o2[vv * 4 + 2] = fadd2(
+                      o2[vv * 4 + 2],
+                      __bfloat1622float2(
+                          *reinterpret_cast<__nv_bfloat162*>(&h1.z)));
+                  o2[vv * 4 + 3] = fadd2(
+                      o2[vv * 4 + 3],
+                      __bfloat1622float2(
+                          *reinterpret_cast<__nv_bfloat162*>(&h1.w)));
+                  uint4 packed;
+                  packed.x = cvt_f32x2_to_bf16x2(
+                      o2[vv * 4 + 0].x, o2[vv * 4 + 0].y);
+                  packed.y = cvt_f32x2_to_bf16x2(
+                      o2[vv * 4 + 1].x, o2[vv * 4 + 1].y);
+                  packed.z = cvt_f32x2_to_bf16x2(
+                      o2[vv * 4 + 2].x, o2[vv * 4 + 2].y);
+                  packed.w = cvt_f32x2_to_bf16x2(
+                      o2[vv * 4 + 3].x, o2[vv * 4 + 3].y);
+                  *reinterpret_cast<uint4*>(dst) = packed;
+                }
               }
             }
           }
@@ -860,12 +1594,13 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
 
         mbarrier_arrive(smem_ptr_u32(&empty_bar_spo[i]));
 
-        fence_proxy_async_shared();
-
-        mbarrier_arrive(smem_ptr_u32(&full_bar_o_epi[i]));
+        if constexpr (!FP32_PARTIAL) {
+          fence_proxy_async_shared();
+          mbarrier_arrive(smem_ptr_u32(&full_bar_o_epi[i]));
+        }
       }
       o_acc_ph.advance();
-      o_epi_empty_ph.advance();
+      if constexpr (!FP32_PARTIAL) o_epi_empty_ph.advance();
 
       if constexpr (USE_CLC) {
         ClcTileInfo next = clc_fetch_next_tile<1, 1, ClcRasterOrder::AlongN, 1, true>(
@@ -880,11 +1615,13 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
     }
   }
   else {
-    setmaxnreg_inc<192>();
+    if constexpr (ONE_Q_CTA)
+      setmaxnreg_inc<120>();
+    else
+      setmaxnreg_inc<192>();
 
-    const int warp_id_u = __shfl_sync(0xffffffffu, warp_id, 0);
-    const int m_tile = warp_id_u < 4 ? 0 : 1;
-    const int warp_in_group = warp_id_u & 3;
+    const int m_tile = warp_id < 4 ? 0 : 1;
+    const int warp_in_group = warp_id & 3;
 
     const int sm_tid = warp_in_group * 32 + lane;
     const uint32_t alpha_slot_u32 = smem_ptr_u32(&alpha_and_l_smem[(m_tile * STAT_REGIONS + 0) * STATS + sm_tid]);
@@ -905,7 +1642,8 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
 
       int thr_window = -(1 << 30);
       int thr_cache0 = BLOCK, thr_cache1 = BLOCK;
-      auto get_vbs_thresholds = [&](int k, int gqb_mt, int half, int& t0, int& t1) {
+      int child_mask_cache0 = 0xff, child_mask_cache1 = 0xff;
+      auto prefetch_vbs_thresholds = [&](int k, int gqb_mt, int half) {
         if (k >= thr_window + 32) {
           thr_window = k & ~31;
           const int kk = thr_window + lane;
@@ -917,24 +1655,251 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
           if constexpr (BLK128) {
             thr_cache0 = (kk < cnt)
                        ? variable_block_sizes[q2k_idx[gqb_mt * max_kv + kk]] : 0;
+          } else if constexpr (PACKED_PAIR32) {
+            const int b0 = kk * BLOCKS_PER_KTILE + 2 * half;
+            const int mask0 =
+                b0 < cnt
+                ? int(child_masks[gqb_mt * max_kv + b0])
+                : 0;
+            const int mask1 =
+                b0 + 1 < cnt
+                ? int(child_masks[gqb_mt * max_kv + b0 + 1])
+                : 0;
+            thr_cache0 = mask0 != 0 ? BLOCK : 0;
+            thr_cache1 = mask1 != 0 ? BLOCK : 0;
+            child_mask_cache0 = mask0;
+            child_mask_cache1 = mask1;
+          } else if constexpr (GATHER) {
+            const int segment_count = q2k_num[gqb_mt];
+            const int b0 = kk * BLOCKS_PER_KTILE + 2 * half;
+            int packed_mask0 = 0;
+            int packed_mask1 = 0;
+            #pragma unroll
+            for (int segment = 0;
+                 segment < GATHER_SEGMENTS_PER_BLOCK; ++segment) {
+              const int descriptor0 =
+                  b0 * GATHER_SEGMENTS_PER_BLOCK + segment;
+              const int descriptor1 =
+                  (b0 + 1) * GATHER_SEGMENTS_PER_BLOCK + segment;
+              const int default_mask = (1 << GATHER_CHILDREN) - 1;
+              const int segment_mask0 =
+                  descriptor0 < segment_count
+                  ? (child_masks == nullptr
+                         ? default_mask
+                         : int(child_masks[gqb_mt * max_kv + descriptor0]))
+                  : 0;
+              const int segment_mask1 =
+                  descriptor1 < segment_count
+                  ? (child_masks == nullptr
+                         ? default_mask
+                         : int(child_masks[gqb_mt * max_kv + descriptor1]))
+                  : 0;
+              packed_mask0 |=
+                  segment_mask0 << (segment * GATHER_CHILDREN);
+              packed_mask1 |=
+                  segment_mask1 << (segment * GATHER_CHILDREN);
+            }
+            thr_cache0 = packed_mask0 != 0 ? BLOCK : 0;
+            thr_cache1 = packed_mask1 != 0 ? BLOCK : 0;
+            child_mask_cache0 = packed_mask0;
+            child_mask_cache1 = packed_mask1;
           } else {
             const int b0 = kk * BLOCKS_PER_KTILE + 2 * half;
             thr_cache0 = (b0     < cnt)
                        ? variable_block_sizes[q2k_idx[gqb_mt * max_kv + b0]]     : 0;
             thr_cache1 = (b0 + 1 < cnt)
                        ? variable_block_sizes[q2k_idx[gqb_mt * max_kv + b0 + 1]] : 0;
+            if constexpr (CHILD_MASK) {
+              child_mask_cache0 = (b0     < cnt)
+                                ? int(child_masks[gqb_mt * max_kv + b0])     : 0;
+              child_mask_cache1 = (b0 + 1 < cnt)
+                                ? int(child_masks[gqb_mt * max_kv + b0 + 1]) : 0;
+            }
           }
         }
+      };
+      auto resolve_vbs_thresholds = [&](int k, int& t0, int& t1,
+                                        int& child_mask0, int& child_mask1) {
         t0 = __shfl_sync(0xffffffffu, thr_cache0, k & 31);
         t1 = BLK128 ? 0 : __shfl_sync(0xffffffffu, thr_cache1, k & 31);
+        if constexpr (CHILD_MASK || GATHER) {
+          child_mask0 = __shfl_sync(0xffffffffu, child_mask_cache0, k & 31);
+          child_mask1 = __shfl_sync(0xffffffffu, child_mask_cache1, k & 31);
+        } else {
+          child_mask0 = 0xff;
+          child_mask1 = 0xff;
+        }
       };
       auto softmax_step = [&](auto is_first_c, int k) {
         constexpr bool IS_FIRST = decltype(is_first_c)::value;
         const int gqb_mt_ = (m_tile == 0) ? it.global_mtile0 : it.global_mtile1;
         int vbs_thr0_, vbs_thr1_;
-        get_vbs_thresholds(k, gqb_mt_, warp_in_group >> 1, vbs_thr0_, vbs_thr1_);
+        int child_mask0_, child_mask1_;
+        prefetch_vbs_thresholds(k, gqb_mt_, warp_in_group >> 1);
+        if constexpr (!DEFER_MASK_RESOLVE) {
+          resolve_vbs_thresholds(
+              k, vbs_thr0_, vbs_thr1_, child_mask0_, child_mask1_);
+        }
         mbarrier_wait_parity_suspend(smem_ptr_u32(&full_bar_spo[m_tile]), spo_ph.get_phase());
 
+        if constexpr (STREAM_SOFTMAX) {
+          static_assert(!BLK128 && PACKED_PAIR32,
+                        "streamed softmax is defined for packed pair32");
+
+          if constexpr (DEFER_MASK_RESOLVE) {
+            resolve_vbs_thresholds(
+                k, vbs_thr0_, vbs_thr1_, child_mask0_, child_mask1_);
+          }
+
+          auto mask_score_chunk = [&](float* scores, int c0) {
+            #pragma unroll
+            for (int j = 0; j < 32; ++j) {
+              const int col = c0 + j;
+              const bool first_half = col < 64;
+              const int local_col = first_half ? col : col - 64;
+              const int threshold = first_half ? vbs_thr0_ : vbs_thr1_;
+              const int child_mask =
+                  first_half ? child_mask0_ : child_mask1_;
+              const bool valid =
+                  local_col < threshold &&
+                  ((child_mask >> (local_col >> 3)) & 1) != 0;
+              if (!valid) scores[j] = -INFINITY;
+            }
+          };
+
+          // First pass: compute the exact row maximum while keeping only one
+          // 32-score TMEM fragment live. The modulo-8 reduction order matches
+          // the full-register implementation.
+          float rmax0 = m_run;
+          float rmax1 = -INFINITY;
+          float rmax2 = -INFINITY;
+          float rmax3 = -INFINITY;
+          #pragma unroll
+          for (int c0 = 0; c0 < S_COLS; c0 += 32) {
+            uint32_t score_regs[32];
+            tcgen05_ld_32x32b_x32(
+                s_tmem_addr + (uint32_t)c0, score_regs);
+            float* scores = reinterpret_cast<float*>(score_regs);
+            mask_score_chunk(scores, c0);
+            #pragma unroll
+            for (int j = 0; j < 32; j += 8) {
+              rmax0 = fmaxf(fmaxf(rmax0, scores[j + 0]),
+                            scores[j + 1]);
+              rmax1 = fmaxf(fmaxf(rmax1, scores[j + 2]),
+                            scores[j + 3]);
+              rmax2 = fmaxf(fmaxf(rmax2, scores[j + 4]),
+                            scores[j + 5]);
+              rmax3 = fmaxf(fmaxf(rmax3, scores[j + 6]),
+                            scores[j + 7]);
+            }
+          }
+          tcgen05_fence_before_thread_sync();
+
+          float new_m =
+              fmaxf(fmaxf(rmax0, rmax1), fmaxf(rmax2, rmax3));
+          new_m = fmaxf(new_m, -FLT_MAX);
+          float alpha = 0.0f;
+          if constexpr (!IS_FIRST) {
+            const float acc_scale_ = (m_run - new_m) * scale_log2;
+            if (acc_scale_ >= -(float)RESCALE_THRESHOLD) {
+              new_m = m_run;
+              alpha = 1.0f;
+            } else {
+              alpha = ex2_approx_f32(acc_scale_);
+            }
+            sts_f32(alpha_slot_u32, alpha);
+          }
+          if constexpr (FULL_NAMED_BAR)
+            full_bar_arrive(m_tile, warp_in_group);
+          else
+            mbarrier_arrive(smem_ptr_u32(&full_bar_alpha[m_tile]));
+
+          const float2 scale2 = f32x2_splat(scale_log2);
+          const float2 neg_m_scaled2 =
+              f32x2_splat(-new_m * scale_log2);
+          float2 lt2a = make_float2(
+              IS_FIRST ? 0.0f : l_run * alpha, 0.0f);
+          float2 lt2b = make_float2(0.f, 0.f);
+          float2 lt2c = make_float2(0.f, 0.f);
+          float2 lt2d = make_float2(0.f, 0.f);
+
+          // Second pass: exponentiate, accumulate the row sum in the same
+          // modulo-4 order, and immediately return each 32-score BF16 fragment
+          // to TMEM. This avoids keeping all 128 scores and 64 probabilities
+          // live at once.
+          #pragma unroll
+          for (int c0 = 0; c0 < S_COLS; c0 += 32) {
+            uint32_t score_regs[32];
+            uint32_t p_regs[16];
+            tcgen05_ld_32x32b_x32(
+                s_tmem_addr + (uint32_t)c0, score_regs);
+            float* scores = reinterpret_cast<float*>(score_regs);
+            float2* scores2 = reinterpret_cast<float2*>(score_regs);
+            mask_score_chunk(scores, c0);
+
+            #pragma unroll
+            for (int c = 0; c < 16; ++c) {
+              const int global_c = c0 / 2 + c;
+              const float2 a2 =
+                  ffma2(scores2[c], scale2, neg_m_scaled2);
+              float2 p2;
+              if constexpr (EX2_EMU) {
+                const int jj = global_c / EX2_FRG_PAIRS;
+                const int kk = 2 * (global_c % EX2_FRG_PAIRS);
+                const bool use_hw =
+                    (kk % EX2_FREQ < EX2_FREQ - EX2_RES) ||
+                    (jj >= EX2_FRG_CNT - 1);
+                p2 = use_hw
+                    ? make_float2(ex2_approx_f32(a2.x),
+                                  ex2_approx_f32(a2.y))
+                    : ex2_emu_f32x2(a2.x, a2.y);
+              } else {
+                p2 = make_float2(ex2_approx_f32(a2.x),
+                                 ex2_approx_f32(a2.y));
+              }
+              if ((global_c & 3) == 0)
+                lt2a = fadd2(lt2a, p2);
+              else if ((global_c & 3) == 1)
+                lt2b = fadd2(lt2b, p2);
+              else if ((global_c & 3) == 2)
+                lt2c = fadd2(lt2c, p2);
+              else
+                lt2d = fadd2(lt2d, p2);
+              p_regs[c] = cvt_f32x2_to_bf16x2(p2.x, p2.y);
+            }
+
+            tcgen05_st_32x32b_x16(
+                s_tmem_addr + (uint32_t)(c0 / 2), p_regs);
+            if constexpr (SPLIT_P) {
+              if (c0 == 64) {
+                tcgen05_wait_st();
+                tcgen05_fence_before_thread_sync();
+                mbarrier_arrive(
+                    smem_ptr_u32(&empty_bar_spo[m_tile]));
+              } else if (c0 == 96) {
+                tcgen05_wait_st();
+                tcgen05_fence_before_thread_sync();
+                mbarrier_arrive(
+                    smem_ptr_u32(&full_bar_p_last[m_tile]));
+              }
+            }
+          }
+          if constexpr (!SPLIT_P) {
+            tcgen05_wait_st();
+            tcgen05_fence_before_thread_sync();
+            mbarrier_arrive(smem_ptr_u32(&empty_bar_spo[m_tile]));
+          }
+
+          spo_ph.advance();
+          const float2 lt2 =
+              fadd2(fadd2(lt2a, lt2b), fadd2(lt2c, lt2d));
+          l_run = lt2.x + lt2.y;
+          m_run = new_m;
+          mbarrier_wait_parity_suspend(
+              smem_ptr_u32(&empty_bar_alpha_and_l[m_tile]),
+              scale_empty_ph.get_phase());
+          scale_empty_ph.advance();
+        } else {
         uint32_t s_regs[S_COLS];
         #pragma unroll
         for (int c0 = 0; c0 < S_COLS; c0 += S_LD_COLS) {
@@ -949,11 +1914,19 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
 
         tcgen05_fence_before_thread_sync();
 
+        if constexpr (DEFER_MASK_RESOLVE) {
+          resolve_vbs_thresholds(
+              k, vbs_thr0_, vbs_thr1_, child_mask0_, child_mask1_);
+        }
         if constexpr (BLK128) {
           if (vbs_thr0_ < S_COLS) mask_s_row_r2p<false, S_COLS>(scores, 0, 0, vbs_thr0_);
         } else {
           if (vbs_thr0_ < 64) mask_s_row_r2p<false, 64>(scores,      0, 0, vbs_thr0_);
           if (vbs_thr1_ < 64) mask_s_row_r2p<false, 64>(scores + 64, 0, 0, vbs_thr1_);
+          if constexpr (CHILD_MASK || GATHER) {
+            mask_s_row_child8(scores, child_mask0_);
+            mask_s_row_child8(scores + 64, child_mask1_);
+          }
         }
 
         float rmax0 = m_run, rmax1 = -INFINITY, rmax2 = -INFINITY, rmax3 = -INFINITY;
@@ -1037,6 +2010,7 @@ fmha_context_bf16_gen_kernel(const __grid_constant__ CUtensorMap tmap_q,
         l_run = lt2.x + lt2.y; m_run = new_m;
         mbarrier_wait_parity_suspend(smem_ptr_u32(&empty_bar_alpha_and_l[m_tile]), scale_empty_ph.get_phase());
         scale_empty_ph.advance();
+        }
       };
       if (num_k_tiles > 0) softmax_step(std::true_type{}, 0);
       for (int k = 1; k < num_k_tiles; ++k) softmax_step(std::false_type{}, k);

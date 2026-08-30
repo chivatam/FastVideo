@@ -120,6 +120,12 @@ class HumanActionMetric(BaseMetric):
             cat_dict.get(str(idx), "") for idx, score in zip(top_indices, top_scores, strict=False) if score >= 0.85
         ]
         gt_label = text_prompt.lower().strip()
+        # Official VBench derives the Kinetics label from filenames such as
+        # "A person is riding a bike-0.mp4" by removing the prompt prefix.
+        # Path-independent evaluation receives the original prompt directly,
+        # so perform the same normalization here.
+        if "person is " in gt_label:
+            gt_label = gt_label.split("person is ", 1)[1]
         match = any(pred == gt_label for pred in predictions)
         return MetricResult(
             name=self.name,

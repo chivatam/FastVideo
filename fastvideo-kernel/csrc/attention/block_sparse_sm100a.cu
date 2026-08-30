@@ -90,6 +90,7 @@ std::vector<torch::Tensor> BLOCK_SPARSE_SM100A_FWD(torch::Tensor q, torch::Tenso
   a.q2k_idx = q2k_idx.data_ptr<int>();
   a.q2k_num = q2k_num.data_ptr<int>();
   a.variable_block_sizes = variable_block_sizes.data_ptr<int>();
+  a.child_masks = nullptr;
   a.batch = (int)B;
   a.num_heads = (int)H;
   a.seqlen = (int)S;

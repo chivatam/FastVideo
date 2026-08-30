@@ -84,7 +84,16 @@ def load_grit_model(device: str | torch.device, task: str = "DenseCap"):
     if isinstance(device, str):
         device = torch.device(device)
     model = DenseCaptioning(device)
-    if task == "ObjectDet":
+    if device.type == "cuda":
+        # Upstream GRiT writes cfg.MODEL.DEVICE as generic "cuda" for every
+        # non-CPU device. Pin the current CUDA device while Detectron2 builds
+        # the model so each evaluator replica lands on its assigned GPU.
+        with torch.cuda.device(device):
+            if task == "ObjectDet":
+                model.initialize_model_det(ckpt)
+            else:
+                model.initialize_model(ckpt)
+    elif task == "ObjectDet":
         model.initialize_model_det(ckpt)
     else:
         model.initialize_model(ckpt)
